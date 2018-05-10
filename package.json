@@ -1,0 +1,57 @@
+{
+  "version": "0.0.0",
+  "name": "libdweb",
+  "description": "Experimental WebExtensions API for enabling DWeb protocols",
+  "keywords": ["libdweb", "typed", "flow"],
+  "main": "lib/libdweb",
+  "module": "src/libdweb",
+  "unpkg": "dist/libdweb",
+  "author": "Irakli Gozalishvili <rfobic@gmail.com> (http://jeditoolkit.com)",
+  "repository": "https://github.com/Gozala/libdweb",
+  "license": "MIT",
+  "devDependencies": {
+    "alias-quokka-plugin": "^0.1.0",
+    "babel-cli": "^6.26.0",
+    "babel-preset-env": "1.6.1",
+    "babel-preset-flow-node": "^2.0.1",
+    "babel-register": "^6.26.0",
+    "blue-tape": "^1.0.0",
+    "documentation": "^6.1.0",
+    "flow-bin": "^0.69.0",
+    "flow-copy-source": "^1.2.1",
+    "husky": "^0.14.0",
+    "lint-staged": "^7.0.4",
+    "prettier": "^1.9.2",
+    "rollup": "0.57.1",
+    "rollup.config.flow": "1.1.0",
+    "source-map-support": "0.5.4"
+  },
+  "scripts": {
+    "test": "npm run test:flow && npm run test:tape",
+    "test:tape": "blue-tape -r source-map-support/register -r babel-register 'test/**/*.js'",
+    "test:flow": "flow check",
+    "build:clear": "rm -rf lib",
+    "build:types": "flow-copy-source --verbose src lib",
+    "build:umd": "BABEL_ENV=umd rollup -c --files libdweb",
+    "build:node": "babel --out-dir lib src",
+    "build:api": "documentation readme --section=API src/libdweb.js",
+    "build:docs":
+      "documentation build --document-exported src/** -f html --o docs",
+    "build": "npm run build:node && npm run build:types",
+    "prepublishOnly": "npm run build && npm run build:umd && npm test",
+    "precommit": "lint-staged",
+    "start":
+      "flow-copy-source --watch --verbose src lib & babel --watch --out-dir lib src"
+  },
+  "lint-staged": {
+    "*.js": ["prettier --parser flow --no-semi --write", "git add"]
+  },
+  "quokka": {
+    "alias": {
+      "libdweb": "src/libdweb"
+    },
+    "pro": true,
+    "babel": true,
+    "plugins": ["alias-quokka-plugin"]
+  }
+}

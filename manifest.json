@@ -1,0 +1,16 @@
+{
+  "manifest_version": 2,
+  "version": "2.0",
+  "name": "Extension containing an experimental libdweb APIs",
+  "experiment_apis": {
+    "protocol": {
+      "schema": "./schemas/protocol.json",
+      "child": {
+        "scopes": ["addon_child"],
+        "paths": [["protocol"]],
+        "script": "./src/protocol/parent.js"
+      }
+    }
+  },
+  "background": { "scripts": ["demo/background.js"] }
+}

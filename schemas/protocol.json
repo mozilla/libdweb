@@ -1,0 +1,83 @@
+[
+  {
+    "namespace": "experiments.protocol",
+    "description": "Network protocol handler API",
+    "types": [
+      {
+        "id": "Request",
+        "type": "object",
+        "description": "An object passed to the protocol handler",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "requested url"
+          }
+        }
+      },
+      {
+        "id": "ProtocolHandler",
+        "type": "function",
+        "description": "Protocol handler",
+        "async": false,
+        "parameters": [
+          {
+            "name": "request",
+            "$ref": "Request"
+          },
+          {
+            "name": "write",
+            "$ref": "Write",
+            "description": "Writes chunk of data to the output stream"
+          },
+          {
+            "name": "end",
+            "$ref": "End",
+            "description": "End the output stream"
+          }
+        ]
+      },
+      {
+        "id": "Write",
+        "type": "function",
+        "async": false,
+        "parameters": [
+          {
+            "name": "chunk",
+            "type": "ArrayBuffer",
+            "description": "Data chunk to be written"
+          }
+        ]
+      },
+      {
+        "id": "End",
+        "type": "function",
+        "async": false,
+        "parameters": []
+      }
+    ],
+    "functions": [
+      {
+        "name": "registerProtocol",
+        "type": "function",
+        "description": "registers network protocol handler",
+        "async": true,
+        "parameters": [
+          {
+            "name": "scheme",
+            "type": "string",
+            "description":
+              "The protocol scheme that implementation will handle."
+          },
+          {
+            "name": "handler",
+            "$ref": "ProtocolHandler",
+            "type": "function",
+            "description": "Protocol handler for the registered protocol"
+          }
+        ]
+      }
+    ],
+    "properties": {},
+    "events": []
+  }
+]

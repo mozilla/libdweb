@@ -1,0 +1,13 @@
+[ignore]
+.*/node_modules/babel.*
+.*/node_modules/tap/*
+.*/node_modules/documentation/*
+
+[libs]
+
+[include]
+
+[options]
+module.name_mapper='libdweb' -> '<PROJECT_ROOT>/src/libdweb'
+suppress_comment= \\(.\\|\n\\)*\\@FlowIssue
+suppress_comment= \\(.\\|\n\\)*\\@FlowIgnore

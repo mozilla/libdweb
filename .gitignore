@@ -1,0 +1,6 @@
+lib
+dist
+!src/**/*.js
+!src/**/*.flow
+!test/**/*.js
+!test/**/*.flow
