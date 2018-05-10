@@ -1,25 +1,20 @@
-const { classes: Cc, interfaces: Ci, utils: Cu, results: Cr } = Components;
-
-const PR_UINT32_MAX = 0xffffffff;
-
-const ioService = Cc["@mozilla.org/network/io-service;1"].getService(
-  Ci.nsIIOService
-)
-
-const standardURL = Cc["@mozilla.org/network/standard-url;1"]
-  .createInstance(Ci.nsIStandardURL)
-
-standardURL.QueryInterface(Ci.nsIURL)
+const {
+  classes: Cc,
+  interfaces: Ci,
+  utils: Cu,
+  results: Cr,
+  manager: Cm
+} = Components
 
 const runtime = Cc["@mozilla.org/xre/app-info;1"].getService(Ci.nsIXULRuntime)
 
-const childProcessMessageManager = Cc[
-  "@mozilla.org/childprocessmessagemanager;1"
-].getService(Ci.nsISyncMessageSender)
+// const childProcessMessageManager = Cc[
+//   "@mozilla.org/childprocessmessagemanager;1"
+// ].getService(Ci.nsISyncMessageSender)
 
-const parentProcessMessageManager = Cc[
-  "@mozilla.org/parentprocessmessagemanager;1"
-].getService(Ci.nsIMessageBroadcaster)
+// const parentProcessMessageManager = Cc[
+//   "@mozilla.org/parentprocessmessagemanager;1"
+// ].getService(Ci.nsIMessageBroadcaster)
 
 const securityManager = Cc["@mozilla.org/scriptsecuritymanager;1"].getService(
   Ci.nsIScriptSecurityManager
@@ -33,10 +28,11 @@ class ProtocolAPI {
   }
   registerProtocol(schema, handler) {
     componentRegistrar.registerFactory(
-      CID('{b6c93a47-778a-f643-b0c8-79f6be685e06}'),
+      CID("{b6c93a47-778a-f643-b0c8-79f6be685e06}"),
       `${schema} protocol handler`,
       `@mozilla.org/network/protocol;1?name=${schema}`,
-      new Factory(new ProtocolHandler(handler)))
+      new Factory(new ProtocolHandler(handler))
+    )
   }
 }
 
@@ -50,8 +46,6 @@ class Request {
   }
 }
 
-const onOutputStreamReady = 
-
 class AsyncIteratorToAsyncOutputStreamCopier {
   constructor() {
     this.asyncOutputStream = asyncOutputStream
@@ -64,10 +58,11 @@ class AsyncIteratorToAsyncOutputStreamCopier {
     this.writable = false
   }
   newBinaryOutputStream() {
-    const binaryOutputStream = Cc["@mozilla.org/binaryoutputstream;1"].
-            createInstance(Ci.nsIBinaryOutputStream)
+    const binaryOutputStream = Cc[
+      "@mozilla.org/binaryoutputstream;1"
+    ].createInstance(Ci.nsIBinaryOutputStream)
     binaryOutputStream.setOutputStream(this.asyncOutputStream)
-    return this.binaryOutputStream = binaryOutputStream
+    return (this.binaryOutputStream = binaryOutputStream)
   }
   onInputChunk(next) {
     if (this.asyncIterator) {
@@ -119,7 +114,7 @@ class AsyncIteratorToAsyncOutputStreamCopier {
       }
     }
   }
-  close(reason=Cr.NS_BASE_STREAM_CLOSED) {
+  close(reason = Cr.NS_BASE_STREAM_CLOSED) {
     const { asyncOutputStream } = this
     this.writable = false
     this.next = null
@@ -142,75 +137,81 @@ class AsyncIteratorToAsyncOutputStreamCopier {
 }
 
 class ProtocolHandler {
+  //   scheme:string
   constructor(scheme, handler) {
     this.scheme = scheme
     this.handler = handler
+    this.defaultPort = -1
+    this.protocolFlags = Ci.nsIProtocolHandler.URI_LOADABLE_BY_SUBSUMERS
   }
-  defaultPort:number = -1
-  protocolFlags:number = Ci.nsIProtocolHandler.URI_LOADABLE_BY_SUBSUMERS
-  scheme:string
-  allowPort(port:number, scheme:string) {
+  allowPort(port, scheme) {
     return false
   }
-  newURI(spec:string, charset:string, baseURI:null|nsIURI):nsIURI {
-      // dump(`ProtocolHandler<${this.scheme}>.newURI(${JSON.stringify(spec)}, ${JSON.stringify(charset)}, ${baseURI==null ? 'null' : baseURI.spec})\n`)
-      const url = standardURL.init(Ci.nsIStandardURL.URLTYPE_STANDARD,
-                          this.defaultPort,
-                          spec,
-                          charset,
-                          baseURI)
-      return url.clone()
-    }
-    newChannel(uri:nsIURI):nsIChannel {
-      return this.newChannel2(uri, null)
-    }
-    newChannel2(uri:nsIURI, loadInfo:null|nsILoadInfo):nsIChannel {
-      const pipe = Cc['@mozilla.org/pipe;1']
-        .createInstance(Ci.nsIPipe)
-      pipe.init(true, true, 0, PR_UINT32_MAX, null)
-      const response = this.handler(new Request(uri, loadInfo))
+  newURI(spec, charset, baseURI) {
+    // dump(`ProtocolHandler<${this.scheme}>.newURI(${JSON.stringify(spec)}, ${JSON.stringify(charset)}, ${baseURI==null ? 'null' : baseURI.spec})\n`)
+    const url = standardURL.init(
+      Ci.nsIStandardURL.URLTYPE_STANDARD,
+      this.defaultPort,
+      spec,
+      charset,
+      baseURI
+    )
+    return url.clone()
+  }
+  newChannel(uri) {
+    return this.newChannel2(uri, null)
+  }
+  newChannel2(uri, loadInfo) {
+    const pipe = Cc["@mozilla.org/pipe;1"].createInstance(Ci.nsIPipe)
+    pipe.init(true, true, 0, PR_UINT32_MAX, null)
+    const response = this.handler(new Request(uri, loadInfo))
 
-      const channel = Cc['@mozilla.org/network/input-stream-channel;1']
-        .createInstance(Ci.nsIInputStreamChannel)
-      channel.setURI(uri)
-      channel.contentStream = pipe.inputStream
-      channel.QueryInterface(Ci.nsIChannel)
-      channel.contentType = response.contentType
+    const channel = Cc[
+      "@mozilla.org/network/input-stream-channel;1"
+    ].createInstance(Ci.nsIInputStreamChannel)
+    channel.setURI(uri)
+    channel.contentStream = pipe.inputStream
+    channel.QueryInterface(Ci.nsIChannel)
+    channel.contentType = response.contentType
 
-      const copier = new AsyncIteratorToAsyncOutputStreamCopier(
-        response.content,
-        pipe.outputStream)
-      copier.copy()
+    const copier = new AsyncIteratorToAsyncOutputStreamCopier(
+      response.content,
+      pipe.outputStream
+    )
+    copier.copy()
 
-      return channel
+    return channel
+  }
+  QueryInterface(iid) {
+    if (iid.equals(Ci.nsIProtocolHandler) || iid.equals(Ci.nsISupports)) {
+      return this
     }
-    QueryInterface(iid:nsIIDRef):nsIProtocolHandler {
-      if (iid.equals(Ci.nsIProtocolHandler) ||
-          iid.equals(Ci.nsISupports)) {
-        return this
-      }
-      dump(`!!! FSProtocolHandler.QueryInterface ${iid.name} ${iid.number}\n`)
-      throw Cr.NS_ERROR_NO_INTERFACE
-    }
+    dump(`!!! FSProtocolHandler.QueryInterface ${iid.name} ${iid.number}\n`)
+    throw Cr.NS_ERROR_NO_INTERFACE
   }
 }
 
-class Factory <nsQIResult> {
+class Factory {
+  /*::
   instance: nsQIResult
-  constructor(instance:nsQIResult) {
+  */
+  constructor(instance /*: nsQIResult */) {
     this.instance = instance
   }
-  createInstance(outer:null|nsISupports<*>, iid:nsIIDRef):nsQIResult {
+  createInstance(
+    outer /*: null | nsISupports<*> */,
+    iid /*: nsIIDRef */
+  ) /*: nsQIResult */ {
     if (outer != null) {
       throw Cr.NS_ERROR_NO_AGGREGATION
     }
 
     return this.instance
   }
-  lockFactory(lock:boolean):void {
+  lockFactory(lock /*: boolean */) /*: void */ {
     throw Cr.NS_ERROR_NOT_IMPLEMENTED
   }
-  QueryInterface(iid:nsIIDRef):Factory<nsQIResult> {
+  QueryInterface(iid /*: nsIIDRef */) /*: Factory<nsQIResult> */ {
     if (iid.equals(Ci.nsISupports) || iid.equals(Ci.nsIFactory)) {
       return this
     }
@@ -221,6 +222,8 @@ class Factory <nsQIResult> {
 
 this.protocol = class extends ExtensionAPI {
   getAPI(context) {
-    return new ProtocolAPI(context)
+    return {
+      protocol: new ProtocolAPI(context)
+    }
   }
 }

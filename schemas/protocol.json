@@ -1,6 +1,6 @@
 [
   {
-    "namespace": "experiments.protocol",
+    "namespace": "protocol",
     "description": "Network protocol handler API",
     "types": [
       {

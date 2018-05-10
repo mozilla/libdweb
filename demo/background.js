@@ -1,7 +1,7 @@
-console.log("Hi there", browser.experiments.protocol)
+console.log("Hi there", browser.protocol)
 
 debugger
-browser.experiments.protocol.registerProtocol("goz", request => {
+browser.protocol.registerProtocol("goz", request => {
   return {
     contentType: "text/html",
     content: async function*() {
