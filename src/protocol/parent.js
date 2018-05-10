@@ -34,7 +34,7 @@ class ProtocolAPI {
   registerProtocol(schema, handler) {
     componentRegistrar.registerFactory(
       CID('{b6c93a47-778a-f643-b0c8-79f6be685e06}'),
-      `${schema}` protocol handler',
+      `${schema} protocol handler`,
       `@mozilla.org/network/protocol;1?name=${schema}`,
       new Factory(new ProtocolHandler(handler)))
   }
