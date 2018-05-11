@@ -8,6 +8,11 @@
       "child": {
         "scopes": ["addon_child"],
         "paths": [["protocol"]],
+        "script": "./src/protocol/child.js"
+      },
+      "parent": {
+        "scopes": ["addon_parent"],
+        "paths": [["protocol"]],
         "script": "./src/protocol/parent.js"
       }
     }

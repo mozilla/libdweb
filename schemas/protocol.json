@@ -59,7 +59,7 @@
       {
         "name": "registerProtocol",
         "type": "function",
-        "description": "registers network protocol handler",
+        "description": "regitruesters network protocol handler",
         "async": true,
         "parameters": [
           {
