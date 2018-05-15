@@ -9,7 +9,7 @@ const {
   results: Cr,
   manager: Cm
 } = Components
-const { ppmm, cpmm, appinfo } = Cu.import("resource://gre/modules/Services.jsm", {}).Services
+const { ppmm, cpmm, mm, appinfo } = Cu.import("resource://gre/modules/Services.jsm", {}).Services
 const { getConsole } = Cu.import("resource://gre/modules/ExtensionUtils.jsm", {}).ExtensionUtils
 const { XPCOMUtils } = Cu.import("resource://gre/modules/XPCOMUtils.jsm", {})
 const PR_UINT32_MAX = 0xffffffff;
@@ -39,8 +39,7 @@ const installProtocol = (scheme, uuid) => {
   )
 }
 const registerProtocol = (scheme, uuid) => {
-  ppmm.broadcastAsyncMessage(subject, { scheme, uuid })
-  installProtocol(scheme, uuid)
+  ppmm.broadcastAsyncMessage(`protocol@libdweb:install`, { scheme, uuid })
 }
 this.registerProtocol = registerProtocol
 
@@ -51,102 +50,6 @@ class Request {
   }
   get url() {
     return this.uri.spec
-  }
-}
-
-class AsyncIteratorToAsyncOutputStreamCopier {
-  constructor(asyncIterator, asyncOutputStream) {
-    this.asyncIterator = asyncIterator
-    this.asyncOutputStream = asyncOutputStream
-
-    this.onInputChunk = this.onInputChunk.bind(this)
-    this.onInputError = this.onInputError.bind(this)
-
-    this.next = null
-    this.writable = false
-  }
-  newBinaryOutputStream() {
-    const binaryOutputStream = Cc[
-      "@mozilla.org/binaryoutputstream;1"
-    ].createInstance(Ci.nsIBinaryOutputStream)
-    binaryOutputStream.setOutputStream(this.asyncOutputStream)
-    return (this.binaryOutputStream = binaryOutputStream)
-  }
-  onInputChunk(next) {
-    console.log(`chunk ${JSON.stringify(next)}`)
-    if (this.asyncIterator) {
-      this.next = next
-      this.onStatusUpdate()
-    }
-  }
-  onInputError(error) {
-    console.log(`IO.error ${error}`)
-    this.close(Cr.NS_ERROR_FAILURE)
-    throw error
-  }
-  onStatusUpdate() {
-    console.log(`status ${JSON.stringify(this.next)}`)
-    if (this.asyncIterator === null) {
-      return void this
-    } else if (this.next === null) {
-      return void this
-    } else if (this.next.done === true) {
-      return this.close()
-    } else if (this.writable === false) {
-      return void this
-    } else {
-      return this.write(this.next.value)
-    }
-  }
-
-  write(chunk) {
-    this.next = null
-    this.writable = false
-
-    const output = this.binaryOutputStream || this.newBinaryOutputStream()
-    console.log(`write bytes ${JSON.stringify(chunk)}`)
-    output.writeByteArray(chunk, chunk.byteLength)
-    this.flush()
-    this.copy()
-  }
-  flush() {
-    try {
-      this.asyncOutputStream.flush()
-      return true
-    } catch (error) {
-      switch (error.result) {
-        case Cr.NS_BASE_STREAM_WOULD_BLOCK:
-        case Cr.NS_ERROR_FAILURE: {
-          return false
-        }
-        default: {
-          this.close(error.result)
-          throw error
-        }
-      }
-    }
-  }
-  close(reason = Cr.NS_BASE_STREAM_CLOSED) {
-    const { asyncOutputStream, binaryOutputStream } = this
-    this.writable = false
-    this.next = null
-    this.binaryOutputStream = null
-    this.asyncOutputStream = null
-    this.asyncIterator = null
-
-    asyncOutputStream.closeWithStatus(reason)
-    binaryOutputStream.close()
-    console.log('Close!')
-  }
-  onOutputStreamReady(outputStream) {
-    if (this.asyncIterator) {
-      this.writable = true
-      this.onStatusUpdate()
-    }
-  }
-  copy() {
-    this.asyncIterator.next().then(this.onInputChunk, this.onInputError)
-    this.asyncOutputStream.asyncWait(this, 0, 0, null)
   }
 }
 
@@ -185,12 +88,11 @@ class Channel {
     this.QueryInterface = Channel$QueryInterface
   }
   asyncOpen(listener, context) {
-    console.log(`OPEN ${this.readyState}`)
     switch (this.readyState) {
       case IDLE: {
         this.listener = listener
         this.context = context
-        this.awake()
+        return this.awake()
       }
       default: {
         throw this.status
@@ -204,7 +106,7 @@ class Channel {
     try {
       listener.onStopRequest(this, context, status)
     } catch(_) {
-      
+
     }
   }
   ensureActive() {
@@ -219,12 +121,10 @@ class Channel {
   }
   async awake() {
     try {
-      console.log('awake')
       const { listener, context } = this
       this.status = Cr.NS_OK
       this.readyState = ACTIVE
       listener.onStartRequest(this, context)
-      console.log(`onStartRequest ${this.status}`)
       this.ensureActive()
 
       for await (const chunk of this.content) {
@@ -233,18 +133,15 @@ class Channel {
         const { buffer } = chunk
         stream.setData(buffer, 0, buffer.byteLength)
         
-        console.log(`onDataAvailable ${chunk}`)
         listener.onDataAvailable(this, context, stream, 0, stream.available());
 
         this.ensureActive()
       }
 
-      console.log(`CLOSE`)
       this.readyState = CLOSED
       this.status = Cr.NS_BASE_STREAM_CLOSED
       this.close(Cr.NS_OK)
     } catch(error) {
-      console.log(`ABORT ${error}`)
       if (error === abort) {
         switch (this.readyState) {
           case ACTIVE:
@@ -307,7 +204,6 @@ class Channel {
     }
   }
   cancel(status = Cr.NS_BINDING_ABORTED) {
-    console.log('cancel')
     switch (this.readyState) {
       case ACTIVE:
       case PAUSED: {
@@ -319,7 +215,6 @@ class Channel {
     }
   }
   suspend() {
-    console.log('suspend')
     switch (this.readyState) {
       case ACTIVE: {
         this.readyState = PAUSED
@@ -335,7 +230,6 @@ class Channel {
     this.paused = true
   }
   resume() {
-    console.log('resume')
     switch (this.readyState) {
       case ACTIVE: {
         return void this
@@ -371,8 +265,6 @@ class ProtocolHandler {
     return false
   }
   newURI(spec, charset, baseURI) {
-    // dump(`ProtocolHandler<${this.scheme}>.newURI(${JSON.stringify(spec)}, ${JSON.stringify(charset)}, ${baseURI==null ? 'null' : baseURI.spec})\n`)
-    console.log(`newURI ${spec} ${charset} ${baseURI && baseURI.spec}`)
     try {
       const url = Cc["@mozilla.org/network/standard-url-mutator;1"]
         .createInstance(Ci.nsIStandardURLMutator)
@@ -390,11 +282,9 @@ class ProtocolHandler {
     }
   }
   newChannel(uri) {
-    console.log(`newChannel ${uri.spec}`)
     return this.newChannel2(uri, null)
   }
   newChannel2(uri, loadInfo) {
-    console.log(`newChannel2 ${uri.spec}`)
     // const pipe = Cc["@mozilla.org/pipe;1"].createInstance(Ci.nsIPipe)
     // pipe.init(true, true, 0, PR_UINT32_MAX, null)
     const request = new Request(uri, loadInfo)
@@ -449,25 +339,29 @@ class Factory {
     if (iid.equals(Ci.nsISupports) || iid.equals(Ci.nsIFactory)) {
       return this
     }
-    dump(`!!! Factory.QueryInterface ${iid.name} ${iid.number}\n`)
+    console.log(`!!! Factory.QueryInterface ${iid.name} ${iid.number}\n`)
     throw Cr.NS_ERROR_NO_INTERFACE
   }
 }
 
 const url = Components.stack.filename
-const subject = `protocol@libdweb:register`
+const subject = `protocol@libdweb:install`
 
 console.log(`Installed message listener "${subject}" in process ${appinfo.processID}@${appinfo.processType}`)
 
 
 if (isParent) {
-  console.log(`Loaded in parent process from ${url}`)
   ppmm.loadProcessScript(`data:,Cu.import('${url}');`, true)
-} else {
-  cpmm.addMessageListener(subject, ({data, target}) => {
-    console.log(`Receive message at ${appinfo.processID}@${appinfo.processType} ${JSON.stringify(data)}`)
-    const {scheme, uuid} = data
-    installProtocol(scheme, uuid)
-  })
-  console.log(`Loaded in child process from ${url}`)
 }
+
+cpmm.addMessageListener(`protocol@libdweb:install`, ({data, target}) => {
+  console.log(`Receive cpmm message at ${appinfo.processID}@${appinfo.processType} ${JSON.stringify(data)}`)
+  const {scheme, uuid} = data
+  installProtocol(scheme, uuid)
+})
+
+ppmm.addMessageListener('protocol@libdweb:register', ({data, target}) => {
+  console.log(`Receive ppmm message at ${appinfo.processID}@${appinfo.processType} ${JSON.stringify(data)}`, target)
+  const {scheme, uuid} = data
+  registerProtocol(scheme, uuid)
+})
