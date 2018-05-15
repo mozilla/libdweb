@@ -152,35 +152,120 @@ class AsyncIteratorToAsyncOutputStreamCopier {
 
 
 const Channel$QueryInterface = XPCOMUtils.generateQI([Ci.nsIChannel, Ci.nsIRequest])
+const LOAD_NORMAL = 0
+
+const IDLE = 0
+const ACTIVE = 1
+const PAUSED = 2
+const CANCELED = 3
+const CLOSED = 4
+const FAILED = 5
+
+const abort = {}
+
 class Channel {
-  constructor(uri, loadInfo) {
+  constructor(uri, loadInfo, response) {
     this.URI = uri
     this.originalURI = uri
     this.loadInfo = loadInfo
     this.originalURI = null
-    this.contentCharset = "utf-8"
-    this.contentLength = 0
-    this.contentType = "text/plain"
+    this.contentCharset = response.contentCharset || "utf-8"
+    this.contentLength = response.contentLength || -1
+    this.contentType = response.contentType || "text/plain"
+    this.content = response.content
+
     this.owner = null // Cc["@mozilla.org/systemprincipal;1"].createInstance(Ci.nsIPrincipal)
     this.securityInfo = null
     this.notificationCallbacks = null
-    this.loadFlags = 0
+    this.loadFlags = LOAD_NORMAL
     this.loadGroup = null
-    this.name = null
-    this.status = Cr.NS_OK
+    this.name = uri.spec
+    this.status = Cr.NS_ERROR_NOT_INITIALIZED
+    this.readyState = IDLE
     this.QueryInterface = Channel$QueryInterface
   }
   asyncOpen(listener, context) {
-    let stream = this.open();
+    console.log(`OPEN ${this.readyState}`)
+    switch (this.readyState) {
+      case IDLE: {
+        this.listener = listener
+        this.context = context
+        this.awake()
+      }
+      default: {
+        throw this.status
+      }
+    }
+  }
+  close(status = this.status) {
+    const { listener, context } = this
+    this.listener = null
+    this.context = null
     try {
-      listener.onStartRequest(this, context);
-    } catch(e) {}
+      listener.onStopRequest(this, context, status)
+    } catch(_) {
+      
+    }
+  }
+  ensureActive() {
+    switch (this.readyState) {
+      case ACTIVE: {
+        return this
+      }
+      default: {
+        throw abort
+      }
+    }
+  }
+  async awake() {
     try {
-      listener.onDataAvailable(this, context, stream, 0, stream.available());
-    } catch(e) {}
-    try {
-      listener.onStopRequest(this, context, Cr.NS_OK);
-    } catch(e) {}
+      console.log('awake')
+      const { listener, context } = this
+      this.status = Cr.NS_OK
+      this.readyState = ACTIVE
+      listener.onStartRequest(this, context)
+      console.log(`onStartRequest ${this.status}`)
+      this.ensureActive()
+
+      for await (const chunk of this.content) {
+        const stream = Cc["@mozilla.org/io/arraybuffer-input-stream;1"]
+          .createInstance(Ci.nsIArrayBufferInputStream)
+        const { buffer } = chunk
+        stream.setData(buffer, 0, buffer.byteLength)
+        
+        console.log(`onDataAvailable ${chunk}`)
+        listener.onDataAvailable(this, context, stream, 0, stream.available());
+
+        this.ensureActive()
+      }
+
+      console.log(`CLOSE`)
+      this.readyState = CLOSED
+      this.status = Cr.NS_BASE_STREAM_CLOSED
+      this.close(Cr.NS_OK)
+    } catch(error) {
+      console.log(`ABORT ${error}`)
+      if (error === abort) {
+        switch (this.readyState) {
+          case ACTIVE:
+          case PAUSED: {
+            return void this
+          }
+          case CLOSED:
+          case FAILED: {
+            return this.close()
+          }
+          default: {
+            this.status = Cr.NS_ERROR_FAILURE
+            return this.close()
+          }
+        }
+      } else {
+        this.readyState = FAILED
+        this.status = Cr.NS_BINDING_FAILED
+        return this.close()
+      }
+    }
   }
   asyncOpen2(listener) {
     // throws an error if security checks fail
@@ -188,10 +273,7 @@ class Channel {
     return this.asyncOpen(outListener, null);
   }
   open() {
-    let data = "bar";
-    let stream = Cc["@mozilla.org/io/string-input-stream;1"].createInstance(Ci.nsIStringInputStream);
-    stream.setData(data, data.length);
-    return stream;
+    throw Cr.NS_BASE_STREAM_WOULD_BLOCK
   }
   open2() {
     // throws an error if security checks fail
@@ -199,16 +281,72 @@ class Channel {
     return this.open();
   }
   isPending() {
-    return false;
+    switch (this.readyState) {
+      case ACTIVE:
+      case PAUSED: {
+        return true
+      }
+      default: {
+        return false
+      }
+    }
   }
-  cancel() {
-    throw Cr.NS_ERROR_NOT_IMPLEMENTED;
+  setStatus(status) {
+    switch (status) {
+      case Cr.NS_OK:
+      case Cr.NS_BINDING_ABORTED: {
+        this.readyState = CANCELED
+        this.status = status
+        return this
+      }
+      default: {
+        this.readyState = FAILED
+        this.status = status
+        return this
+      }
+    }
+  }
+  cancel(status = Cr.NS_BINDING_ABORTED) {
+    console.log('cancel')
+    switch (this.readyState) {
+      case ACTIVE:
+      case PAUSED: {
+        return void this.setStatus(status)
+      }
+      default: {
+        throw this.status
+      }
+    }
   }
   suspend() {
-    throw Cr.NS_ERROR_NOT_IMPLEMENTED;
+    console.log('suspend')
+    switch (this.readyState) {
+      case ACTIVE: {
+        this.readyState = PAUSED
+        return void this
+      }
+      case PAUSED: {
+        return void this
+      }
+      default: {
+        throw this.status
+      }
+    }
+    this.paused = true
   }
   resume() {
-    throw Cr.NS_ERROR_NOT_IMPLEMENTED;
+    console.log('resume')
+    switch (this.readyState) {
+      case ACTIVE: {
+        return void this
+      }
+      case PAUSED: {
+        return void this.awake()
+      }
+      default: {
+        throw this.status
+      }
+    }
   }
 }
 
@@ -221,7 +359,7 @@ class ProtocolHandler {
   }
   handler(request) {
     return {
-      contentType: 'text/plain;charset=utf-8',
+      contentType: 'text/plain',
       content: (async function*() {
         const encoder = new TextEncoder()
         yield encoder.encode('Hello ')
@@ -235,17 +373,21 @@ class ProtocolHandler {
   newURI(spec, charset, baseURI) {
     // dump(`ProtocolHandler<${this.scheme}>.newURI(${JSON.stringify(spec)}, ${JSON.stringify(charset)}, ${baseURI==null ? 'null' : baseURI.spec})\n`)
     console.log(`newURI ${spec} ${charset} ${baseURI && baseURI.spec}`)
-    const url = Cc["@mozilla.org/network/standard-url-mutator;1"]
-      .createInstance(Ci.nsIStandardURLMutator)
-      .init(Ci.nsIStandardURL.URLTYPE_AUTHORITY,
-            this.defaultPort,
-            spec,
-            charset,
-            baseURI)
-      .finalize()
-      .QueryInterface(Ci.nsIURI)
+    try {
+      const url = Cc["@mozilla.org/network/standard-url-mutator;1"]
+        .createInstance(Ci.nsIStandardURLMutator)
+        .init(Ci.nsIStandardURL.URLTYPE_AUTHORITY,
+              this.defaultPort,
+              spec,
+              charset,
+              baseURI)
+        .finalize()
+        .QueryInterface(Ci.nsIURI)
 
-    return url
+      return url
+    } catch(_) {
+      return null
+    }
   }
   newChannel(uri) {
     console.log(`newChannel ${uri.spec}`)
@@ -255,7 +397,7 @@ class ProtocolHandler {
     console.log(`newChannel2 ${uri.spec}`)
     // const pipe = Cc["@mozilla.org/pipe;1"].createInstance(Ci.nsIPipe)
     // pipe.init(true, true, 0, PR_UINT32_MAX, null)
-    // const request = new Request(uri, loadInfo)
+    const request = new Request(uri, loadInfo)
     // const response = this.handler(request)
 
     // const channel = Cc[
@@ -271,8 +413,8 @@ class ProtocolHandler {
     //   pipe.outputStream
     // )
     // copier.copy()
-
-    const channel = new CustomChannel(uri, loadInfo)
+    const response = this.handler(request)
+    const channel = new Channel(uri, loadInfo, response)
     return channel
   }
   QueryInterface(iid) {
