@@ -70,6 +70,6 @@ import * as libdweb from "libdweb"
 [UDP Socket]:issues/3
 [TCP Socket]:issues/4
 [µTP Socket]:issues/5
-[mdns][]:issues/6
+[mdns]:issues/6
 [File System]:issues/7
 [web-ext]:https://www.npmjs.com/package/web-ext
