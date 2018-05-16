@@ -22,10 +22,10 @@ You can help this effort in several ways:
 | API | Status |
 | --- | --- |
 | [Protocol Handler][] | 🐣 |
+| [mdns][] | 🥚 |
 | [UDP Socket][] | 🥚 |
 | [TCP Socket][] | 🥚 |
 | [µTP Socket] | 🥚 |
-| [mdns][] | 🥚 |
 | [File System][] | 🥚 |
 
 
@@ -54,10 +54,10 @@ export MOZ_DISABLE_CONTENT_SANDBOX=1; web-ext run --firefox=/Applications/Firefo
 
 [webextension experiments]:https://webextensions-experiments.readthedocs.io/en/latest/index.html
 [new APIs]:https://wiki.mozilla.org/WebExtensions/NewAPIs
-[Protocol Handler]:issues/2
-[UDP Socket]:issues/3
-[TCP Socket]:issues/4
-[µTP Socket]:issues/5
-[mdns]:issues/6
-[File System]:issues/7
+[Protocol Handler]:https://github.com/Gozala/libdweb/issues/2
+[UDP Socket]:https://github.com/Gozala/libdweb/issues/4
+[TCP Socket]:https://github.com/Gozala/libdweb/issues/5
+[µTP Socket]:https://github.com/Gozala/libdweb/issues/6
+[mdns]:https://github.com/Gozala/libdweb/issues/7
+[File System]:https://github.com/Gozala/libdweb/issues/8
 [web-ext]:https://www.npmjs.com/package/web-ext
