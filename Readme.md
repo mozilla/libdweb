@@ -36,23 +36,11 @@ You can help this effort in several ways:
 - 🐓 : Usable
 
 
-You can try this out using [web-ext][] tool by running following command:
+You can try this out by colning the repo and running a following command that requires [web-ext][] tool:
 
 ```
 export MOZ_DISABLE_CONTENT_SANDBOX=1; web-ext run --firefox=/Applications/FirefoxNightly.app/Contents/MacOS/firefox-bin
 ```
-
-### Import
-
-Rest of the the document & provided code examples assumes that library is installed (with yarn or npm) and imported as follows:
-
-```js
-import * as libdweb from "libdweb"
-```
-
-## Install
-
-    npm install libdweb
 
 [travis.icon]: https://travis-ci.org/Gozala/libdweb.svg?branch=master
 [travis.url]: https://travis-ci.org/Gozala/libdweb
