@@ -16,6 +16,7 @@ const { getConsole } = Cu.import(
   {}
 ).ExtensionUtils
 const { XPCOMUtils } = Cu.import("resource://gre/modules/XPCOMUtils.jsm", {})
+const { setTimeout } = Cu.import("resource://gre/modules/Timer.jsm", {})
 const PR_UINT32_MAX = 0xffffffff
 
 const { generateUUID } = Cc["@mozilla.org/uuid-generator;1"].getService(
@@ -64,7 +65,7 @@ const isContractIDRegistered = contractID =>
 const isRegisteredProtocol = scheme =>
   isContractIDRegistered(getContractIDByScheme(scheme))
 
-const registerProtocol = ({ scheme, uuid }) => {
+const registerProtocol = ({ scheme, uuid }, agent) => {
   const contractID = getContractIDByScheme(scheme)
   if (isContractIDRegistered(contractID)) {
     unregisterProtocol(scheme)
@@ -72,7 +73,7 @@ const registerProtocol = ({ scheme, uuid }) => {
 
   const cid = new ID(uuid)
   const description = `${scheme} protocol handler`
-  const factory = new Factory(new ProtocolHandler(scheme))
+  const factory = new Factory(new ProtocolHandler(scheme, agent))
   componentRegistrar.registerFactory(cid, description, contractID, factory)
   debug &&
     console.log(
@@ -109,16 +110,19 @@ const FAILED = 5
 
 const abort = {}
 
+const wait = (ms = 0) => new Promise(resolve => setTimeout(resolve, ms))
+
 class Channel {
-  constructor(uri, loadInfo, response) {
+  constructor(uri, loadInfo, requestID) {
     this.URI = uri
     this.originalURI = uri
     this.loadInfo = loadInfo
     this.originalURI = null
-    this.contentCharset = response.contentCharset || "utf-8"
-    this.contentLength = response.contentLength || -1
-    this.contentType = response.contentType || "text/plain"
-    this.content = response.content
+    this.contentCharset = null
+    this.contentLength = null
+    this.contentType = null
+    this.byteOffset = 0
+    this.requestID = requestID
 
     this.owner = null // Cc["@mozilla.org/systemprincipal;1"].createInstance(Ci.nsIPrincipal)
     this.securityInfo = null
@@ -134,7 +138,10 @@ class Channel {
     return {
       uri: this.URI.spec,
       readyState: this.readyState,
-      status: this.status
+      status: this.status,
+      contentType: this.contentType,
+      byteOffset: this.byteOffset,
+      contentLength: this.contentLength
     }
   }
   open2() {
@@ -156,27 +163,17 @@ class Channel {
       case IDLE: {
         this.listener = listener
         this.context = context
-        return this.awake()
+        const { requestID, URI } = this
+        const { spec: url, scheme } = URI
+        return cpmm.sendAsyncMessage(REQUEST, { requestID, url, scheme })
       }
       default: {
         throw this.status
       }
     }
   }
-  close(status = this.status) {
-    debug && console.log(`close(${status})${pid} ${JSON.stringify(this)}`)
-    const { listener, context } = this
-    this.listener = null
-    this.context = null
-    try {
-      listener.onStopRequest(this, context, status)
-    } catch (_) {
-      debug && console.error(`Failed onStopRequest${pid} ${_}`)
-    }
-  }
 
   isPending() {
-    debug && console.log(`isPending${pid} ${JSON.stringify(this)}`)
     switch (this.readyState) {
       case ACTIVE:
       case PAUSED: {
@@ -187,12 +184,14 @@ class Channel {
       }
     }
   }
+
   cancel(status = Cr.NS_BINDING_ABORTED) {
     debug && console.log(`cancel(${status})${pid} ${JSON.stringify(this)}`)
     switch (this.readyState) {
       case ACTIVE:
       case PAUSED: {
-        return void this.setStatus(status)
+        this.setStatus(status)
+        return this.handler.updateRequest(this, this.status)
       }
       default: {
         throw this.status
@@ -204,7 +203,7 @@ class Channel {
     switch (this.readyState) {
       case ACTIVE: {
         this.readyState = PAUSED
-        return void this
+        return this.handler.updateRequest(this, Cr.NS_BASE_STREAM_WOULD_BLOCK)
       }
       case PAUSED: {
         return void this
@@ -222,77 +221,11 @@ class Channel {
         return void this
       }
       case PAUSED: {
-        return void this.awake()
+        this.readyState = ACTIVE
+        return this.handler.updateRequest(this, Cr.NS_OK)
       }
       default: {
         throw this.status
-      }
-    }
-  }
-
-  ensureActive() {
-    switch (this.readyState) {
-      case ACTIVE: {
-        return this
-      }
-      default: {
-        throw abort
-      }
-    }
-  }
-  async awake() {
-    debug && console.log(`awake${pid} ${JSON.stringify(this)}`)
-    try {
-      const { listener, context } = this
-      this.status = Cr.NS_OK
-      this.readyState = ACTIVE
-      listener.onStartRequest(this, context)
-      debug && console.log(`onStartRequest${pid} ${JSON.stringify(this)}`)
-      this.ensureActive()
-
-      for await (const chunk of this.content) {
-        const stream = Cc[
-          "@mozilla.org/io/arraybuffer-input-stream;1"
-        ].createInstance(Ci.nsIArrayBufferInputStream)
-        const { buffer } = chunk
-        stream.setData(buffer, 0, buffer.byteLength)
-
-        debug && console.log(`await${pid} ${JSON.stringify(this)} ${buffer}`)
-
-        listener.onDataAvailable(this, context, stream, 0, stream.available())
-
-        debug && console.log(`onDataAvailable${pid} ${JSON.stringify(this)}`)
-
-        this.ensureActive()
-      }
-
-      debug && console.log(`end${pid} ${JSON.stringify(this)}`)
-
-      this.readyState = CLOSED
-      this.status = Cr.NS_BASE_STREAM_CLOSED
-      this.close(Cr.NS_OK)
-    } catch (error) {
-      if (error === abort) {
-        debug && console.log(`abort${pid} ${JSON.stringify(this)}`)
-        switch (this.readyState) {
-          case ACTIVE:
-          case PAUSED: {
-            return void this
-          }
-          case CLOSED:
-          case FAILED: {
-            return this.close()
-          }
-          default: {
-            this.status = Cr.NS_ERROR_FAILURE
-            return this.close()
-          }
-        }
-      } else {
-        debug && console.log(`catch(${error})${pid} ${JSON.stringify(this)}`)
-        this.readyState = FAILED
-        this.status = Cr.NS_BINDING_FAILED
-        return this.close()
       }
     }
   }
@@ -302,7 +235,7 @@ class Channel {
       case Cr.NS_OK:
       case Cr.NS_BINDING_ABORTED: {
         this.readyState = CANCELED
-        this.status = status
+        this.status = Cr.NS_BINDING_ABORTED
         return this
       }
       default: {
@@ -312,6 +245,72 @@ class Channel {
       }
     }
   }
+
+  onResponse(response) {
+    const {
+      contentType,
+      contentLength,
+      contentCharset,
+      content,
+      close
+    } = response
+    if (contentType) {
+      this.contentType = contentType
+    }
+    if (contentLength) {
+      this.contentLength = contentLength
+    }
+    if (contentCharset) {
+      this.contentCharset = contentCharset
+    }
+
+    if (this.readyState === IDLE) {
+      this.onOpen()
+    }
+
+    if (content != null && this.isPending()) {
+      this.onData(content)
+    }
+
+    if (done) {
+      this.onClose()
+    }
+  }
+  onOpen() {
+    this.status = Cr.NS_OK
+    this.readyState = ACTIVE
+    this.byteOffset = 0
+    this.listener.onStartRequest(this, this.context)
+  }
+  onData(content) {
+    const stream = Cc[
+      "@mozilla.org/io/arraybuffer-input-stream;1"
+    ].createInstance(Ci.nsIArrayBufferInputStream)
+    const { byteLength } = content
+    stream.setData(content, 0, byteLength)
+
+    debug &&
+      console.log(
+        `await${pid} ${JSON.stringify(
+          this
+        )} ${stream.available()} ${byteLength} ${content} `
+      )
+
+    this.byteOffset += byteLength
+  }
+  onClose() {
+    debug && console.log(`close${pid} ${JSON.stringify(this)}`)
+    const { listener, context, status } = this
+    this.listener = null
+    this.context = null
+    this.handler = null
+    this.readyState = CLOSED
+    try {
+      listener.onStopRequest(this, context, status)
+    } catch (_) {
+      debug && console.error(`Failed onStopRequest${pid} ${_}`)
+    }
+  }
 }
 
 class ProtocolHandler {
@@ -319,27 +318,36 @@ class ProtocolHandler {
   constructor(scheme, handler) {
     this.scheme = scheme
     this.defaultPort = -1
-    this.protocolFlags = Ci.nsIProtocolHandler.URI_LOADABLE_BY_SUBSUMERS
+    this.handler = handler
+    this.protocolFlags =
+      Ci.nsIProtocolHandler.URI_LOADABLE_BY_SUBSUMERS |
+      Ci.nsIProtocolHandler.URI_STD
   }
-  handler(request) {
+  toJSON() {
     return {
-      contentType: "text/plain",
-      content: (async function*() {
-        const encoder = new TextEncoder()
-        yield encoder.encode("Hello ")
-        yield encoder.encode("World!")
-      })()
+      scheme: this.scheme,
+      defaultPort: this.defaultPort,
+      protocolFlags: this.protocolFlags
     }
   }
+  // handler(request) {
+  //   return {
+  //     // contentType: "text/plain",
+  //     content: (async function*() {
+  //       const encoder = new TextEncoder()
+  //       yield encoder.encode(`Hello from <strong>${request.url}</strong>`)
+  //       await wait(200)
+  //       yield encoder.encode("<br/>")
+  //       await wait(200)
+  //       yield encoder.encode("\nbye!\n")
+  //     })()
+  //   }
+  // }
   allowPort(port, scheme) {
     return false
   }
   newURI(spec, charset, baseURI) {
-    debug &&
-      console.log(
-        `newURI${pid} ${JSON.stringify(this)} ${spec} ${baseURI &&
-          baseURI.spec}`
-      )
+    debug && console.log(`newURI${pid} ${spec} ${baseURI && baseURI.spec}`)
     try {
       const url = Cc["@mozilla.org/network/standard-url-mutator;1"]
         .createInstance(Ci.nsIStandardURLMutator)
@@ -369,7 +377,6 @@ class ProtocolHandler {
       console.log(`newChannel2(${uri.spec})${pid} ${JSON.stringify(this)}`)
     // const pipe = Cc["@mozilla.org/pipe;1"].createInstance(Ci.nsIPipe)
     // pipe.init(true, true, 0, PR_UINT32_MAX, null)
-    const request = new Request(uri, loadInfo)
     // const response = this.handler(request)
 
     // const channel = Cc[
@@ -385,9 +392,7 @@ class ProtocolHandler {
     //   pipe.outputStream
     // )
     // copier.copy()
-    const response = this.handler(request)
-    const channel = new Channel(uri, loadInfo, response)
-    return channel
+    return this.handler.request(uri, loadInfo)
   }
   QueryInterface(iid) {
     if (iid.equals(Ci.nsIProtocolHandler) || iid.equals(Ci.nsISupports)) {
@@ -429,11 +434,16 @@ class Factory {
 const PROTOCOLS = `libdweb:protocol:protocols`
 const REGISTER = `libdweb:protocol:register`
 const INSTALL = `libdweb:protocol:install`
+const REQUEST = `libdweb:protocol:request`
+const REQUEST_UPDATE = `libdweb:protocol:request:update`
+const RESPONSE = `libdweb:protocol:response`
 
 class Supervisor {
   constructor() {
     this.protocols = Object.create(null)
     this.handlers = Object.create(null)
+    this.requests = Object.create(null)
+
     this.pid = `Supervisor${pid}`
   }
   receiveMessage({ data, name, target }) {
@@ -443,9 +453,40 @@ class Supervisor {
         target
       )
 
-    this.registerProtocolHandler(data.scheme, target)
+    switch (name) {
+      case INSTALL:
+        return this.register(data.scheme, target)
+      case RESPONSE:
+        return this.response(data)
+      case REQUEST:
+      case REQUEST_UPDATE:
+        return this.request(data, target)
+    }
   }
-  registerProtocolHandler(scheme, handler) {
+  respond(response) {
+    debug && console.log(`-> response${this.pid} ${JSON.stringify(response)}`)
+    const { requests } = this
+    const { requestID } = response
+    const request = requests[requestID]
+    if (request) {
+      if (response.done) {
+        delete requestID[requestID]
+      }
+
+      request.sendAsyncMessage(RESPONSE, response)
+    }
+  }
+  request(request, target) {
+    const { handlers, requests, pid } = this
+    const handler = handlers[scheme]
+    if (handler) {
+      debug &&
+        console.log(`-> request${this.pid} ${JSON.stringify(request)}`, target)
+      requests[request.requestID] = target
+      handler.sendAsyncMessage(REQUEST, request)
+    }
+  }
+  register(scheme, handler) {
     const { protocols, handlers } = this
     if (handlers[scheme]) {
       handlers[scheme] = handler
@@ -454,7 +495,7 @@ class Supervisor {
       const protocol = { scheme, uuid }
       protocols[scheme] = protocol
       handlers[scheme] = handler
-      registerProtocol(protocol)
+      registerProtocol(protocol, this)
       ppmm.broadcastAsyncMessage(REGISTER, protocol)
     }
   }
@@ -468,25 +509,52 @@ class Supervisor {
 
     ppmm.loadProcessScript(`data:,Cu.import('${__URI__}');`, true)
     mm.addMessageListener(INSTALL, self)
+    mm.addMessageListener(RESPONSE, self)
+    mm.addMessageListener(REQUEST, self)
   }
 }
 
 class Agent {
   constructor() {
     this.pid = `Agent${pid}`
+    this.requests = Object.create(null)
+    this.requestID = 0
   }
   static spawn() {
     const self = new Agent()
     debug && console.log(`Spawn ${self.pid}`)
     cpmm.addMessageListener(REGISTER, self)
+    cpmm.addMessageListener(RESPONSE, self)
 
     const protocols = cpmm.initialProcessData[PROTOCOLS]
     console.log(`Initial protocols ${JSON.stringify(protocols)}`)
 
     if (protocols) {
       for (const protocol of Object.values(protocols)) {
-        registerProtocol(protocol)
+        self.register(protocol)
       }
+    }
+  }
+  register(protocol) {
+    registerProtocol(protocol, this)
+  }
+  request(url /*:nsIURL*/, loadInfo /*:nsILoadInfo*/) /*:Channel*/ {
+    const { scheme } = url
+    const requestID = `${scheme}:${++this.requestID}${this.pid}`
+    const request = new Channel(url, loadInfo, requestID, this)
+    this.requests[requestID] = request
+    return request
+  }
+  updateRequest(requestID, status) {
+    cpmm.sendAsyncMessage(REQUEST_UPDATE, { requestID, status })
+  }
+  response(response) {
+    const { requestID } = response
+    const request = this.requests[requestID]
+    if (request) {
+      request.onResponse(response)
+    } else {
+      console.error(`Request corresponding to ${requestID} not found`)
     }
   }
   receiveMessage({ data, name }) {
@@ -495,7 +563,14 @@ class Agent {
         `Receive message:${name} at ${this.pid} ${JSON.stringify(data)}`
       )
 
-    registerProtocol(data)
+    switch (name) {
+      case REGISTER: {
+        return this.register(data)
+      }
+      case RESPONSE: {
+        return this.response(data)
+      }
+    }
   }
 }
 
