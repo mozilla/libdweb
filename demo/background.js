@@ -4,10 +4,12 @@ debugger
 browser.protocol.registerProtocol("goz", request => {
   return {
     contentType: "text/html",
-    content: async function*() {
+    content: (async function*() {
       const encoder = new TextEncoder("utf-8")
-      yield encoder.encode("hello").buffer
-      yield encoder.encode("world").buffer
-    }
+      yield encoder.encode("<h1>Hi there!</h1>\n").buffer
+      yield encoder.encode(
+        `<p>You've succesfully loaded <strong>${request.url}</strong><p>`
+      ).buffer
+    })()
   }
 })

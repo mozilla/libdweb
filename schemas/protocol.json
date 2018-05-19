@@ -23,16 +23,6 @@
           {
             "name": "request",
             "$ref": "Request"
-          },
-          {
-            "name": "write",
-            "$ref": "Write",
-            "description": "Writes chunk of data to the output stream"
-          },
-          {
-            "name": "end",
-            "$ref": "End",
-            "description": "End the output stream"
           }
         ]
       },
