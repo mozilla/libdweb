@@ -1,19 +1,23 @@
 // @flow
 
+/*::
 import { Cu } from "gecko"
 import type { nsIMessageSender } from "gecko"
 import { ExtensionAPI, BaseContext } from "gecko"
 import type { HandlerInbox, HandlerOutbox, Inn, Out } from "./protocol"
+*/
 const { Services } = Cu.import("resource://gre/modules/Services.jsm", {})
 
 const OUTBOX = "libdweb:protocol:handler:outbox"
 const INBOX = "libdweb:protocol:handler:inbox"
 
 class Protocol {
+  /*::
   context: BaseContext
   handlers: { [string]: Handler }
   outbox: Out<HandlerOutbox>
   inbox: Inn<HandlerInbox>
+  */
   constructor(context /*: BaseContext */) {
     this.context = context
     this.handlers = {}
@@ -76,6 +80,7 @@ class Protocol {
   }
 }
 
+/*::
 interface API {
   +protocol: {
     registerProtocol(string, Handler): Promise<void>
@@ -90,8 +95,9 @@ interface Handler {
     content: AsyncIterator<ArrayBuffer>
   };
 }
+*/
 const self /*: window */ = this
-self.protocol = class extends ExtensionAPI<API> {
+self.protocol = class extends ExtensionAPI /*::<API>*/ {
   getAPI(context) {
     const init = context.childManager.callParentAsyncFunction(
       "protocol.spawn",

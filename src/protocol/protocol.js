@@ -1,5 +1,6 @@
 // @flow
 
+/*::
 import { Components } from "gecko"
 import type {
   nsresult,
@@ -23,6 +24,7 @@ import type {
   nsIMessageBroadcaster,
   nsIMessageListenerManager
 } from "gecko"
+*/
 const EXPORTED_SYMBOLS = []
 const debug = true
 const {
@@ -127,11 +129,12 @@ const abort = {}
 
 const wait = (ms = 0) => new Promise(resolve => setTimeout(resolve, ms))
 
-const createDict = <a>() /*: { [string]: a } */ => {
+const createDict = /*::<a>*/ () /*: { [string]: a } */ => {
   const dict /*: Object */ = Object.create(null)
   return dict
 }
 
+/*::
 type ReadyState =
   | typeof IDLE
   | typeof ACTIVE
@@ -141,7 +144,10 @@ type ReadyState =
   | typeof FAILED
 
 type RequestStatus = typeof Cr.NS_OK | typeof Cr.NS_BASE_STREAM_WOULD_BLOCK
-class Channel implements nsIChannel, nsIRequest {
+*/
+
+class Channel /*::implements nsIChannel, nsIRequest*/ {
+  /*::
   URI: nsIURI
   scheme: string
   url: string
@@ -166,6 +172,7 @@ class Channel implements nsIChannel, nsIRequest {
   listener: ?nsIStreamListener
   context: ?nsISupports<*>
   handler: RequestHandler
+  */
   constructor(
     uri /*: nsIURI */,
     loadInfo /*: null | nsILoadInfo */,
@@ -184,7 +191,7 @@ class Channel implements nsIChannel, nsIRequest {
     this.byteOffset = 0
     this.requestID = requestID
 
-    this.owner = null // Cc["@mozilla.org/systemprincipal;1"].createInstance(Ci.nsIPrincipal)
+    this.owner = null
     this.securityInfo = null
     this.notificationCallbacks = null
     this.loadFlags = Ci.nsIRequest.LOAD_NORMAL
@@ -379,11 +386,13 @@ class Channel implements nsIChannel, nsIRequest {
   }
 }
 
-class ProtocolHandler implements nsIProtocolHandler {
+class ProtocolHandler /*::implements nsIProtocolHandler*/ {
+  /*::
   scheme: string
   defaultPort: number
   handler: RequestHandler
   protocolFlags: number
+  */
   constructor(scheme, handler) {
     this.scheme = scheme
     this.defaultPort = -1
@@ -442,23 +451,7 @@ class ProtocolHandler implements nsIProtocolHandler {
   newChannel2(uri /*: nsIURI */, loadInfo /*: nsILoadInfo | null */) {
     debug &&
       console.log(`newChannel2(${uri.spec})${pid} ${JSON.stringify(this)}`)
-    // const pipe = Cc["@mozilla.org/pipe;1"].createInstance(Ci.nsIPipe)
-    // pipe.init(true, true, 0, PR_UINT32_MAX, null)
-    // const response = this.handler(request)
 
-    // const channel = Cc[
-    //   "@mozilla.org/network/input-stream-channel;1"
-    // ].createInstance(Ci.nsIInputStreamChannel)
-    // channel.setURI(uri)
-    // channel.contentStream = pipe.inputStream
-    // channel.QueryInterface(Ci.nsIChannel)
-    // channel.contentType = response.contentType
-
-    // const copier = new AsyncIteratorToAsyncOutputStreamCopier(
-    //   response.content,
-    //   pipe.outputStream
-    // )
-    // copier.copy()
     return this.handler.channel(uri, loadInfo)
   }
   QueryInterface(iid) {
@@ -469,8 +462,10 @@ class ProtocolHandler implements nsIProtocolHandler {
   }
 }
 
-class Factory implements nsIFactory<nsIProtocolHandler> {
+class Factory /*::implements nsIFactory<nsIProtocolHandler>*/ {
+  /*::
   instance: nsIProtocolHandler
+  */
   constructor(instance /*: nsIProtocolHandler */) {
     this.instance = instance
   }
@@ -511,10 +506,12 @@ const HANDLER_INBOX = `libdweb:protocol:handler:inbox`
 const HANDLER_OUTBOX = `libdweb:protocol:handler:outbox`
 
 class RequestHandler {
+  /*::
   requestID: number
   +requests: { [string]: Channel }
   +pid: string
   QueryInterface: *
+  */
   constructor() {
     this.requestID = 0
     this.requests = createDict()
@@ -535,6 +532,7 @@ class RequestHandler {
   updateRequest(channel /*: Channel */, status /*: RequestStatus */) {}
 }
 
+/*::
 export type Register = {
   type: "register",
   scheme: string,
@@ -609,11 +607,14 @@ export type AgentOutbox = {
 
 export type Inn<a> = nsIMessageListenerManager<a>
 export type Out<a> = nsIMessageSender<a>
+*/
 class Supervisor extends RequestHandler {
+  /*::
   +protocols: { [string]: ProtocolSpec }
   +handlers: { [string]: Out<HandlerInbox> }
   +agents: { [string]: Out<AgentInbox> }
   +agentsPort: nsIMessageBroadcaster<*, AgentInbox>
+  */
   constructor() {
     super()
     this.protocols = createDict()
@@ -707,8 +708,10 @@ class Supervisor extends RequestHandler {
 }
 
 class Agent extends RequestHandler {
+  /*::
   outbox: Out<AgentOutbox>
   inbox: Inn<AgentInbox>
+  */
   constructor() {
     super()
     this.pid = `Agent${pid}`

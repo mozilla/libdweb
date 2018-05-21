@@ -1,6 +1,5 @@
 console.log("Hi there", browser.protocol)
 
-debugger
 browser.protocol.registerProtocol("goz", request => {
   return {
     contentType: "text/html",
