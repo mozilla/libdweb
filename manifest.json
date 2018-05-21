@@ -11,11 +11,15 @@
         "script": "./src/protocol/child.js"
       },
       "parent": {
+        "events": ["startup"],
         "scopes": ["addon_parent"],
         "paths": [["protocol"]],
         "script": "./src/protocol/parent.js"
       }
     }
   },
-  "background": { "scripts": ["demo/background.js"] }
+  "background": { "scripts": ["demo/background.js"] },
+  "protocol": {
+    "goz": "demo/goz.js"
+  }
 }

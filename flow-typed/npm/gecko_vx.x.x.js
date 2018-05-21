@@ -2225,6 +2225,7 @@ declare module "gecko" {
       waiveXrays<a>(a): a,
       cloneInto<a, b>(a, b): a,
       getGlobalForObject<a: Object>(a): Object,
+      importGlobalProperties(string[]): void,
       import: (<p, p$, c, c$, m, m$>(
         "resource://gre/modules/Services.jsm",
         {}

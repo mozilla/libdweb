@@ -1,5 +1,3 @@
-console.log("Hi there", browser.protocol)
-
 browser.protocol.registerProtocol("goz", request => {
   return {
     contentType: "text/html",

@@ -25,7 +25,7 @@ import type {
   nsIMessageListenerManager
 } from "gecko"
 */
-const EXPORTED_SYMBOLS = []
+const EXPORTED_SYMBOLS = ["Supervisor", "Agent"]
 const debug = true
 const {
   classes: Cc,
@@ -168,6 +168,8 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
   readyState: ReadyState
   QueryInterface: typeof Channel$QueryInterface
   contentDisposition: number
+  contentDispositionFilename: string
+  contentDispositionHeader: string
 
   listener: ?nsIStreamListener
   context: ?nsISupports<*>
@@ -319,7 +321,15 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     }
   }
 
-  onHead({ contentType, contentLength, contentCharset }) {
+  head({ contentType, contentLength, contentCharset }) {
+    debug &&
+      console.log(
+        `head${pid} ${JSON.stringify({
+          contentType,
+          contentLength,
+          contentCharset
+        })}`
+      )
     if (contentType) {
       this.contentType = contentType
     }
@@ -338,9 +348,12 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     this.byteOffset = 0
     try {
       listener && listener.onStartRequest(this, ctx)
-    } catch (_) {}
+      console.log(Error().stack)
+    } catch (_) {
+      console.error(_)
+    }
   }
-  onBody({ content }) {
+  body({ content }) {
     const stream = Cc[
       "@mozilla.org/io/arraybuffer-input-stream;1"
     ].createInstance(Ci.nsIArrayBufferInputStream)
@@ -349,7 +362,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
 
     debug &&
       console.log(
-        `await${pid} ${JSON.stringify(
+        `body${pid} ${JSON.stringify(
           this
         )} ${stream.available()} ${byteLength} ${content.toString()} `
       )
@@ -360,13 +373,23 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
 
     this.byteOffset += byteLength
   }
-  onEnd(_) {
-    debug && console.log(`close${pid} ${JSON.stringify(this)}`)
-    const { listener, context, status } = this
-    this.listener = null
-    this.context = null
-    delete this.handler
+
+  end(_) {
+    debug && console.log(`end${pid} ${JSON.stringify(this)}`)
     this.readyState = CLOSED
+    this.close()
+  }
+  abort() {
+    debug && console.log(`abort${pid} ${JSON.stringify(this)}`)
+    this.readyState = CANCELED
+    this.status = Cr.NS_BINDING_ABORTED
+    this.close()
+  }
+  close() {
+    const { listener, context, status } = this
+    delete this.listener
+    delete this.context
+    delete this.handler
     const ctx /*: any */ = context
     try {
       listener && listener.onStopRequest(this, ctx, status)
@@ -522,6 +545,16 @@ export type Register = {
   uuid: string
 }
 
+export type Unregister = {
+  type: "unregister",
+  scheme: string,
+  uuid: string
+}
+
+export type Terminate = {
+  type: "terminate"
+}
+
 export type Install = {
   type: "install",
   scheme: string
@@ -532,7 +565,9 @@ export type Head = {
   requestID: string,
   contentType?: string,
   contentLength?: number,
-  contentCharset?: string
+  contentCharset?: string,
+  contentDispositionFilename?: string,
+  contentDispositionHeader?:string
 }
 
 export type Body = {
@@ -579,7 +614,7 @@ type RequestUpdate = {
 
 export type AgentInbox = {
   name: "libdweb:protocol:agent:inbox",
-  data: Register | Response
+  data: Register | Unregister | Terminate | Response
 }
 
 export type AgentOutbox = {
@@ -672,21 +707,49 @@ class Supervisor extends RequestHandler {
       this.agentsPort.broadcastAsyncMessage(AGENT_INBOX, protocol)
     }
   }
-  static spawn() {
+  unregister({ scheme, uuid }) {
+    const { protocols, handlers } = this
+    if (protocols[scheme] != null) {
+      delete protocols[scheme]
+      delete handlers[scheme]
+
+      const unregister = { type: "unregister", scheme, uuid }
+      unregisterProtocol(scheme)
+      this.agentsPort.broadcastAsyncMessage(AGENT_INBOX, unregister)
+    }
+  }
+  terminate() {
+    debug && console.log(`Terminate ${this.pid}`)
+    const { protocols, requests } = this
+
+    this.agentsPort.broadcastAsyncMessage(AGENT_INBOX, { type: "terminate" })
+    ppmm.removeDelayedProcessScript(Components.stack.filename)
+    mm.removeMessageListener(HANDLER_OUTBOX, this)
+    ppmm.removeMessageListener(AGENT_INBOX, this)
+
+    delete this.request
+    delete this.protocols
+    delete this.agents
+    delete this.handlers
+
+    for (const scheme in protocols) {
+      unregisterProtocol(scheme)
+    }
+  }
+  static new() {
     const self = new this()
-    debug && console.log(`Spawn ${self.pid}`)
+    debug && console.log(`new ${self.pid}`)
     ppmm.initialProcessData[PROTOCOLS] = self.protocols
 
     debug &&
       console.log(`initialProcessData`, ppmm.initialProcessData[PROTOCOLS])
 
-    ppmm.loadProcessScript(
-      `data:,Cu.import('${Components.stack.filename}');`,
-      true
-    )
+    ppmm.loadProcessScript(Components.stack.filename, true)
 
     mm.addMessageListener(HANDLER_OUTBOX, self)
     ppmm.addMessageListener(AGENT_OUTBOX, self)
+
+    return self
   }
 }
 
@@ -694,6 +757,7 @@ class Agent extends RequestHandler {
   /*::
   outbox: Out<AgentOutbox>
   inbox: Inn<AgentInbox>
+  protocols: {[string]:ProtocolSpec}
   */
   constructor() {
     super()
@@ -701,9 +765,22 @@ class Agent extends RequestHandler {
     this.requestID = 0
     this.outbox = cpmm
     this.inbox = cpmm
+    this.protocols = createDict()
   }
   register(protocol /*: ProtocolSpec */) {
-    registerProtocol(protocol, this)
+    const { protocols } = this
+
+    if (protocols[protocol.scheme] == null) {
+      protocols[protocol.scheme] = protocol
+      registerProtocol(protocol, this)
+    }
+  }
+  unregister(protocol /*: ProtocolSpec*/) {
+    const { protocols } = this
+    if (protocols[protocol.scheme] != null) {
+      delete protocols[protocol.scheme]
+      unregisterProtocol(protocol.scheme)
+    }
   }
   request(channel /*: Channel */) {
     const { url, scheme, requestID } = channel
@@ -727,19 +804,23 @@ class Agent extends RequestHandler {
     })
   }
   head(head) {
-    this.requests[head.requestID].onHead(head)
+    this.requests[head.requestID].head(head)
   }
   body(body) {
-    this.requests[body.requestID].onBody(body)
+    this.requests[body.requestID].body(body)
   }
   end(end) {
-    this.requests[end.requestID].onEnd(end)
+    this.requests[end.requestID].end(end)
   }
   receiveMessage({ data } /*: AgentInbox */) {
     debug &&
       console.log(`Receive message at ${this.pid} ${JSON.stringify(data)}`)
 
     switch (data.type) {
+      case "terminate":
+        return this.terminate(data)
+      case "unregister":
+        return this.unregister(data)
       case "register":
         return this.register(data)
       case "head":
@@ -751,9 +832,29 @@ class Agent extends RequestHandler {
     }
   }
 
-  static spawn() {
+  terminate(_) {
+    debug && console.log(`Terminate ${this.pid}`)
+
+    const { protocols, requests } = this
+    this.inbox.removeMessageListener(AGENT_INBOX, this)
+
+    delete this.protocols
+    delete this.outbox
+    delete this.inbox
+
+    for (const requestID in requests) {
+      const request = requests[requestID]
+      request.abort()
+    }
+
+    for (const scheme in protocols) {
+      unregisterProtocol(scheme)
+    }
+  }
+
+  static new() {
     const self = new Agent()
-    debug && console.log(`Spawn ${self.pid}`)
+    debug && console.log(`new ${self.pid}`)
 
     self.inbox.addMessageListener(AGENT_INBOX, self)
 
@@ -769,8 +870,10 @@ class Agent extends RequestHandler {
   }
 }
 
-if (isParent) {
-  Supervisor.spawn()
-} else {
-  Agent.spawn()
+if (!isParent) {
+  Agent.new()
 }
+
+const self /*:window*/ = this
+self.Supervisor = Supervisor
+self.Agent = Agent

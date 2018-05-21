@@ -17,10 +17,12 @@ class Protocol {
   handlers: { [string]: Handler }
   outbox: Out<HandlerOutbox>
   inbox: Inn<HandlerInbox>
+  requests: {[string]: Out<HandlerOutbox>}
   */
   constructor(context /*: BaseContext */) {
     this.context = context
     this.handlers = {}
+    this.requests = {}
     this.outbox = context.childManager.messageManager
     this.inbox = context.messageManager
   }

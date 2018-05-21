@@ -1,7 +1,25 @@
 [
   {
+    "namespace": "manifest",
+    "types": [
+      {
+        "$extend": "WebExtensionManifest",
+        "properties": {
+          "protocol": {
+            "type": "object",
+            "optional": true,
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
     "namespace": "protocol",
     "description": "Network protocol handler API",
+    "manifest": ["protocol"],
     "types": [
       {
         "id": "Request",
