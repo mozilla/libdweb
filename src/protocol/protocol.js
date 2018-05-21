@@ -188,6 +188,8 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     this.contentCharset = "utf-8"
     this.contentLength = -1
     this.contentType = null
+    this.contentDispositionFilename = ""
+    this.contentDispositionHeader = ""
     this.byteOffset = 0
     this.requestID = requestID
 
@@ -201,18 +203,6 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     this.readyState = IDLE
     this.QueryInterface = Channel$QueryInterface
     this.handler = handler
-  }
-  get contentDispositionFilename() /*: string */ {
-    throw Cr.NS_ERROR_NOT_AVAILABLE
-  }
-  set contentDispositionFilename(value /*: string */) {
-    throw Cr.NS_ERROR_NOT_AVAILABLE
-  }
-  get contentDispositionHeader() /*: string */ {
-    throw Cr.NS_ERROR_NOT_AVAILABLE
-  }
-  set contentDispositionHeader(value /*: string */) {
-    throw Cr.NS_ERROR_NOT_AVAILABLE
   }
   toJSON() {
     return {
