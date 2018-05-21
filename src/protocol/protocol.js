@@ -398,8 +398,8 @@ class ProtocolHandler /*::implements nsIProtocolHandler*/ {
     this.defaultPort = -1
     this.handler = handler
     this.protocolFlags =
-      Ci.nsIProtocolHandler.URI_LOADABLE_BY_SUBSUMERS |
-      Ci.nsIProtocolHandler.URI_STD
+      Ci.nsIProtocolHandler.URI_STD |
+      Ci.nsIProtocolHandler.URI_LOADABLE_BY_SUBSUMERS
   }
   toJSON() {
     return {
@@ -425,22 +425,15 @@ class ProtocolHandler /*::implements nsIProtocolHandler*/ {
           baseURI
         )
         .finalize()
-        .QueryInterface(Ci.nsIURI)
 
       return url
     } catch (_) {
-      debug && console.error(`Failed newURI ${pid} ${_}`)
-      return Cc["@mozilla.org/network/standard-url-mutator;1"]
-        .createInstance(Ci.nsIStandardURLMutator)
-        .init(
-          Ci.nsIStandardURL.URLTYPE_AUTHORITY,
-          this.defaultPort,
-          `${this.scheme}:///`,
-          charset,
-          baseURI
-        )
+      const resolvedSpec = baseURI == null ? spec : baseURI.resolve(spec)
+
+      return Cc["@mozilla.org/network/simple-uri-mutator;1"]
+        .createInstance(Ci.nsIURIMutator)
+        .setSpec(resolvedSpec)
         .finalize()
-        .QueryInterface(Ci.nsIURI)
     }
   }
   newChannel(uri /*: nsIURI */) {

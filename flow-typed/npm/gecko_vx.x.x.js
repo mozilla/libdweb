@@ -521,7 +521,7 @@ declare module "gecko" {
     finalize(): nsIURI;
   }
 
-  declare export interface nsIURLMutator {
+  declare export interface nsIURLMutator extends nsIURISetters {
     setFileName(aFileName: AUTF8String): nsIURIMutator;
     setFileBaseName(aFileBaseName: AUTF8String): nsIURIMutator;
     setFileExtension(aFileExtension: AUTF8String): nsIURIMutator;
@@ -2182,7 +2182,8 @@ declare module "gecko" {
       nsIContentSecurityManager: nsIJSID,
 
       nsIArrayBufferInputStream: nsIJSID,
-      nsIStandardURLMutator: nsIJSID
+      nsIStandardURLMutator: nsIJSID,
+      nsIURIMutator: nsIJSID
     },
     classes: {
       "@mozilla.org/xre/app-info;1": nsIJSCID<nsIXULAppInfo>,
@@ -2215,6 +2216,7 @@ declare module "gecko" {
       "@mozilla.org/io/arraybuffer-input-stream;1": nsIJSCID<
         nsIArrayBufferInputStream
       >,
+      "@mozilla.org/network/simple-uri-mutator;1": nsIJSCID<nsIURLMutator>,
       "@mozilla.org/network/standard-url-mutator;1": nsIJSCID<
         nsIStandardURLMutator
       >
