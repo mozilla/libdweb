@@ -2321,6 +2321,8 @@ declare module "gecko" {
       "@mozilla.org/contentsecuritymanager;1": nsIJSCID<
         nsIContentSecurityManager
       >,
+      "@mozilla.org/systemprincipal;1": nsIJSCID<nsIPrincipal>,
+      "@mozilla.org/nullprincipal;1": nsIJSCID<nsIPrincipal>,
       "@mozilla.org/io/arraybuffer-input-stream;1": nsIJSCID<
         nsIArrayBufferInputStream
       >,
