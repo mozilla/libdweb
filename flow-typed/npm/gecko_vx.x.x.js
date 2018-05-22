@@ -312,15 +312,22 @@ declare module "gecko" {
 
   declare export interface nsILoadInfoConstants {
     SEC_NORMAL: nsSecurityFlags;
+
+    // security checks
+    SEC_ONLY_FOR_EXPLICIT_CONTENTSEC_CHECK: nsSecurityFlags;
     SEC_REQUIRE_SAME_ORIGIN_DATA_INHERITS: nsSecurityFlags;
     SEC_REQUIRE_SAME_ORIGIN_DATA_IS_BLOCKED: nsSecurityFlags;
     SEC_ALLOW_CROSS_ORIGIN_DATA_INHERITS: nsSecurityFlags;
     SEC_ALLOW_CROSS_ORIGIN_DATA_IS_NULL: nsSecurityFlags;
     SEC_REQUIRE_CORS_DATA_INHERITS: nsSecurityFlags;
+
+    //  cookie policy
     SEC_COOKIES_DEFAULT: nsSecurityFlags;
     SEC_COOKIES_INCLUDE: nsSecurityFlags;
     SEC_COOKIES_SAME_ORIGIN: nsSecurityFlags;
     SEC_COOKIES_OMIT: nsSecurityFlags;
+
+    // Force inheriting of the principal
     SEC_FORCE_INHERIT_PRINCIPA: nsSecurityFlags;
     SEC_SANDBOXED: nsSecurityFlags;
     SEC_ABOUT_BLANK_INHERITS: nsSecurityFlags;
@@ -332,11 +339,53 @@ declare module "gecko" {
   }
 
   declare export interface nsILoadInfo extends nsISupports<nsILoadInfo> {
-    loadingPrincipal: nsIPrincipal;
-    triggeringPrincipal: nsIPrincipal;
+    +loadingPrincipal: nsIPrincipal;
+    +triggeringPrincipal: nsIPrincipal;
     principalToInherit: nsIPrincipal;
-    loadingDocument: Document;
+    +loadingDocument: Document;
     securityFlags: nsSecurityFlags;
+    +loadingContext: nsISupports<*>;
+    +securityMode: nsSecurityFlags;
+    +isInThirdPartyContext: boolean;
+    +cookiePolicy: nsSecurityFlags;
+    +forceInheritPrincipal: boolean;
+    +forceInheritPrincipalOverruleOwner: boolean;
+    +loadingSandboxed: boolean;
+    +aboutBlankInherits: boolean;
+    +allowChrome: boolean;
+    +disallowScript: boolean;
+    +dontFollowRedirects: boolean;
+    +loadErrorPage: boolean;
+    +isDocshellReload: boolean;
+    +externalContentPolicyType: nsSecurityFlags;
+    +upgradeInsecureRequests: boolean;
+    +browserUpgradeInsecureRequests: boolean;
+    +browserWouldUpgradeInsecureRequests: boolean;
+    +verifySignedContent: boolean;
+    enforceSRI: boolean;
+    forceAllowDataURI: boolean;
+    allowInsecureRedirectToDataURI: boolean;
+    skipContentPolicyCheckForWebRequest: boolean;
+    originalFrameSrcLoad: boolean;
+    +forceInheritPrincipalDropped: boolean;
+    +innerWindowID: long;
+    +outerWindowID: long;
+    +parentOuterWindowID: long;
+    +topOuterWindowID: long;
+    +frameOuterWindowID: long;
+    resetPrincipalToInheritToNullPrincipal(): void;
+    originAttributes: Object;
+    enforceSecurity: boolean;
+    initialSecurityCheckDone: boolean;
+    loadTriggeredFromExternal: boolean;
+    +redirectChainIncludingInternalRedirects: Object;
+    +redirectChain: Object;
+    +forcePreflight: boolean;
+    +isPreflight: boolean;
+    +tainting: nsSecurityFlags;
+    maybeIncreaseTainting(nsSecurityFlags): void;
+    +isTopLevelLoad: boolean;
+    resultPrincipalURI: nsIURI;
   }
 
   // See: https://github.com/mozilla/gecko-dev/blob/62d7405e171e6ca7e50b578c59c96d07ee69cca0/netwerk/base/nsIProtocolHandler.idl
@@ -436,7 +485,7 @@ declare module "gecko" {
     // (such as onstopRequest) until the request is resumed.
     suspend(): void;
 
-    loadGroup: ?nsILoadGroup;
+    loadGroup: nsILoadGroup;
     loadFlags: nsLoadFlags;
   }
 
@@ -471,10 +520,10 @@ declare module "gecko" {
     defaultLoadFlags: nsLoadFlags;
     userAgentOverrideCache: ACString;
 
-    addRequest(aRequest: nsIRequest, aContext: nsISupports<*>): void;
+    addRequest(aRequest: nsIRequest, aContext: null | nsISupports<*>): void;
     removeRequest(
       aRequest: nsIRequest,
-      aContext: nsISupports<*>,
+      aContext: null | nsISupports<*>,
       aStatus: nsresult
     ): void;
   }
