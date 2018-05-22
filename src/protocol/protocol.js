@@ -4,6 +4,7 @@
 import { Components } from "gecko"
 import type {
   nsresult,
+  nsWebProgressState,
   nsIIDRef,
   nsIFactory,
   nsIStreamListener,
@@ -14,6 +15,7 @@ import type {
   nsIURL,
   nsIURI,
   nsIProtocolHandler,
+  nsIProgressEventSink,
   nsIRequest,
   nsIChannel,
   nsISupports,
@@ -146,6 +148,36 @@ type ReadyState =
 type RequestStatus = typeof Cr.NS_OK | typeof Cr.NS_BASE_STREAM_WOULD_BLOCK
 */
 
+class TransportSecurityInfo /*::implements nsITransportSecurityInfo*/ {
+  /*::
+  securityState:nsWebProgressState
+  shortSecurityDescription:string
+  errorCode:nsresult
+  errorMessage:string
+  QueryInterface:*
+  SSLStatus:*
+  */
+  constructor() {
+    this.securityState = Ci.nsIWebProgressListener.STATE_IS_SECURE
+    this.errorCode = Cr.NS_OK
+    this.shortSecurityDescription = "Content Addressed"
+    this.QueryInterface = XPCOMUtils.generateQI([
+      Ci.nsITransportSecurityInfo,
+      Ci.nsISSLStatusProvider
+    ])
+    this.SSLStatus = {
+      cipherSuite: "TLS_ECDH_ECDSA_WITH_AES_128_GCM_SHA256",
+      // TLS_VERSION_1_2
+      protocolVersion: 3,
+      serverCert: {
+        validity: {}
+      }
+    }
+  }
+}
+
+const MAX_UNKNOWN = 0xffffffffffffffff
+
 class Channel /*::implements nsIChannel, nsIRequest*/ {
   /*::
   URI: nsIURI
@@ -160,7 +192,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
   requestID: string
   owner: nsISupports<*> | null
   securityInfo: nsITransportSecurityInfo | null
-  notificationCallbacks: nsIInterfaceRequestor<nsIChannelEventSink> | null
+  progressEventSink: nsIProgressEventSink | null
   loadFlags: nsLoadFlags
   loadGroup: ?nsILoadGroup
   name: string
@@ -196,7 +228,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     this.requestID = requestID
 
     this.owner = null
-    this.securityInfo = null
+    this.securityInfo = new TransportSecurityInfo()
     this.notificationCallbacks = null
     this.loadFlags = Ci.nsIRequest.LOAD_NORMAL
     this.loadGroup = null
@@ -204,6 +236,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     this.status = Cr.NS_ERROR_NOT_INITIALIZED
     this.readyState = IDLE
     this.QueryInterface = Channel$QueryInterface
+    this.progressEventSink = null
     this.handler = handler
   }
   toJSON() {
@@ -214,7 +247,8 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
       status: this.status,
       contentType: this.contentType,
       byteOffset: this.byteOffset,
-      contentLength: this.contentLength
+      contentLength: this.contentLength,
+      notificationCallbacks: this.notificationCallbacks || null
     }
   }
   open2() {
@@ -230,15 +264,41 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     var outListener = contentSecManager.performSecurityCheck(this, listener)
     return this.asyncOpen(outListener, null)
   }
+  set notificationCallbacks(
+    notificationCallbacks /*:null|nsIInterfaceRequestor<nsIProgressEventSink>*/
+  ) {
+    try {
+      this.progressEventSink =
+        notificationCallbacks &&
+        notificationCallbacks.getInterface(Ci.nsIProgressEventSink)
+    } catch (_) {
+      console.error(`Failed to query notificationCallbacks ${notificationCallbacks} ${_}`)
+    }
+
+    if (this.progressEventSink) {
+      return
+    }
+      
+    try {
+      const notificationCallbacks = this.loadGroup.notificationCallbacks.getInterface(Ci.nsIProgressEventSink)
+    } catch (_) {
+      console.error(`Failed to query loadGroup.notificationCallbacks ${_}!!!`)
+    }
+  }
+  get notificationCallbacks() /*:nsIInterfaceRequestor<nsIProgressEventSink> | null*/ {
+    return null
+  }
   asyncOpen(listener, context) {
+    // TODO: Make sure that we report status updates
+    // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIProgressEventSink
+
     debug && console.log(`asyncOpen${pid} ${JSON.stringify(this)}`)
     switch (this.readyState) {
       case IDLE: {
         this.listener = listener
         this.context = context
         this.status = Cr.NS_OK
-        this.handler.request(this)
-        return
+        return this.handler.request(this)
       }
       default: {
         throw this.status
@@ -343,12 +403,18 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     this.status = Cr.NS_OK
     this.readyState = ACTIVE
 
-    const { listener, context } = this
+    const { listener, context, progressEventSink } = this
     const ctx /*: any */ = context
     this.byteOffset = 0
     try {
       listener && listener.onStartRequest(this, ctx)
-      console.log(Error().stack)
+      progressEventSink &&
+        progressEventSink.onStatus(
+          this,
+          ctx,
+          Ci.nsISocketTransport.STATUS_CONNECTED_TO,
+          'got header'
+        )
     } catch (_) {
       console.error(_)
     }
@@ -367,16 +433,18 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
         )} ${stream.available()} ${byteLength} ${content.toString()} `
       )
 
-    const { listener, context } = this
+    const { listener, context, progressEventSink } = this
     const ctx /*: any */ = context
     listener && listener.onDataAvailable(this, ctx, stream, 0, byteLength)
-
     this.byteOffset += byteLength
+    progressEventSink &&
+      progressEventSink.onProgress(this, ctx, this.byteOffset, MAX_UNKNOWN)
   }
 
   end(_) {
-    debug && console.log(`end${pid} ${JSON.stringify(this)}`)
     this.readyState = CLOSED
+    this.contentLength = this.byteOffset
+    debug && console.log(`end${pid} ${JSON.stringify(this)}`)
     this.close()
   }
   abort() {
@@ -386,12 +454,20 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     this.close()
   }
   close() {
-    const { listener, context, status } = this
+    const { listener, context, status, progressEventSink } = this
+    debug && console.log(`close${pid} ${JSON.stringify(this)}`)
     delete this.listener
     delete this.context
     delete this.handler
     const ctx /*: any */ = context
     try {
+      progressEventSink &&
+      progressEventSink.onProgress(
+        this,
+        ctx,
+        this.byteOffset,
+        this.byteOffset
+      )
       listener && listener.onStopRequest(this, ctx, status)
     } catch (_) {
       debug && console.error(`Failed onStopRequest${pid} ${_}`)
