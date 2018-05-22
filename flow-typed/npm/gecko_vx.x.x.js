@@ -181,57 +181,57 @@ declare module "gecko" {
 
   declare export interface nsIProgressEventSink {
     onProgress(
-      aRequest:nsIRequest,
-      aContext:nsISupports<*>,
-      aProgress:long ,
-      aProgressMax:long
-    ):void;
+      aRequest: nsIRequest,
+      aContext: nsISupports<*>,
+      aProgress: long,
+      aProgressMax: long
+    ): void;
     onStatus(
-      aRequest:nsIRequest,
-      aContext:nsISupports<*>,
-      aStatus:nsresult,
-      aStatusArg:wstring
-    ):void;
+      aRequest: nsIRequest,
+      aContext: nsISupports<*>,
+      aStatus: nsresult,
+      aStatusArg: wstring
+    ): void;
   }
 
   declare export interface nsISocketTransport {
-    getTimeout(aType:nsSocketTransportTimeoutType):long;
-    isAlive():boolean;
-    setTimeout(aType:nsSocketTransportTimeoutType, aValue:long):void;
+    getTimeout(aType: nsSocketTransportTimeoutType): long;
+    isAlive(): boolean;
+    setTimeout(aType: nsSocketTransportTimeoutType, aValue: long): void;
 
-    connectionFlags:nsSocketTransportConnectionFlag;
-    host:AUTF8String;
-    port:long;
+    connectionFlags: nsSocketTransportConnectionFlag;
+    host: AUTF8String;
+    port: long;
     // securityCallbacks:nsIInterfaceRequestor<nsISSLSocketControl & nsIBadCertListener2 & nsISSLErrorListener>;
-    securityInfo:nsISupports<nsISSLSocketControl> & nsISupports<nsITransportSecurityInfo>;
+    securityInfo: nsISupports<nsISSLSocketControl> &
+      nsISupports<nsITransportSecurityInfo>;
   }
 
   declare export interface nsISSLSocketControl {
-    proxyStartSSL():void;
-    StartTLS():void;
-    notificationCallbacks:nsIInterfaceRequestor<*>;
-
+    proxyStartSSL(): void;
+    StartTLS(): void;
+    notificationCallbacks: nsIInterfaceRequestor<*>;
   }
 
-  declare export opaque type nsSocketTransportStatus:nsresult;
-  declare export opaque type nsSocketTransportTimeoutType:long;
-  declare export opaque type nsSocketTransportConnectionFlag:long;
+  declare export opaque type nsSocketTransportStatus: nsresult
+  declare export opaque type nsSocketTransportTimeoutType: long
+  declare export opaque type nsSocketTransportConnectionFlag: long
 
   declare export interface nsISocketTransportConstants {
-    TIMEOUT_CONNECT:nsSocketTransportTimeoutType;
-    TIMEOUT_READ_WRITE:nsSocketTransportTimeoutType;
+    TIMEOUT_CONNECT: nsSocketTransportTimeoutType;
+    TIMEOUT_READ_WRITE: nsSocketTransportTimeoutType;
 
-    STATUS_RESOLVING:nsSocketTransportStatus;
-    STATUS_RESOLVED:nsSocketTransportStatus;
-    STATUS_CONNECTING_TO:nsSocketTransportStatus;
-    STATUS_CONNECTED_TO:nsSocketTransportStatus;
-    STATUS_SENDING_TO:nsSocketTransportStatus;
-    STATUS_WAITING_FOR:nsSocketTransportStatus;
-    STATUS_RECEIVING_FROM:nsSocketTransportStatus;
+    STATUS_RESOLVING: nsSocketTransportStatus;
+    STATUS_RESOLVED: nsSocketTransportStatus;
+    STATUS_CONNECTING_TO: nsSocketTransportStatus;
+    STATUS_CONNECTED_TO: nsSocketTransportStatus;
+    STATUS_SENDING_TO: nsSocketTransportStatus;
+    STATUS_WAITING_FOR: nsSocketTransportStatus;
+    STATUS_RECEIVING_FROM: nsSocketTransportStatus;
 
-    BYPASS_CACHE:nsSocketTransportConnectionFlag;
-    ANONYMOUS_CONNECT:nsSocketTransportConnectionFlag;
-    DISABLE_IPV6:nsSocketTransportConnectionFlag;
+    BYPASS_CACHE: nsSocketTransportConnectionFlag;
+    ANONYMOUS_CONNECT: nsSocketTransportConnectionFlag;
+    DISABLE_IPV6: nsSocketTransportConnectionFlag;
   }
 
   // See: https://github.com/mozilla/gecko-dev/blob/62d7405e171e6ca7e50b578c59c96d07ee69cca0/netwerk/base/nsIChannelEventSink.idl
@@ -251,8 +251,6 @@ declare module "gecko" {
       callback: nsIAsyncVerifyRedirectCallback
     ): void;
   }
-
-  
 
   // See: https://github.com/mozilla/gecko-dev/blob/86897859913403b68829dbf9a154f5a87c4b0638/netwerk/base/nsIInputStreamChannel.idl
   declare export interface nsIInputStreamChannel

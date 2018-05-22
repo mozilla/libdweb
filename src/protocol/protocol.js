@@ -272,15 +272,19 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
         notificationCallbacks &&
         notificationCallbacks.getInterface(Ci.nsIProgressEventSink)
     } catch (_) {
-      console.error(`Failed to query notificationCallbacks ${notificationCallbacks} ${_}`)
+      console.error(
+        `Failed to query notificationCallbacks ${notificationCallbacks} ${_}`
+      )
     }
 
     if (this.progressEventSink) {
       return
     }
-      
+
     try {
-      const notificationCallbacks = this.loadGroup.notificationCallbacks.getInterface(Ci.nsIProgressEventSink)
+      const notificationCallbacks = this.loadGroup.notificationCallbacks.getInterface(
+        Ci.nsIProgressEventSink
+      )
     } catch (_) {
       console.error(`Failed to query loadGroup.notificationCallbacks ${_}!!!`)
     }
@@ -413,7 +417,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
           this,
           ctx,
           Ci.nsISocketTransport.STATUS_CONNECTED_TO,
-          'got header'
+          "got header"
         )
     } catch (_) {
       console.error(_)
@@ -462,12 +466,12 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     const ctx /*: any */ = context
     try {
       progressEventSink &&
-      progressEventSink.onProgress(
-        this,
-        ctx,
-        this.byteOffset,
-        this.byteOffset
-      )
+        progressEventSink.onProgress(
+          this,
+          ctx,
+          this.byteOffset,
+          this.byteOffset
+        )
       listener && listener.onStopRequest(this, ctx, status)
     } catch (_) {
       debug && console.error(`Failed onStopRequest${pid} ${_}`)
