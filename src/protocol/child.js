@@ -1,28 +1,133 @@
 // @flow
 
 /*::
-import { Cu } from "gecko"
+import { Cu, Cr } from "gecko"
 import type { nsIMessageSender } from "gecko"
 import { ExtensionAPI, BaseContext } from "gecko"
-import type { HandlerInbox, HandlerOutbox, Inn, Out } from "./protocol"
+import type { HandlerInbox, RequestStatus, HandlerOutbox, Inn, Out } from "./protocol"
+
+interface Head {
+  contentType?: string,
+  contentLength?: number,
+  contentCharset?: string
+}
+
+interface Body {
+  content: AsyncIterator<ArrayBuffer>
+}
+
+interface Response extends Head, Body {
+
+}
+
+interface Handler {
+  ({ url: string }):Response
+}
+
+type Status =
+  | RequestStatus
+  | typeof CLOSED
 */
+
 const { Services } = Cu.import("resource://gre/modules/Services.jsm", {})
 
 const OUTBOX = "libdweb:protocol:handler:outbox"
 const INBOX = "libdweb:protocol:handler:inbox"
 
-class Protocol {
+const ACTIVE = Cr.NS_OK
+const PAUSED = Cr.NS_BASE_STREAM_WOULD_BLOCK
+const CLOSED = Cr.NS_BASE_STREAM_CLOSED
+const ABORTED = Cr.NS_BINDING_ABORTED
+
+class Connection {
+  /*::
+  requestID:string
+  port:Out<HandlerOutbox>
+  content:AsyncIterator<ArrayBuffer>
+  status:Status
+  */
+  constructor(
+    requestID /*:string*/,
+    port /*:Out<HandlerOutbox>*/,
+    content /*:AsyncIterator<ArrayBuffer>*/
+  ) {
+    this.requestID = requestID
+    this.port = port
+    this.content = content
+    this.status = ACTIVE
+  }
+  head({ contentType, contentCharset, contentLength } /*:Head*/) {
+    this.port.sendAsyncMessage(OUTBOX, {
+      type: "head",
+      requestID: this.requestID,
+      contentType,
+      contentCharset,
+      contentLength
+    })
+  }
+  body(content /*:ArrayBuffer*/) {
+    this.port.sendAsyncMessage(OUTBOX, {
+      type: "body",
+      requestID: this.requestID,
+      content
+    })
+  }
+  end() {
+    this.port.sendAsyncMessage(OUTBOX, {
+      type: "end",
+      requestID: this.requestID
+    })
+  }
+  suspend(manager /*:ConnectionManager*/) {
+    if (this.status === ACTIVE) {
+      this.status = PAUSED
+    }
+    return this
+  }
+  async resume(manager /*:ConnectionManager*/) {
+    while (this.status === ACTIVE) {
+      const { done, value } = await this.content.next()
+      if (this.status === ACTIVE) {
+        if (value) {
+          this.body(value)
+        }
+
+        if (done) {
+          this.close(manager)
+        }
+      }
+    }
+  }
+  close(manager) {
+    manager.disconnect(this.requestID)
+    this.status = CLOSED
+    this.end()
+    delete this.port
+  }
+  abort(manager /*:ConnectionManager*/) {
+    manager.disconnect(this.requestID)
+    this.status = ABORTED
+    delete this.port
+  }
+}
+
+/*::
+interface ConnectionManager {
+  disconnect(id:string):void;
+}
+*/
+class Protocol /*::implements ConnectionManager*/ {
   /*::
   context: BaseContext
   handlers: { [string]: Handler }
   outbox: Out<HandlerOutbox>
   inbox: Inn<HandlerInbox>
-  requests: {[string]: Out<HandlerOutbox>}
+  connections: {[string]: Connection}
   */
   constructor(context /*: BaseContext */) {
     this.context = context
     this.handlers = {}
-    this.requests = {}
+    this.connections = {}
     this.outbox = context.childManager.messageManager
     this.inbox = context.messageManager
   }
@@ -45,34 +150,42 @@ class Protocol {
       scheme
     })
   }
-  async request(request, target /*: Out<HandlerOutbox> */) {
+  request(request, target /*: Out<HandlerOutbox> */) {
     const { requestID, scheme, url } = request
     const handler = this.handlers[request.scheme]
     const response = Cu.waiveXrays(handler(Cu.cloneInto(request, handler)))
-    const { content, contentType, contentCharset, contentLength } = response
-
-    target.sendAsyncMessage(OUTBOX, {
-      type: "head",
-      requestID,
-      contentType,
-      contentCharset,
-      contentLength
-    })
-
-    for await (const chunk of content) {
-      target.sendAsyncMessage(OUTBOX, {
-        type: "body",
-        requestID,
-        content: chunk
-      })
-    }
-
-    target.sendAsyncMessage(OUTBOX, {
-      type: "end",
-      requestID
-    })
+    const connection = new Connection(requestID, target, response.content)
+    this.connect(connection)
+    connection.head(response)
+    connection.resume(this)
   }
-  updateRequest(data) {}
+  connect(connection /*:Connection*/) {
+    this.connections[connection.requestID] = connection
+  }
+  disconnect(requestID /*:string*/) {
+    delete this.connections[requestID]
+  }
+  updateRequest(data) {
+    const { requestID, status } = data
+    const connection = this.connections[requestID]
+    if (connection) {
+      switch (status) {
+        case ACTIVE: {
+          return void connection.resume(this)
+        }
+        case PAUSED: {
+          return void connection.suspend(this)
+        }
+        case ABORTED: {
+          return void connection.abort(this)
+        }
+        default:
+          return void this
+      }
+    } else {
+      console.error(`Received update for the a closed connection ${requestID}`)
+    }
+  }
 
   static spawn(context) {
     const self = new Protocol(context)
@@ -86,15 +199,6 @@ class Protocol {
 interface API {
   +protocol: {
     registerProtocol(string, Handler): Promise<void>
-  };
-}
-
-interface Handler {
-  ({ url: string }): {
-    contentType?: string,
-    contentLength?: number,
-    contentCharset?: string,
-    content: AsyncIterator<ArrayBuffer>
   };
 }
 */

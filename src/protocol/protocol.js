@@ -145,7 +145,10 @@ type ReadyState =
   | typeof CLOSED
   | typeof FAILED
 
-type RequestStatus = typeof Cr.NS_OK | typeof Cr.NS_BASE_STREAM_WOULD_BLOCK
+export type RequestStatus =
+  | typeof Cr.NS_OK
+  | typeof Cr.NS_BASE_STREAM_WOULD_BLOCK
+  | typeof Cr.NS_BINDING_ABORTED
 */
 
 class TransportSecurityInfo /*::implements nsITransportSecurityInfo*/ {
@@ -156,8 +159,10 @@ class TransportSecurityInfo /*::implements nsITransportSecurityInfo*/ {
   errorMessage:string
   QueryInterface:*
   SSLStatus:*
+  state:string
   */
   constructor() {
+    this.state = "secure"
     this.securityState = Ci.nsIWebProgressListener.STATE_IS_SECURE
     this.errorCode = Cr.NS_OK
     this.shortSecurityDescription = "Content Addressed"
@@ -169,7 +174,13 @@ class TransportSecurityInfo /*::implements nsITransportSecurityInfo*/ {
       cipherSuite: "TLS_ECDH_ECDSA_WITH_AES_128_GCM_SHA256",
       // TLS_VERSION_1_2
       protocolVersion: 3,
+      isDomainMismatch: false,
+      isNotValidAtThisTime: true,
       serverCert: {
+        subjectName: "Content Addressing",
+        displayName: "Content Addressing",
+        certType: Ci.nsIX509Cert.CA_CERT,
+        isSelfSigned: true,
         validity: {}
       }
     }
@@ -227,7 +238,9 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     this.byteOffset = 0
     this.requestID = requestID
 
-    this.owner = null
+    this.owner = Cc["@mozilla.org/systemprincipal;1"].createInstance(
+      Ci.nsIPrincipal
+    )
     this.securityInfo = new TransportSecurityInfo()
     this.notificationCallbacks = null
     this.loadFlags = Ci.nsIRequest.LOAD_NORMAL
@@ -300,7 +313,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
         case ACTIVE:
         case PAUSED: {
           this.setStatus(status)
-          return handler.updateRequest(this, this.status)
+          return handler.updateRequest(this, Cr.NS_BINDING_ABORTED)
         }
         default: {
           throw this.status
