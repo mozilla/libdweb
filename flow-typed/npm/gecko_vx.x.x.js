@@ -356,7 +356,7 @@ declare module "gecko" {
     getProtocolFlags(aScheme: string): long;
     newURI(
       aSpec: AUTF8String,
-      aOriginCharset: string,
+      aOriginCharset: null | string,
       aBaseURI: null | nsIURI
     ): nsIURI;
     newFileURI(aFile: nsIFile): nsIURI;
@@ -727,6 +727,11 @@ declare module "gecko" {
     fileExtension: AUTF8String;
     getCommonBaseSpec(other: nsIURI): AUTF8String;
     getRelativeSpec(other: nsIURI): AUTF8String;
+  }
+
+  // See: https://github.com/mozilla/gecko-dev/blob/6376e59638476407abfd91ea632574a6dd0255a2/netwerk/base/nsIFileURL.idl
+  declare export interface nsIFileURL extends nsIURL {
+    +file: nsIFile;
   }
 
   declare export interface nsIStandardURLMutator {
@@ -2508,6 +2513,7 @@ declare module "gecko" {
       nsIStreamListener: nsIJSID,
       nsIURI: nsIJSID,
       nsIURL: nsIJSID,
+      nsIFileURL: nsIJSCID,
 
       nsITransportSecurityInfo: nsIJSID,
 
@@ -2586,7 +2592,14 @@ declare module "gecko" {
     },
     utils: {
       waiveXrays<a>(a): a,
-      cloneInto<a, b>(a, b): a,
+      cloneInto<a, b>(
+        object: a,
+        scope: b,
+        options: ?{
+          cloneFunctions?: boolean,
+          wrapReflectors?: boolean
+        }
+      ): a,
       getGlobalForObject<a: Object>(a): Object,
       importGlobalProperties(string[]): void,
       import: (<p, p$, c, c$, m, m$>(
@@ -2596,7 +2609,8 @@ declare module "gecko" {
         JSM<"resource://gre/modules/XPCOMUtils.jsm", XPCOMUtils> &
         JSM<"resource://gre/modules/Timer.jsm", Timer> &
         JSM<"resource://gre/modules/ExtensionUtils.jsm", ExtensionUtils> &
-        JSM<"resource://gre/modules/ExtensionCommon.jsm", ExtensionCommon>
+        JSM<"resource://gre/modules/ExtensionCommon.jsm", ExtensionCommon> &
+        JSM<"resource://gre/modules/osfile.jsm", OSFile>
     },
     manager: nsIComponentManager,
     ID(iid: string): nsIJSID,
@@ -2617,7 +2631,8 @@ declare module "gecko" {
       ppmm: nsIMessageBroadcaster<$p, p$> & nsIGlobalProcessScriptLoader,
       cpmm: nsIContentProcessMessageManager<$c, c$>,
       mm: nsIMessageBroadcaster<$m, m$> & nsIFrameScriptLoader,
-      appinfo: nsIXULAppInfo & nsIXULRuntime
+      appinfo: nsIXULAppInfo & nsIXULRuntime,
+      io: nsIIOService
     };
   }
 
@@ -2682,6 +2697,7 @@ declare module "gecko" {
 
   declare export class BaseContext {
     childManager: ChildAPIManager;
+    cloneScope: Object;
     messageManager: nsIContentFrameMessageManager<*, *>;
     close(): void;
     getCaller(): nsIStackFrame;
@@ -2705,6 +2721,8 @@ declare module "gecko" {
     ): out;
     wrapPromise<a>(Promise<a>): Promise<a>;
   }
+
+  declare export class ExtensionError extends Error {}
 
   declare type Tuple<a = *, b = *, c = *, d = *, e = *, f = *, g = *> =
     | []
@@ -2762,5 +2780,13 @@ declare module "gecko" {
     +winLastAccessDate?: Date;
     +winCreationDate?: Date;
     +winLastWriteDate?: Date;
+  }
+
+  declare interface OSFile {
+    OS: {
+      Path: {
+        fromFileURI(uri: nsIFileURL): string
+      }
+    };
   }
 }

@@ -16,6 +16,19 @@
         "paths": [["protocol"]],
         "script": "./src/protocol/parent.js"
       }
+    },
+    "FileSystem": {
+      "schema": "./schemas/FileSystem.json",
+      "child": {
+        "scopes": ["addon_child"],
+        "paths": [["FileSystem"]],
+        "script": "./src/FileSystem/child.js"
+      },
+      "parent": {
+        "scopes": ["addon_parent"],
+        "paths": [["FileSystem"]],
+        "script": "./src/FileSystem/parent.js"
+      }
     }
   },
   "background": { "scripts": ["demo/background.js"] },

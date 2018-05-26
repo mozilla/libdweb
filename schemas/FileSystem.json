@@ -1,0 +1,206 @@
+[
+  {
+    "namespace": "Path",
+    "description":
+      "Functions designed to manipulate paths in a cross-platform manner.",
+    "manifest": ["Path"],
+    "types": [],
+    "functions": [
+      {
+        "name": "basename",
+        "type": "function",
+        "async": false,
+        "description": "Return the final component of a path",
+        "parameters": [
+          {
+            "name": "path",
+            "description": "A valid path",
+            "type": "string"
+          }
+        ],
+        "returns": {
+          "type": "string",
+          "description":
+            "The final component of path. This is everything after the last `/` (under Unix) or `\\` (under Windows)."
+        }
+      },
+      {
+        "name": "dirname",
+        "type": "function",
+        "description": "Return the directory part of the path.",
+        "async": false,
+        "parameters": [
+          {
+            "name": "path",
+            "description": "A valid path",
+            "type": "string"
+          }
+        ],
+        "returns": {
+          "type": "string",
+          "description":
+            "Everything before the last `/` (under Unix) or `\\` (under Windows). If the path contains no directory, return `.`"
+        }
+      },
+      {
+        "name": "join",
+        "type": "function",
+        "async": false,
+        "description":
+          "Join path components. This file is the recommended manner of getting the path of a file or a subdirectory contained in a directory.",
+        "parameters": [
+          {
+            "name": "path",
+            "description": "A valid path",
+            "type": "string"
+          },
+          {
+            "name": "subpath",
+            "description": "path component that must be appended to path"
+          },
+          {
+            "name": "subpath2",
+            "optional": true,
+            "description": "path component that must be appended to path"
+          },
+          {
+            "name": "subpath3",
+            "optional": true,
+            "description": "path component that must be appended to path"
+          },
+          {
+            "name": "subpath4",
+            "optional": true,
+            "description": "path component that must be appended to path"
+          }
+        ],
+        "returns": {
+          "type": "string",
+          "description":
+            "The result of concatenaging the paths. If any of the subpaths is absolute, anything before this subpath is ignored. The path may not be normalized."
+        }
+      },
+      {
+        "name": "normalize",
+        "type": "function",
+        "async": false,
+        "description": "Normalize a path by removing unneeded ., .., /, .",
+        "parameters": [
+          {
+            "name": "path",
+            "description": "A valid path",
+            "type": "string"
+          }
+        ],
+        "returns": {
+          "type": "string",
+          "description":
+            "A path equivalent to path, but in which needless occurrences of `.`, `..`, `/` and `\\` have been removed."
+        }
+      },
+      {
+        "name": "split",
+        "type": "function",
+        "description": "Split a path into its components",
+        "async": false,
+        "parameters": [
+          {
+            "name": "path",
+            "description": "A path. Generally, it should be normalized",
+            "type": "string"
+          }
+        ],
+        "returns": {
+          "type": "object",
+          "properties": {
+            "absolute": {
+              "type": "boolean",
+              "description": "true if path is absolute, false otherwise"
+            },
+            "components": {
+              "type": "array",
+              "description":
+                "An array containing the components that define path"
+            }
+          }
+        }
+      }
+    ],
+    "properties": {},
+    "events": []
+  },
+  {
+    "namespace": "FileSystem",
+    "description": "FileSystem API",
+    "manifest": ["FileSystem"],
+    "types": [
+      {
+        "id": "Path",
+        "type": "object",
+        "properties": {
+          "basename": {
+            "type": "function",
+            "async": false,
+            "parameters": [{ "name": "path" }],
+            "returns": {
+              "type": "string",
+              "description": ""
+            }
+          }
+        }
+      }
+    ],
+    "functions": [
+      {
+        "name": "mount",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "options",
+            "type": "object",
+            "description":
+              "Request to mount specific directory as a virtual FileSystem.",
+            "properties": {
+              "title": {
+                "type": "string",
+                "description": "Title to displayed in the user prompt"
+              },
+              "read": {
+                "type": "boolean",
+                "description": "Request read access",
+                "default": true,
+                "optional": true
+              },
+              "write": {
+                "type": "boolean",
+                "description": "Request write access",
+                "default": false,
+                "optional": true
+              },
+              "watch": {
+                "type": "boolean",
+                "description": "Request watch access",
+                "default": false,
+                "optional": true
+              }
+            }
+          },
+          {
+            "name": "handler",
+            "$ref": "ProtocolHandler",
+            "type": "function",
+            "description": "Protocol handler for the registered protocol"
+          }
+        ]
+      }
+    ],
+    "properties": {
+      "Path": {
+        "type": "object",
+        "$ref": "Path"
+      }
+    },
+    "events": []
+  }
+]
