@@ -2662,7 +2662,11 @@ declare module "gecko" {
         JSM<"resource://gre/modules/Timer.jsm", Timer> &
         JSM<"resource://gre/modules/ExtensionUtils.jsm", ExtensionUtils> &
         JSM<"resource://gre/modules/ExtensionCommon.jsm", ExtensionCommon> &
-        JSM<"resource://gre/modules/osfile.jsm", OSFile>
+        JSM<"resource://gre/modules/osfile.jsm", OSFile> &
+        JSM<
+          "resource://gre/modules/ExtensionPermissions.jsm",
+          { ExtensionPermissions: ExtensionPermissions }
+        >
     },
     manager: Components$manager,
     ID<a>(iid: string): nsIJSID<a>,
@@ -2756,6 +2760,7 @@ declare module "gecko" {
     childManager: ChildAPIManager;
     contentWindow: nsIDOMWindow;
     cloneScope: Object;
+    extension: Extension;
     messageManager: nsIContentFrameMessageManager<*, *>;
     close(): void;
     getCaller(): nsIStackFrame;
@@ -2846,5 +2851,16 @@ declare module "gecko" {
         fromFileURI(uri: nsIFileURL): string
       }
     };
+  }
+
+  declare interface Permissions {
+    permissions: string[];
+    origins: string[];
+  }
+
+  declare interface ExtensionPermissions {
+    get(Extension): Promise<Permissions>;
+    add(Extension, Permissions): Promise<void>;
+    removeAll(Extension): Promise<void>;
   }
 }

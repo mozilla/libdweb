@@ -31,12 +31,16 @@ export interface MountOptions {
   watch?: true;
 }
 
+export interface Volume {
+  +url: string;
+  +readable: boolean;
+  +writable: boolean;
+  +watchable: boolean;
+}
+
 export type Path = string
 
-export interface FileSystem {
-  +url: string;
-  +permission: { +read: boolean, +write: boolean, +watch: boolean };
-
+export interface FileSystem extends Volume {
   open(Path, ReadMode, options: ?OpenOptions): ReadableFile;
   open(Path, WriteMode, options: ?OpenOptions): WritableFile;
   open(Path, ReadWriteMode, options: ?OpenOptions): DuplexFile;

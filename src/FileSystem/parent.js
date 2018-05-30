@@ -14,37 +14,38 @@ import type {
   Dates,
   Stat,
   Entry,
+  Volume,
   Permissions
 } from "./API"
 
 interface FileSystemSupervisor {
 
 }
-
-interface Volume {
-  url:URL
-}
 */
 Cu.importGlobalProperties(["URL"])
 const { Services } = Cu.import("resource://gre/modules/Services.jsm", {})
 const { OS } = Cu.import("resource://gre/modules/osfile.jsm", {})
+const { ExtensionPermissions } = Cu.import(
+  "resource://gre/modules/ExtensionPermissions.jsm",
+  {}
+)
 
-const accessFrom = ({ read, write, watch }) /*:string*/ => {
+const accessFrom = ({ readable, writable, watchable }) /*:string*/ => {
   let params = []
-  if (read !== false) {
+  if (readable) {
     params.push("read")
   }
-  if (write) {
+  if (writable) {
     params.push("write")
   }
-  if (watch) {
+  if (watchable) {
     params.push("watch")
   }
 
   return params.join("&")
 }
 
-const normalizeFileURL = (href): string => {
+const normalizeFileURL = (href) /*: string*/ => {
   const fileURI = Services.io
     .newURI(href, null, null)
     .QueryInterface(Ci.nsIFileURL)
@@ -71,24 +72,52 @@ const requestDirectoryAccess = (window, options) =>
     })
   })
 
+const updatePermissions = (volume /*: Volume*/) => {
+  const access = accessFrom(volume)
+  const permission = `${volume.url}?${access}`
+}
+
+const getPermissions = async (url, extension) => {
+  const { permissions } = await ExtensionPermissions.get(extension)
+  return {
+    url,
+    readable: permissions.includes(`read+${url}`),
+    writable: permissions.includes(`write+${url}`),
+    watchable: permissions.includes(`watch+${url}`)
+  }
+}
+
+const requestPermissions = async (window, options) => {
+  return requestDirectoryAccess(window, options)
+}
+
 const self /*:window*/ = this
 self.FileSystem = class ExtensionAPI /*::<FileSystemSupervisor>*/ {
   getAPI(context /*:BaseContext*/) {
     return {
       FileSystem: {
         async mount(options /*:MountOptions*/) /*:Promise<Volume>*/ {
-          const { url } = options
-          const root =
-            url != null
-              ? normalizeFileURL(url)
-              : await requestDirectoryAccess(context.contentWindow, options)
+          if (options.url) {
+            const volume = await getPermissions(
+              normalizeFileURL(options.url),
+              context.extension
+            )
+            if (!volume.readable && !volume.writable && !volume.watchable) {
+              throw new Error(
+                "Access to the requested directory was not granted."
+              )
+            }
+            return volume
+          } else {
+            const url = await requestPermissions(context.contentWindow, options)
+            const volume = {
+              url,
+              readable: options.read != false,
+              writable: options.write == true,
+              watchable: options.watch == true
+            }
 
-          const access = accessFrom(options)
-          const permission = `${root}?${access}`
-
-          return {
-            url: new URL(root),
-            permission: options
+            return volume
           }
         }
       }

@@ -15,6 +15,7 @@ import type {
   Dates,
   Stat,
   Entry,
+  Volume,
   Permissions
 } from "./API"
 */
@@ -25,16 +26,18 @@ self.FileSystem = class extends ExtensionAPI /*::<{FileSystem:FileSystemManager}
     const notImplemented = new ExtensionError("Not implemented yet")
 
     class Mount /*::implements FileSystem*/ {
+      /*::
       +url: string
-      +permission: {
-        +read: boolean,
-        +write: boolean,
-        +watch: boolean
-      }
+      +readable: boolean
+      +writable: boolean
+      +watchable: boolean
+      */
 
-      constructor(mount) {
-        this.url = mount.url
-        this.permission = mount.permissions
+      constructor(volume /*:Volume*/) {
+        this.url = volume.url
+        this.readable = volume.readable
+        this.writable = volume.writable
+        this.watchable = volume.watchable
       }
       async open(path /*: Path*/, mode /*: Mode*/, options? /*:OpenOptions*/) {
         throw notImplemented
@@ -46,7 +49,7 @@ self.FileSystem = class extends ExtensionAPI /*::<{FileSystem:FileSystemManager}
         from /*: Path*/,
         to /*: Path*/,
         options? /*:{ overwrite?: boolean }*/
-      ): Promise<void> {
+      ) /*: Promise<void>*/ {
         throw notImplemented
       }
       async exists(path /*:Path*/) /*: Promise<boolean>*/ {
@@ -138,12 +141,12 @@ self.FileSystem = class extends ExtensionAPI /*::<{FileSystem:FileSystemManager}
     return {
       FileSystem: {
         async mount(options /*:MountOptions*/) {
-          const mount = await context.childManager.callParentAsyncFunction(
+          const volume /*: Volume*/ = await context.childManager.callParentAsyncFunction(
             "FileSystem.mount",
             [options]
           )
 
-          return Cu.cloneInto(new Mount(mount), context.cloneScope, {
+          return Cu.cloneInto(new Mount(volume), context.cloneScope, {
             cloneFunctions: true
           })
         }
