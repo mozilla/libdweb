@@ -1,6 +1,6 @@
 // @flow
 /*::
-import { Cu, Cr, Ci, nsIFileURL } from "gecko"
+import { Cu, Cr, Ci, Cc } from "gecko"
 import { ExtensionAPI, BaseContext, ExtensionError } from "gecko"
 import type {
   FileSystemManager,
@@ -45,31 +45,50 @@ const accessFrom = ({ read, write, watch }) /*:string*/ => {
 }
 
 const normalizeFileURL = (href): string => {
-  const fileURI /*:nsIFileURL*/ = (Services.io
+  const fileURI = Services.io
     .newURI(href, null, null)
-    .QueryInterface(Ci.nsIFileURL): any)
+    .QueryInterface(Ci.nsIFileURL)
   const path = OS.Path.fromFileURI(fileURI)
   return `file://${path}`
 }
 
+const requestDirectoryAccess = (window, options) =>
+  new Promise((resolve, reject) => {
+    const filePicker = Cc["@mozilla.org/filepicker;1"].createInstance(
+      Ci.nsIFilePicker
+    )
+
+    filePicker.init(window, options.title, Ci.nsIFilePicker.modeGetFolder)
+    filePicker.open(status => {
+      switch (status) {
+        case Ci.nsIFilePicker.returnOK:
+        case Ci.nsIFilePicker.returnReplace:
+          return resolve(filePicker.fileURL.spec)
+        case Ci.nsIFilePicker.returnCancel:
+        default:
+          return reject(Error("User denied access"))
+      }
+    })
+  })
+
 const self /*:window*/ = this
 self.FileSystem = class ExtensionAPI /*::<FileSystemSupervisor>*/ {
-  getAPI(context) {
+  getAPI(context /*:BaseContext*/) {
     return {
       FileSystem: {
         async mount(options /*:MountOptions*/) /*:Promise<Volume>*/ {
           const { url } = options
-          if (url != null) {
-            const root = normalizeFileURL(url)
-            const access = accessFrom(options)
-            const permission = `${root}?${access}`
+          const root =
+            url != null
+              ? normalizeFileURL(url)
+              : await requestDirectoryAccess(context.contentWindow, options)
 
-            return {
-              url: new URL(root),
-              permission: options
-            }
-          } else {
-            throw Error("Unable to mount")
+          const access = accessFrom(options)
+          const permission = `${root}?${access}`
+
+          return {
+            url: new URL(root),
+            permission: options
           }
         }
       }

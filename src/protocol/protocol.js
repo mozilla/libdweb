@@ -63,8 +63,7 @@ const { ID } = Components
 const componentRegistrar = Cm.QueryInterface(Ci.nsIComponentRegistrar)
 const pid = `@${appinfo.processType}#${appinfo.processID}`
 
-const getFactoryByCID = cid =>
-  componentRegistrar.getClassObject(cid, Ci.nsIFactory)
+const getFactoryByCID = cid => Cm.getClassObject(cid, Ci.nsIFactory)
 
 const getCIDByContractID = contractID =>
   componentRegistrar.contractIDToCID(contractID)
@@ -525,8 +524,8 @@ class Factory /*::implements nsIFactory<nsIProtocolHandler>*/ {
     this.instance = instance
   }
   createInstance(
-    outer /*: null | nsISupports<*> */,
-    iid /*: nsIIDRef */
+    outer /*: null | nsISupports<nsIProtocolHandler> */,
+    iid /*: nsIIDRef<nsIProtocolHandler> */
   ) /*: nsIProtocolHandler */ {
     if (outer != null) {
       throw Cr.NS_ERROR_NO_AGGREGATION
@@ -537,7 +536,9 @@ class Factory /*::implements nsIFactory<nsIProtocolHandler>*/ {
   lockFactory(lock /*: boolean */) /*: void */ {
     throw Cr.NS_ERROR_NOT_IMPLEMENTED
   }
-  QueryInterface(iid /*: nsIIDRef */) /*: self */ {
+  QueryInterface(
+    iid /*: nsIIDRef<nsIFactory<nsIProtocolHandler>> */
+  ) /*: nsIFactory<nsIProtocolHandler> */ {
     if (iid.equals(Ci.nsISupports) || iid.equals(Ci.nsIFactory)) {
       return this
     }

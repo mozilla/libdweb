@@ -2,27 +2,35 @@
 
 declare module "gecko" {
   // See https://github.com/mozilla/gecko-dev/blob/62d7405e171e6ca7e50b578c59c96d07ee69cca0/js/xpconnect/idl/xpcjsid.idl
-  declare export interface nsIJSID extends nsISupports<nsIJSID> {
+  declare export interface nsIJSID<nsQIResult> {
     name: string;
     number: string;
     valid: boolean;
-    equals(other: nsIJSID): boolean;
+    equals<other>(nsIJSID<other>): boolean;
     toString(): string;
   }
 
-  declare export interface nsIJSIID extends nsIJSID {}
+  declare export interface nsIJSIID<nsQIResult> extends nsIJSID<nsQIResult> {}
 
-  declare export interface nsIJSCID<nsQIResult> extends nsIJSID {
-    createInstance(iid: ?nsIJSID): nsQIResult;
-    getService(iid: ?nsIJSID): nsQIResult;
+  declare export interface nsIJSCID<+nsQIResult> extends nsIJSID<nsQIResult> {
+    createInstance(
+      iid: nsIJSID<nsQIResult>
+    ): nsISupports<nsQIResult> & nsQIResult;
+    getService(iid: nsIJSID<nsQIResult>): nsISupports<nsQIResult> & nsQIResult;
+  }
+
+  // See https://github.com/mozilla/gecko-dev/blob/62d7405e171e6ca7e50b578c59c96d07ee69cca0/xpcom/base/nsISupports.idl
+
+  declare export interface nsISupports<+nsQIResult> {
+    QueryInterface(uuid: nsIIDRef<nsQIResult>): nsQIResult;
   }
 
   // Export nsIJSID as nsIIDRef as well since that is what exposed to scriptable
   // XPCOM.
-  declare export type nsIIDRef = nsIJSID
-  declare export type nsIDPtr = nsIJSID
-  declare export type nsCIDRef = nsIJSID
-  declare export type nsCIDPtr = nsIJSID
+  declare export interface nsIIDRef<nsQIResult> extends nsIJSID<nsQIResult> {}
+  declare export interface nsIDPtr extends nsIJSID<empty> {}
+  declare export interface nsCIDRef<nsQIResult> extends nsIJSID<nsQIResult> {}
+  declare export interface nsCIDPtr<nsQIResult> extends nsIJSID<nsQIResult> {}
 
   // See: https://github.com/mozilla/gecko-dev/blob/62d7405e171e6ca7e50b578c59c96d07ee69cca0/xpcom/base/nsrootidl.idl
 
@@ -50,77 +58,74 @@ declare module "gecko" {
   declare export type PRTime = number
   declare export type DOMHighResTimeStamp = number
 
-  // See https://github.com/mozilla/gecko-dev/blob/62d7405e171e6ca7e50b578c59c96d07ee69cca0/xpcom/base/nsISupports.idl
-
-  declare export interface nsISupports<nsQIResult> {
-    QueryInterface(uuid: nsIIDRef): nsQIResult;
-  }
-
   // See https://github.com/mozilla/gecko-dev/blob/86897859913403b68829dbf9a154f5a87c4b0638/xpcom/base/nsIMutable.idl
 
-  declare export interface nsIMutable extends nsISupports<nsIMutable> {
+  declare export interface nsIMutable {
     mutable: boolean;
   }
 
   // See https://github.com/mozilla/gecko-dev/blob/62d7405e171e6ca7e50b578c59c96d07ee69cca0/xpcom/base/nsIInterfaceRequestor.idl
 
-  declare export interface nsIInterfaceRequestor<nsQIResult>
+  declare export interface nsIInterfaceRequestor<+nsQIResult>
     extends nsISupports<nsQIResult> {
-    getInterface(uuid: nsIIDRef): nsQIResult;
+    getInterface(uuid: nsIIDRef<nsQIResult>): nsQIResult;
   }
 
   // See https://github.com/mozilla/gecko-dev/blob/7adb57a57f9a4a7968b9d9d05f916786ba029a55/xpcom/base/nsIUUIDGenerator.idl
 
-  declare export interface nsIUUIDGenerator
-    extends nsISupports<nsIUUIDGenerator> {
+  declare export interface nsIUUIDGenerator {
     generateUUID(): nsIDPtr;
   }
 
-  declare export interface nsIComponentManager
-    extends nsISupports<nsIComponentRegistrar & nsIComponentManager> {
-    getClassObject<nsQIResult>(aClass: nsCIDRef, iid: nsIIDRef): nsQIResult;
+  declare export interface nsIComponentManager {
+    getClassObject<nsQIResult>(
+      aClass: nsCIDRef<nsQIResult>,
+      iid: nsIIDRef<nsQIResult>
+    ): nsQIResult;
     getClassObjectByContractID<nsQIResult>(
       aContractID: string,
-      aIID: nsIIDRef
+      aIID: nsIIDRef<nsQIResult>
     ): nsQIResult;
     createInstance<nsQIResult>(
-      aClass: nsCIDRef,
-      aDelegate: nsISupports<*>,
-      aIID: nsIIDRef
+      aClass: nsCIDRef<nsQIResult>,
+      aDelegate: nsISupports<nsQIResult>,
+      aIID: nsIIDRef<nsQIResult>
     ): nsQIResult;
     createInstanceByContractID<nsQIResult>(
       aContractID: string,
-      aDelegate: nsISupports<*>,
-      aIID: nsIIDRef
+      aDelegate: nsISupports<nsQIResult>,
+      aIID: nsIIDRef<nsQIResult>
     ): nsQIResult;
     addBootstrappedManifestLocation(aLocation: nsIFile): void;
     removeBootstrappedManifestLocation(aLocation: nsIFile): void;
     getManifestLocations(): nsISimpleEnumerator<nsIFile>;
   }
 
-  declare export interface nsIComponentRegistrar
-    extends nsISupports<nsIComponentRegistrar> {
+  declare export interface nsIComponentRegistrar {
     autoRegister(spec: nsIFile): void;
     autoUnregister(spec: nsIFile): void;
-    registerFactory(
-      aClass: nsCIDRef,
+    registerFactory<a>(
+      aClass: nsCIDRef<a>,
       aClassName: string,
       aContractID: string,
-      aFactory: nsIFactory<*>
+      aFactory: nsIFactory<a>
     ): void;
-    unregisterFactory(aClass: nsCIDRef, aFactory: nsIFactory<*>): void;
-    isCIDRegistered(aClass: nsCIDRef): boolean;
+    unregisterFactory<a>(aClass: nsCIDRef<a>, aFactory: nsIFactory<a>): void;
+    isCIDRegistered<a>(aClass: nsCIDRef<a>): boolean;
     isContractIDRegistered(aContractID: string): boolean;
-    enumerateCIDs(): nsISimpleEnumerator<nsCIDRef>;
+    enumerateCIDs(): nsISimpleEnumerator<nsCIDRef<*>>;
     enumerateContractIDs(): nsISimpleEnumerator<string>;
-    contractIDToCID(aContractID: string): nsCIDPtr;
+    contractIDToCID<a>(aContractID: string): nsCIDPtr<a>;
   }
 
   // See: https://github.com/mozilla/gecko-dev/blob/62d7405e171e6ca7e50b578c59c96d07ee69cca0/xpcom/components/nsIFactory.idl
 
   declare export interface nsIFactory<nsQIResult>
     extends nsISupports<nsIFactory<nsQIResult>> {
-    createInstance(outer: null | nsISupports<*>, iid: nsIIDRef): nsQIResult;
+    createInstance(
+      outer: null | nsISupports<nsQIResult>,
+      iid: nsIIDRef<nsQIResult>
+    ): nsQIResult;
     lockFactory(lock: boolean): void;
   }
 
@@ -134,8 +139,7 @@ declare module "gecko" {
 
   // See: https://github.com/mozilla/gecko-dev/blob/62d7405e171e6ca7e50b578c59c96d07ee69cca0/netwerk/base/nsIAsyncVerifyRedirectCallback.idl
 
-  declare export interface nsIAsyncVerifyRedirectCallback
-    extends nsISupports<nsIAsyncVerifyRedirectCallback> {
+  declare export interface nsIAsyncVerifyRedirectCallback {
     // Complement to nsIChannelEventSink asynchronous callback. The result of
     // the redirect decision is passed through this callback.
     // result is Result of the redirect veto decision. If FAILED the redirect
@@ -211,6 +215,10 @@ declare module "gecko" {
     proxyStartSSL(): void;
     StartTLS(): void;
     notificationCallbacks: nsIInterfaceRequestor<*>;
+  }
+
+  declare export interface nsISSLStatusProvider {
+    // TODO:...
   }
 
   declare export opaque type nsSocketTransportStatus: nsresult
@@ -329,8 +337,7 @@ declare module "gecko" {
     REDIRECT_STS_UPGRADE: long;
   }
 
-  declare export interface nsIChannelEventSink
-    extends nsISupports<nsIChannelEventSink> {
+  declare export interface nsIChannelEventSink {
     asyncOnChannelRedirect(
       oldChannel: nsIChannel,
       newChannel: nsIChannel,
@@ -340,8 +347,7 @@ declare module "gecko" {
   }
 
   // See: https://github.com/mozilla/gecko-dev/blob/86897859913403b68829dbf9a154f5a87c4b0638/netwerk/base/nsIInputStreamChannel.idl
-  declare export interface nsIInputStreamChannel
-    extends nsISupports<nsIInputStreamChannel> {
+  declare export interface nsIInputStreamChannel {
     contentStream: nsIInputStream;
     srcdocData: AString;
     isSrcdocChannel: boolean;
@@ -351,14 +357,14 @@ declare module "gecko" {
   }
 
   // See: https://github.com/mozilla/gecko-dev/blob/62d7405e171e6ca7e50b578c59c96d07ee69cca0/netwerk/base/nsIIOService.idl
-  declare export interface nsIIOService extends nsISupports<nsIIOService> {
+  declare export interface nsIIOService {
     getProtocolHandler(scheme: string): nsIProtocolHandler;
     getProtocolFlags(aScheme: string): long;
     newURI(
       aSpec: AUTF8String,
       aOriginCharset: null | string,
       aBaseURI: null | nsIURI
-    ): nsIURI;
+    ): nsIURI & nsISupports<nsIURI & nsIFileURL>;
     newFileURI(aFile: nsIFile): nsIURI;
     newChannelFromURI(aURI: nsIURI): nsIURI;
     newChannelFromURI2(
@@ -425,7 +431,7 @@ declare module "gecko" {
     SEC_FORCE_INHERIT_PRINCIPAL_OVERRULE_OWNER: nsSecurityFlags;
   }
 
-  declare export interface nsILoadInfo extends nsISupports<nsILoadInfo> {
+  declare export interface nsILoadInfo {
     +loadingPrincipal: nsIPrincipal;
     +triggeringPrincipal: nsIPrincipal;
     principalToInherit: nsIPrincipal;
@@ -503,8 +509,7 @@ declare module "gecko" {
     URI_SCHEME_NOT_SELF_LINKABLE: long;
   }
 
-  declare export interface nsIProtocolHandler
-    extends nsISupports<nsIProtocolHandler> {
+  declare export interface nsIProtocolHandler {
     defaultPort: long;
     protocolFlags: long;
     scheme: ACString;
@@ -546,7 +551,7 @@ declare module "gecko" {
     LOAD_FRESH_CONNECTION: nsLoadFlags;
   }
 
-  declare export interface nsIRequest extends nsISupports<nsIRequest> {
+  declare export interface nsIRequest {
     // The name of the request.  Often this is the URI of the request.
     name: AUTF8String;
     // The error status associated with the request.
@@ -580,8 +585,7 @@ declare module "gecko" {
 
   // See https://github.com/mozilla/gecko-dev/blob/62d7405e171e6ca7e50b578c59c96d07ee69cca0/netwerk/base/nsIRequestObserver.idl
 
-  declare export interface nsIRequestObserver
-    extends nsISupports<nsIRequestObserver> {
+  declare export interface nsIRequestObserver {
     // Called to signify the beginning of an asynchronous request.
     // Note: An exception thrown from onStartRequest has the side-effect of causing the request to be canceled.
     onStartRequest(request: nsIRequest, context: nsISupports<*>): void;
@@ -617,8 +621,7 @@ declare module "gecko" {
 
   // See: https://github.com/mozilla/gecko-dev/blob/7adb57a57f9a4a7968b9d9d05f916786ba029a55/netwerk/base/nsISecureBrowserUI.idl
 
-  declare export interface nsISecureBrowserUI
-    extends nsISupports<nsISecureBrowserUI> {
+  declare export interface nsISecureBrowserUI {
     state: long;
 
     init(mozIDOMWindowProxy: typeof window): void;
@@ -660,7 +663,7 @@ declare module "gecko" {
 
   // See: https://github.com/mozilla/gecko-dev/blob/62d7405e171e6ca7e50b578c59c96d07ee69cca0/netwerk/base/nsIURI.idl
 
-  declare export interface nsIURI extends nsISupports<nsIURI> {
+  declare export interface nsIURI {
     asciiHost: ACString;
     asciiHostPort: ACString;
     asciiSpec: ACString;
@@ -712,7 +715,7 @@ declare module "gecko" {
     finalize(): nsIURI;
   }
 
-  declare export interface nsIURLMutator extends nsIURISetters {
+  declare export interface nsIURLMutator extends nsIURIMutator {
     setFileName(aFileName: AUTF8String): nsIURIMutator;
     setFileBaseName(aFileBaseName: AUTF8String): nsIURIMutator;
     setFileExtension(aFileExtension: AUTF8String): nsIURIMutator;
@@ -746,8 +749,7 @@ declare module "gecko" {
   }
 
   // See https://github.com/mozilla/gecko-dev/blob/62d7405e171e6ca7e50b578c59c96d07ee69cca0/netwerk/socket/nsITransportSecurityInfo.idl
-  declare export interface nsITransportSecurityInfo
-    extends nsISupports<nsITransportSecurityInfo> {
+  declare export interface nsITransportSecurityInfo {
     securityState: nsWebProgressState;
     errorMessage: wstring;
     errorCode: nsresult;
@@ -770,7 +772,7 @@ declare module "gecko" {
     NOTIFY_ALL: nsWebProgressState;
   }
 
-  declare export interface nsIWebProgress extends nsISupports<nsIWebProgress> {
+  declare export interface nsIWebProgress {
     mozIDOMWindowProxy: typeof window;
     DOMWindowID: uint64;
     isTopLevel: boolean;
@@ -828,8 +830,7 @@ declare module "gecko" {
     LOCATION_CHANGE_ERROR_PAGE: nsWebProgressState;
   }
 
-  declare export interface nsIWebProgressListener
-    extends nsISupports<nsIWebProgressListener> {
+  declare export interface nsIWebProgressListener {
     onStateChange(
       aWebProgress: nsIWebProgress,
       aRequest: nsIRequest,
@@ -865,7 +866,7 @@ declare module "gecko" {
 
   // See: https://github.com/mozilla/gecko-dev/blob/86897859913403b68829dbf9a154f5a87c4b0638/caps/nsIDomainPolicy.idl
 
-  declare export interface nsIDomainSet extends nsISupports<nsIDomainSet> {
+  declare export interface nsIDomainSet {
     add(aDomain: nsIURI): void;
     remove(aDomain: nsIURI): void;
     clear(): void;
@@ -873,8 +874,7 @@ declare module "gecko" {
     containsSuperDomain(aDomain: nsIURI): boolean;
   }
 
-  declare export interface nsIDomainPolicy
-    extends nsISupports<nsIDomainPolicy> {
+  declare export interface nsIDomainPolicy {
     blacklist: nsIDomainSet;
     superBlacklist: nsIDomainSet;
     whitelist: nsIDomainSet;
@@ -892,12 +892,11 @@ declare module "gecko" {
     APP_STATUS_CERTIFIED: number;
   }
 
-  declare export interface nsIExpandedPrincipal
-    extends nsISupports<nsIPrincipal> {
+  declare export interface nsIExpandedPrincipal {
     whiteList: Array<nsIPrincipal>;
   }
 
-  declare export interface nsIPrincipal extends nsISupports<nsIPrincipal> {
+  declare export interface nsIPrincipal {
     equals(other: nsIPrincipal): boolean;
     equalsConsideringDomain(other: nsIPrincipal): boolean;
     URI: nsIURI;
@@ -924,8 +923,7 @@ declare module "gecko" {
     DEFAULT_USER_CONTEXT_ID: long;
   }
 
-  declare export interface nsIScriptSecurityManager
-    extends nsISupports<nsIScriptSecurityManager> {
+  declare export interface nsIScriptSecurityManager {
     checkLoadURIWithPrincipal(
       aPrincipal: nsIPrincipal,
       uri: nsIURI,
@@ -1015,7 +1013,7 @@ declare module "gecko" {
 
   // See: https://github.com/mozilla/gecko-dev/blob/9769f2300a17d3dfbebcfb457b1244bd624275e3/docshell/shistory/nsISHEntry.idl
 
-  declare export interface nsISHEntry extends nsISupports<nsISHEntry> {
+  declare export interface nsISHEntry {
     +URI: nsIURI;
     originalURI: nsIURI;
     resultPrincipalURI: nsIURI;
@@ -1072,8 +1070,7 @@ declare module "gecko" {
   declare export type Document = typeof document
   declare export type nsIDOMNode = Node
 
-  declare export interface nsIContentViewer
-    extends nsISupports<nsIContentViewer> {
+  declare export interface nsIContentViewer {
     container: nsIDocShell;
     isStopped: boolean;
     +inPermitUnload: boolean;
@@ -1114,7 +1111,7 @@ declare module "gecko" {
     stopEmulatingMedium(): void;
   }
 
-  declare export interface nsIEditor extends nsISupports<nsIEditor> {
+  declare export interface nsIEditor {
     +selection: Selection;
     setAttributeOrEquivalent(
       element: Element,
@@ -1234,8 +1231,7 @@ declare module "gecko" {
 
   declare export type nsISupportsPrimitives = empty
 
-  declare export interface nsITransferable
-    extends nsISupports<nsITransferable> {
+  declare export interface nsITransferable {
     init(aContext: nsILoadContext): void;
     flavorsTransferableCanExport(): nsIArray<nsISupportsCString>;
     getTransferData(
@@ -1260,8 +1256,7 @@ declare module "gecko" {
     converter: nsIFormatConverter<*, *>;
   }
 
-  declare export interface nsIFormatConverter<a, b>
-    extends nsISupports<nsIFormatConverter<a, b>> {
+  declare export interface nsIFormatConverter<a, b> {
     getInputDataFlavors(): nsIArray<nsISupportsCString>;
     getOutputDataFlavors(): nsIArray<nsISupportsCString>;
     canConvert(aFromDataFlavor: string, aToDataFlavor: string): boolean;
@@ -1274,13 +1269,11 @@ declare module "gecko" {
     ): void;
   }
 
-  declare export interface nsIEditorObserver
-    extends nsISupports<nsIEditorObserver> {
+  declare export interface nsIEditorObserver {
     EditAction(): void;
   }
 
-  declare export interface nsIEditActionListener
-    extends nsISupports<nsIEditorObserver> {
+  declare export interface nsIEditActionListener {
     DidCreateNode(
       aTag: DOMString,
       aNewNode: nsIDOMNode,
@@ -1319,14 +1312,13 @@ declare module "gecko" {
     DidDeleteSelection(aSelection: Selection): void;
   }
 
-  declare export interface nsIDocumentStateListener
-    extends nsISupports<nsIDocumentStateListener> {
+  declare export interface nsIDocumentStateListener {
     NotifyDocumentCreated(): void;
     NotifyDocumentWillBeDestroyed(): void;
     NotifyDocumentStateChanged(): void;
   }
 
-  declare export interface nsIDocShell extends nsIDocShellTreeItem {
+  declare export interface nsIDocShell {
     contentViewer: nsIContentViewer;
     customUserAgent: DOMString;
     allowPlugins: boolean;
@@ -1506,8 +1498,7 @@ declare module "gecko" {
     loadNormalAllowMixedContent: nsDocShellInfoLoadType;
   }
 
-  declare export interface nsIDocShellLoadInfo
-    extends nsISupports<nsIDocShellLoadInfo> {
+  declare export interface nsIDocShellLoadInfo {
     referrer: nsIURI;
     originalURI: nsIURI;
     loadReplace: boolean;
@@ -1536,8 +1527,7 @@ declare module "gecko" {
     typeAll: number;
   }
 
-  declare export interface nsIDocShellTreeItem
-    extends nsISupports<nsIDocShellTreeItem> {
+  declare export interface nsIDocShellTreeItem {
     name: AString;
     itemType: long;
     parent: nsIDocShellTreeItem;
@@ -1575,8 +1565,7 @@ declare module "gecko" {
     typeAll: number;
   }
 
-  declare export interface nsIDocShellTreeOwner
-    extends nsISupports<nsIDocShellTreeOwner> {
+  declare export interface nsIDocShellTreeOwner {
     primaryContentShell: nsIDocShellTreeItem;
     primaryTabParent: nsITabParent;
     tabCount: long;
@@ -1608,8 +1597,9 @@ declare module "gecko" {
 
   // See: https://github.com/mozilla/gecko-dev/blob/7adb57a57f9a4a7968b9d9d05f916786ba029a55/docshell/base/nsILoadContext.idl
   declare type mozIDOMWindowProxy = typeof window
+  declare type nsIDOMWindow = typeof window
 
-  declare export interface nsILoadContext extends nsISupports<nsILoadContext> {
+  declare export interface nsILoadContext {
     associatedWindow: mozIDOMWindowProxy;
     topWindow: mozIDOMWindowProxy;
     topFrameElement: Element;
@@ -1623,15 +1613,13 @@ declare module "gecko" {
 
   // See: https://github.com/mozilla/gecko-dev/blob/7adb57a57f9a4a7968b9d9d05f916786ba029a55/docshell/base/nsIPrivacyTransitionObserver.idl
 
-  declare export interface nsIPrivacyTransitionObserver
-    extends nsISupports<nsIPrivacyTransitionObserver> {
+  declare export interface nsIPrivacyTransitionObserver {
     privateModeChanged(enabled: boolean): void;
   }
 
   // See: https://github.com/mozilla/gecko-dev/blob/7adb57a57f9a4a7968b9d9d05f916786ba029a55/docshell/base/nsIReflowObserver.idl
 
-  declare export interface nsIReflowObserver
-    extends nsISupports<nsIReflowObserver> {
+  declare export interface nsIReflowObserver {
     reflow(start: DOMHighResTimeStamp, end: DOMHighResTimeStamp): void;
     reflowInterruptible(
       start: DOMHighResTimeStamp,
@@ -1641,8 +1629,7 @@ declare module "gecko" {
 
   // See: https://github.com/mozilla/gecko-dev/blob/7adb57a57f9a4a7968b9d9d05f916786ba029a55/docshell/shistory/nsIPartialSHistory.idl
 
-  declare export interface nsIGroupedSHistory
-    extends nsISupports<nsIGroupedSHistory> {
+  declare export interface nsIGroupedSHistory {
     count: long;
     activeFrameLoader: nsIFrameLoader;
     appendPartialSHistory(aPartialHistory: nsIPartialSHistory): void;
@@ -1670,8 +1657,7 @@ declare module "gecko" {
     STATE_PRERENDER: nsPartialSHistory
   }
 
-  declare export interface nsIPartialSHistory
-    extends nsISupports<nsIPartialSHistory> {
+  declare export interface nsIPartialSHistory {
     count: long;
     globalIndex: long;
     globalIndexOffset: long;
@@ -1695,7 +1681,7 @@ declare module "gecko" {
     EVENT_MODE_DONT_FORWARD_TO_CHILD: number;
   }
 
-  declare export interface nsIFrameLoader extends nsISupports<nsIFrameLoader> {
+  declare export interface nsIFrameLoader {
     docShell: nsIDocShell;
     tabParent: nsITabParent;
     loadContext: nsILoadContext;
@@ -1751,8 +1737,7 @@ declare module "gecko" {
 
   declare export type nsIPrintSettings = empty
 
-  declare export interface nsIFrameLoaderOwner
-    extends nsISupports<nsIFrameLoaderOwner> {
+  declare export interface nsIFrameLoaderOwner {
     setIsPrerendered(): void;
   }
 
@@ -1782,8 +1767,7 @@ declare module "gecko" {
     receiveMessage(message: nsMessage<message>): void;
   }
 
-  declare export interface nsIMessageListenerManager<message: MessageSpec>
-    extends nsISupports<nsIMessageListenerManager<message>> {
+  declare export interface nsIMessageListenerManager<message: MessageSpec> {
     addMessageListener(
       messageName: $PropertyType<message, "name">,
       listener: nsIMessageListener<message>,
@@ -1877,8 +1861,7 @@ declare module "gecko" {
     +initialProcessData: Object;
   }
 
-  declare export interface nsIFrameScriptLoader
-    extends nsISupports<nsIFrameScriptLoader> {
+  declare export interface nsIFrameScriptLoader {
     loadFrameScript(
       url: AString,
       aAllowDelayedLoad: boolean,
@@ -1888,8 +1871,7 @@ declare module "gecko" {
     getDelayedFrameScripts(): Array<[string, boolean]>;
   }
 
-  declare export interface nsIProcessScriptLoader
-    extends nsISupports<nsIProcessScriptLoader> {
+  declare export interface nsIProcessScriptLoader {
     loadProcessScript(aURL: AString, aAllowDelayedLoad: boolean): void;
     removeDelayedProcessScript(aURL: AString): void;
     getDelayedProcessScripts(): Array<string>;
@@ -1902,9 +1884,9 @@ declare module "gecko" {
 
   // See:https://github.com/mozilla/gecko-dev/blob/7adb57a57f9a4a7968b9d9d05f916786ba029a55/dom/interfaces/base/nsITabChild.idl
 
-  declare export interface nsITabChild extends nsISupports<nsITabChild> {
+  declare export interface nsITabChild {
     tabId: uint64;
-    messageManager: nsIContentFrameMessageManager<*>;
+    messageManager: nsIContentFrameMessageManager<*, *>;
     // webBrowserChrome: nsIWebBrowserChrome3;
     sendRequestFocus(canFocus: boolean): void;
     sendGetTabCount(tabCount: uint32): void;
@@ -1912,7 +1894,7 @@ declare module "gecko" {
 
   // See:https://github.com/mozilla/gecko-dev/blob/7adb57a57f9a4a7968b9d9d05f916786ba029a55/dom/interfaces/base/nsITabParent.idl
 
-  declare export interface nsITabParent extends nsISupports<nsITabParent> {
+  declare export interface nsITabParent {
     useAsyncPanZoom: boolean;
     isPrerendered: boolean;
     tabId: uint64;
@@ -1927,8 +1909,7 @@ declare module "gecko" {
 
   // See https://github.com/mozilla/gecko-dev/blob/86897859913403b68829dbf9a154f5a87c4b0638/xpcom/io/nsIAsyncInputStream.idl
 
-  declare export interface nsIInputStreamCallback
-    extends nsISupports<nsIInputStreamCallback> {
+  declare export interface nsIInputStreamCallback {
     onInputStreamReady(aStream: nsIAsyncInputStream): void;
   }
 
@@ -1953,8 +1934,7 @@ declare module "gecko" {
 
   // See https://github.com/mozilla/gecko-dev/blob/86897859913403b68829dbf9a154f5a87c4b0638/xpcom/io/nsIAsyncOutputStream.idl
 
-  declare export interface nsIOutputStreamCallback
-    extends nsISupports<nsIOutputStreamCallback> {
+  declare export interface nsIOutputStreamCallback {
     onOutputStreamReady(aStream: nsIAsyncOutputStream): void;
   }
 
@@ -2025,7 +2005,7 @@ declare module "gecko" {
     DIRECTORY_TYPE: number;
   }
 
-  declare export interface nsIFile extends nsISupports<nsIFile> {
+  declare export interface nsIFile {
     permissions: long;
     leafName: string;
     permissionsOfLink: long;
@@ -2072,9 +2052,19 @@ declare module "gecko" {
     setRelativePath(fromFile: nsIFile, relativeDesc: AUTF8String): void;
   }
 
+  declare export interface nsILocalFile extends nsIFile {
+    appendRelativePath(AString): void;
+    getRelativeDescriptor(nsILocalFile): ACString;
+    initWithFile(nsILocalFile): void;
+    initWithPath(ACString): void;
+    launch(): void;
+    reveal(): void;
+    setRelativeDescriptor(nsILocalFile, ACString): void;
+  }
+
   // See https://github.com/mozilla/gecko-dev/blob/62d7405e171e6ca7e50b578c59c96d07ee69cca0/xpcom/io/nsIInputStream.idl
 
-  declare export interface nsIInputStream extends nsISupports<nsIInputStream> {
+  declare export interface nsIInputStream {
     // Determine number of bytes available in the stream.
 
     // In addition to the number of bytes available in the stream, this method
@@ -2104,8 +2094,7 @@ declare module "gecko" {
 
   // See https://github.com/mozilla/gecko-dev/blob/86897859913403b68829dbf9a154f5a87c4b0638/xpcom/io/nsIOutputStream.idl
 
-  declare export interface nsIOutputStream
-    extends nsISupports<nsIOutputStream> {
+  declare export interface nsIOutputStream {
     // Close the stream. Forces the output stream to flush any buffered data.
     // Throws `NS_BASE_STREAM_WOULD_BLOCK` if unable to flush without blocking
     // the calling thread (non-blocking mode only)
@@ -2156,7 +2145,7 @@ declare module "gecko" {
 
   // See https://github.com/mozilla/gecko-dev/blob/86897859913403b68829dbf9a154f5a87c4b0638/xpcom/io/nsIPipe.idl
 
-  declare export interface nsIPipe extends nsISupports<nsIPipe> {
+  declare export interface nsIPipe {
     init(
       nonBlockingInput: boolean,
       nonBlockingOutput: boolean,
@@ -2212,7 +2201,7 @@ declare module "gecko" {
     PROCESS_TYPE_GPU: nsProcessType;
   }
 
-  declare export interface nsIXULRuntime extends nsISupports<nsIXULRuntime> {
+  declare export interface nsIXULRuntime {
     inSafeMode: boolean;
     logConsoleErrors: boolean;
     OS: AUTF8String;
@@ -2249,6 +2238,52 @@ declare module "gecko" {
     version: ACString;
   }
 
+  declare export interface nsIFilePicker {
+    addToRecentDocs: boolean;
+    defaultExtension: AString;
+    defaultString: AString;
+    displayDirectory: nsILocalFile;
+    +file: nsILocalFile;
+    +files: nsISimpleEnumerator<nsILocalFile>;
+    +fileURL: nsIURI;
+    filterIndex: long;
+
+    appendFilter(title: AString, filter: AString): void;
+    appendFilters(filterMask: nsFilePickerFilter): void;
+    init(parent: nsIDOMWindow, title: AString, mode: nsFilePickerMode): void;
+    open(nsIFilePickerShownCallback): void;
+  }
+
+  declare export type nsIFilePickerShownCallback = nsFilePickerReturn => void | {
+    don(nsFilePickerReturn): void
+  }
+
+  declare export opaque type nsFilePickerMode: long
+  declare export type nsFilePickerReturn = 0 | 1 | 2
+  declare export opaque type nsFilePickerFilter: long
+
+  declare export interface nsIFilePickerConstants {
+    modeOpen: nsFilePickerMode;
+    modeSave: nsFilePickerMode;
+    modeGetFolder: nsFilePickerMode;
+    modeOpenMultiple: nsFilePickerMode;
+
+    returnOK: 0;
+    returnCancel: 1;
+    returnReplace: 2;
+
+    filterAll: nsFilePickerFilter;
+    filterHTML: nsFilePickerFilter;
+    filterText: nsFilePickerFilter;
+    filterImages: nsFilePickerFilter;
+    filterXML: nsFilePickerFilter;
+    filterXUL: nsFilePickerFilter;
+    filterApps: nsFilePickerFilter;
+    filterAllowURLs: nsFilePickerFilter;
+    filterAudio: nsFilePickerFilter;
+    filterVideo: nsFilePickerFilter;
+  }
+
   // See https://github.com/mozilla/gecko-dev/blob/86897859913403b68829dbf9a154f5a87c4b0638/xpcom/threads/nsIEventTarget.idl
 
   declare export type nsDispatchType = 0 | 1 | 2
@@ -2259,7 +2294,7 @@ declare module "gecko" {
     DISPATCH_AT_END: nsDispatchType;
   }
 
-  declare export interface nsIEventTarget extends nsISupports<nsIEventTarget> {
+  declare export interface nsIEventTarget {
     isOnCurrentThread(): boolean;
   }
 
@@ -2482,75 +2517,89 @@ declare module "gecko" {
       NS_ERROR_HARMFUL_URI: 2153578534
     },
     interfaces: {
-      nsIDomainSet: nsIJSID,
-      nsIDomainPolicy: nsIJSID,
-      nsIPrincipal: nsIJSID & nsIPrincipalContstants,
-      nsIScriptSecurityManager: nsIJSID & nsIScriptSecurityManagerConstants,
+      nsIDomainSet: nsIJSID<nsIDomainSet>,
+      nsIDomainPolicy: nsIJSID<nsIDomainPolicy>,
+      nsIPrincipal: nsIJSID<nsIPrincipal> & nsIPrincipalContstants,
+      nsIScriptSecurityManager: nsIJSID<nsIScriptSecurityManager> &
+        nsIScriptSecurityManagerConstants,
 
-      nsIMessageListener: nsIJSID,
-      nsIMessageListenerManager: nsIJSID,
-      nsIMessageSender: nsIJSID,
-      nsIMessageBroadcaster: nsIJSID,
-      nsISyncMessageSender: nsIJSID,
-      nsIMessageManagerGlobal: nsIJSID,
-      nsIContentFrameMessageManager: nsIJSID,
-      nsIInProcessContentFrameMessageManager: nsIJSID,
-      nsIContentProcessMessageManager: nsIJSID,
-      nsIFrameScriptLoader: nsIJSID,
-      nsIProcessScriptLoader: nsIJSID,
-      nsIGlobalProcessScriptLoader: nsIJSID,
+      nsIMessageListener: nsIJSID<nsIMessageListener<*>>,
+      nsIMessageListenerManager: nsIJSID<nsIMessageListenerManager<*>>,
+      nsIMessageSender: nsIJSID<nsIMessageSender<*>>,
+      nsIMessageBroadcaster: nsIJSID<nsIMessageBroadcaster<*, *>>,
+      nsISyncMessageSender: nsIJSID<nsISyncMessageSender<*>>,
+      nsIMessageManagerGlobal: nsIJSID<nsIMessageManagerGlobal<*, *>>,
+      nsIContentFrameMessageManager: nsIJSID<
+        nsIContentFrameMessageManager<*, *>
+      >,
+      nsIInProcessContentFrameMessageManager: nsIJSID<
+        nsIInProcessContentFrameMessageManager<*, *>
+      >,
+      nsIContentProcessMessageManager: nsIJSID<
+        nsIContentProcessMessageManager<*, *>
+      >,
+      nsIFrameScriptLoader: nsIJSID<nsIFrameScriptLoader>,
+      nsIProcessScriptLoader: nsIJSID<nsIProcessScriptLoader>,
+      nsIGlobalProcessScriptLoader: nsIJSID<nsIGlobalProcessScriptLoader>,
 
-      nsIAsyncVerifyRedirectCallback: nsIJSID,
-      nsIChannel: nsIJSID & nsIChannelConstants,
-      nsIChannelEventSink: nsIJSID & nsIChannelEventSinkConstants,
-      nsIInputStreamChannel: nsIJSID,
-      nsIIOService: nsIJSID,
-      nsILoadInfo: nsIJSID & nsILoadInfoConstants,
-      nsIProtocolHandler: nsIJSID & nsIProtocolHandlerConstants,
-      nsIRequest: nsIJSID & nsIRequestConstants,
-      nsIRequestObserver: nsIJSID,
-      nsIStandardURL: nsIJSID & nsIStandardURLConstants,
-      nsIStreamListener: nsIJSID,
-      nsIURI: nsIJSID,
-      nsIURL: nsIJSID,
-      nsIFileURL: nsIJSCID,
+      nsIAsyncVerifyRedirectCallback: nsIJSID<nsIAsyncVerifyRedirectCallback>,
+      nsIChannel: nsIJSID<nsIChannel> & nsIChannelConstants,
+      nsIChannelEventSink: nsIJSID<nsIChannelEventSink> &
+        nsIChannelEventSinkConstants,
+      nsIInputStreamChannel: nsIJSID<nsIInputStreamChannel>,
+      nsIIOService: nsIJSID<nsIIOService>,
+      nsILoadInfo: nsIJSID<nsILoadInfo> & nsILoadInfoConstants,
+      nsIProtocolHandler: nsIJSID<nsIProtocolHandler> &
+        nsIProtocolHandlerConstants,
+      nsIRequest: nsIJSID<nsIRequest> & nsIRequestConstants,
+      nsIRequestObserver: nsIJSID<nsIRequestObserver>,
+      nsIStandardURL: nsIJSID<nsIStandardURL> & nsIStandardURLConstants,
+      nsIStreamListener: nsIJSID<nsIStreamListener>,
+      nsIURI: nsIJSID<nsIURI>,
+      nsIURL: nsIJSID<nsIURL>,
+      nsIFileURL: nsIJSID<nsIFileURL>,
 
-      nsITransportSecurityInfo: nsIJSID,
+      nsITransportSecurityInfo: nsIJSID<nsITransportSecurityInfo>,
 
-      nsIInterfaceRequestor: nsIJSID,
-      nsISupports: nsIJSID,
-      nsIUUIDGenerator: nsIJSID,
+      nsIInterfaceRequestor: nsIJSID<nsIInterfaceRequestor<*>>,
+      nsISupports: nsIJSID<nsISupports<*>>,
+      nsIUUIDGenerator: nsIJSID<nsIUUIDGenerator>,
 
-      nsIComponentManager: nsIJSID,
-      nsIComponentRegistrar: nsIJSID,
-      nsIFactory: nsIJSID,
+      nsIComponentManager: nsIJSID<nsIComponentManager>,
+      nsIComponentRegistrar: nsIJSID<nsIComponentRegistrar>,
+      nsIFactory: nsIJSID<nsIFactory<*>>,
 
-      nsISimpleEnumerator: nsIJSID,
+      nsISimpleEnumerator: nsIJSID<nsISimpleEnumerator<*>>,
 
-      nsIAsyncInputStream: nsIJSID & nsIAsyncInputStreamConstants,
-      nsIAsyncOutputStream: nsIJSID & nsIAsyncOutputStreamConstants,
-      nsIBinaryInputStream: nsIJSID,
-      nsIBinaryOutputStream: nsIJSID,
-      nsIFile: nsIJSID & nsIFileConstants,
-      nsIInputStream: nsIJSID,
-      nsIOutputStream: nsIJSID,
-      nsIPipe: nsIJSID,
-      nsIScriptableInputStream: nsIJSID,
+      nsIAsyncInputStream: nsIJSID<nsIAsyncInputStream> &
+        nsIAsyncInputStreamConstants,
+      nsIAsyncOutputStream: nsIJSID<nsIAsyncOutputStream> &
+        nsIAsyncOutputStreamConstants,
+      nsIBinaryInputStream: nsIJSID<nsIBinaryInputStream>,
+      nsIBinaryOutputStream: nsIJSID<nsIBinaryOutputStream>,
+      nsIFile: nsIJSID<nsIFile> & nsIFileConstants,
+      nsIInputStream: nsIJSID<nsIInputStream>,
+      nsIOutputStream: nsIJSID<nsIOutputStream>,
+      nsIPipe: nsIJSID<nsIPipe>,
+      nsIScriptableInputStream: nsIJSID<nsIScriptableInputStream>,
 
-      nsIXULRuntime: nsIJSID & nsIXULRuntimeConstants,
-      nsIXULAppInfo: nsIJSID,
+      nsIXULRuntime: nsIJSID<nsIXULRuntime> & nsIXULRuntimeConstants,
+      nsIXULAppInfo: nsIJSID<nsIXULAppInfo>,
 
-      nsIMutable: nsIJSID,
-      nsIContentSecurityManager: nsIJSID,
+      nsIMutable: nsIJSID<nsIMutable>,
+      nsIContentSecurityManager: nsIJSID<nsIContentSecurityManager>,
 
-      nsIArrayBufferInputStream: nsIJSID,
-      nsIStandardURLMutator: nsIJSID,
-      nsIURIMutator: nsIJSID,
-      nsIWebProgressListener: nsIJSID & nsIWebProgressListenerConstants,
-      nsISSLStatusProvider: nsIJSID,
-      nsIProgressEventSink: nsIJSID,
-      nsISocketTransport: nsIJSID & nsISocketTransportConstants,
-      nsIX509Cert: nsIJSID & nsIX509CertConstants
+      nsIArrayBufferInputStream: nsIJSID<nsIArrayBufferInputStream>,
+      nsIStandardURLMutator: nsIJSID<nsIStandardURLMutator>,
+      nsIURIMutator: nsIJSID<nsIURIMutator>,
+      nsIWebProgressListener: nsIJSID<nsIWebProgressListener> &
+        nsIWebProgressListenerConstants,
+      nsISSLStatusProvider: nsIJSID<nsISSLStatusProvider>,
+      nsIProgressEventSink: nsIJSID<nsIProgressEventSink>,
+      nsISocketTransport: nsIJSID<nsISocketTransport> &
+        nsISocketTransportConstants,
+      nsIX509Cert: nsIJSID<nsIX509Cert> & nsIX509CertConstants,
+      nsIFilePicker: nsIJSID<nsIFilePicker> & nsIFilePickerConstants
     },
     classes: {
       "@mozilla.org/xre/app-info;1": nsIJSCID<nsIXULAppInfo>,
@@ -2585,10 +2634,13 @@ declare module "gecko" {
       "@mozilla.org/io/arraybuffer-input-stream;1": nsIJSCID<
         nsIArrayBufferInputStream
       >,
-      "@mozilla.org/network/simple-uri-mutator;1": nsIJSCID<nsIURLMutator>,
+      "@mozilla.org/network/simple-uri-mutator;1": nsIJSCID<
+        nsIURLMutator | nsIURIMutator
+      >,
       "@mozilla.org/network/standard-url-mutator;1": nsIJSCID<
         nsIStandardURLMutator
-      >
+      >,
+      "@mozilla.org/filepicker;1": nsIJSCID<nsIFilePicker>
     },
     utils: {
       waiveXrays<a>(a): a,
@@ -2612,10 +2664,13 @@ declare module "gecko" {
         JSM<"resource://gre/modules/ExtensionCommon.jsm", ExtensionCommon> &
         JSM<"resource://gre/modules/osfile.jsm", OSFile>
     },
-    manager: nsIComponentManager,
-    ID(iid: string): nsIJSID,
+    manager: Components$manager,
+    ID<a>(iid: string): nsIJSID<a>,
     stack: nsIStackFrame
   }
+
+  declare interface Components$manager
+    extends nsISupports<nsIComponentRegistrar>, nsIComponentManager {}
 
   declare export var Cc: typeof Components.classes
   declare export var Ci: typeof Components.interfaces
@@ -2639,7 +2694,9 @@ declare module "gecko" {
   declare export interface XPCOMUtils {
     XPCOMUtils: {
       defineLazyGetter<a>(Object, string, () => a): void,
-      generateQI(nsIJSID[]): nsIJSID => self
+      generateQI<a, b, c, d, e>(
+        Array<nsIJSID<a> | nsIJSID<b> | nsIJSID<c> | nsIJSID<d> | nsIJSID<e>>
+      ): <$: a | b | c | d | e>(nsIJSID<$>) => $
     };
   }
 
@@ -2697,6 +2754,7 @@ declare module "gecko" {
 
   declare export class BaseContext {
     childManager: ChildAPIManager;
+    contentWindow: nsIDOMWindow;
     cloneScope: Object;
     messageManager: nsIContentFrameMessageManager<*, *>;
     close(): void;
