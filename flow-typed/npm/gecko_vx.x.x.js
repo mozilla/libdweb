@@ -974,6 +974,12 @@ declare module "gecko" {
   declare export type nsTouchEventsOverride = 0 | 1 | 2
 
   declare export interface nsIDocShellConstants {
+    typeChrome: 0;
+    typeContent: 1;
+    typeContentWrapper: 2;
+    typeChromeWrapper: 3;
+    typeAll: 2147483647;
+
     INTERNAL_LOAD_FLAGS_NONE: nsLoadFlags;
     INTERNAL_LOAD_FLAGS_INHERIT_PRINCIPAL: nsLoadFlags;
     INTERNAL_LOAD_FLAGS_DONT_SEND_REFERRER: nsLoadFlags;
@@ -1318,7 +1324,9 @@ declare module "gecko" {
     NotifyDocumentStateChanged(): void;
   }
 
-  declare export interface nsIDocShell {
+  declare export interface nsIDocShell extends nsIDocShellTreeItem {
+    chromeEventHandler: GeckoBrowser;
+
     contentViewer: nsIContentViewer;
     customUserAgent: DOMString;
     allowPlugins: boolean;
@@ -2317,6 +2325,59 @@ declare module "gecko" {
     isOriginPotentiallyTrustworthy(aPrincipal: nsIPrincipal): boolean;
   }
 
+  declare export interface nsIWindowMediator {
+    getMostRecentWindow(type: wstring): nsIDOMWindow;
+    getOuterWindowWithId(aOuterWindowID: long): nsIDOMWindow;
+    getXULWindowEnumerator(
+      aWindowType: wstring
+    ): nsISimpleEnumerator<nsIXULWindow>;
+    getEnumerator(aWindowType: wstring): nsISimpleEnumerator<nsIDOMWindow>;
+    getZOrderDOMWindowEnumerator(
+      aWindowType: wstring,
+      aFrontToBack: boolean
+    ): nsISimpleEnumerator<nsIDOMWindow>;
+    getZOrderXULWindowEnumerator(
+      aWindowType: wstring,
+      aFrontToBack: boolean
+    ): nsISimpleEnumerator<nsIXULWindow>;
+    addListener(nsIWindowMediatorListener): void;
+    removeListener(nsIWindowMediatorListener): void;
+  }
+
+  declare export interface nsIWindowMediatorListener {
+    onOpenWindow(nsIXULWindow): void;
+    onCloseWindow(nsIXULWindow): void;
+  }
+
+  declare export interface nsIXULWindow {
+    addChildWindow(nsIXULWindow): void;
+    assumeChromeFlagsAreFrozen(): void;
+    center(nsIXULWindow, aScreen: boolean, aAlert: boolean): void;
+    createNewWindow(
+      aChromeFlags: PRInt32,
+      aAppShell: nsIAppShell
+    ): nsIXULWindow;
+    getContentShellById(id: wstring): nsIDocShellTreeItem;
+    removeChildWindow(nsIXULWindow): void;
+    showModal(): void;
+  }
+
+  declare export interface nsIAppShell {
+    exit(): void;
+    favorPerformanceHint(
+      favorPerfOverStarvation: boolean,
+      starvationDelay: long
+    ): void;
+    resumeNative(): void;
+    run(): void;
+    runInStableState(nsIRunnable): void;
+    suspendNative(): void;
+  }
+
+  declare export interface nsIRunnable {
+    run(): void;
+  }
+
   // -------------------------
   declare export type JSM<url: string, jsm> = (url, {}) => jsm
 
@@ -2599,7 +2660,8 @@ declare module "gecko" {
       nsISocketTransport: nsIJSID<nsISocketTransport> &
         nsISocketTransportConstants,
       nsIX509Cert: nsIJSID<nsIX509Cert> & nsIX509CertConstants,
-      nsIFilePicker: nsIJSID<nsIFilePicker> & nsIFilePickerConstants
+      nsIFilePicker: nsIJSID<nsIFilePicker> & nsIFilePickerConstants,
+      nsIDocShell: nsIJSID<nsIDocShell> & nsIDocShellConstants
     },
     classes: {
       "@mozilla.org/xre/app-info;1": nsIJSCID<nsIXULAppInfo>,
@@ -2658,14 +2720,27 @@ declare module "gecko" {
         "resource://gre/modules/Services.jsm",
         {}
       ) => Services<p, p$, c, c$, m, m$>) &
-        JSM<"resource://gre/modules/XPCOMUtils.jsm", XPCOMUtils> &
+        JSM<
+          "resource://gre/modules/XPCOMUtils.jsm",
+          { XPCOMUtils: XPCOMUtils }
+        > &
         JSM<"resource://gre/modules/Timer.jsm", Timer> &
-        JSM<"resource://gre/modules/ExtensionUtils.jsm", ExtensionUtils> &
-        JSM<"resource://gre/modules/ExtensionCommon.jsm", ExtensionCommon> &
-        JSM<"resource://gre/modules/osfile.jsm", OSFile> &
+        JSM<
+          "resource://gre/modules/ExtensionUtils.jsm",
+          { ExtensionUtils: ExtensionUtils }
+        > &
+        JSM<
+          "resource://gre/modules/ExtensionCommon.jsm",
+          { ExtensionCommon: ExtensionCommon }
+        > &
+        JSM<"resource://gre/modules/osfile.jsm", { OS: OS }> &
         JSM<
           "resource://gre/modules/ExtensionPermissions.jsm",
           { ExtensionPermissions: ExtensionPermissions }
+        > &
+        JSM<
+          "resource:///modules/ExtensionsUI.jsm",
+          { ExtensionsUI: ExtensionsUI }
         >
     },
     manager: Components$manager,
@@ -2691,17 +2766,16 @@ declare module "gecko" {
       cpmm: nsIContentProcessMessageManager<$c, c$>,
       mm: nsIMessageBroadcaster<$m, m$> & nsIFrameScriptLoader,
       appinfo: nsIXULAppInfo & nsIXULRuntime,
-      io: nsIIOService
+      io: nsIIOService,
+      wm: nsIWindowMediator
     };
   }
 
   declare export interface XPCOMUtils {
-    XPCOMUtils: {
-      defineLazyGetter<a>(Object, string, () => a): void,
-      generateQI<a, b, c, d, e>(
-        Array<nsIJSID<a> | nsIJSID<b> | nsIJSID<c> | nsIJSID<d> | nsIJSID<e>>
-      ): <$: a | b | c | d | e>(nsIJSID<$>) => $
-    };
+    defineLazyGetter<a>(Object, string, () => a): void;
+    generateQI<a, b, c, d, e>(
+      Array<nsIJSID<a> | nsIJSID<b> | nsIJSID<c> | nsIJSID<d> | nsIJSID<e>>
+    ): <$: a | b | c | d | e>(nsIJSID<$>) => $;
   }
 
   declare export interface Timer {
@@ -2710,6 +2784,58 @@ declare module "gecko" {
     setInterval: typeof setInterval;
     clearInterval: typeof clearInterval;
   }
+
+  declare export interface PopupNotifications {
+    locationChange(): void;
+    locationChange(id: string, GeckoBrowser): PopupNotifications$Notification;
+    remove(PopupNotifications$Notification): void;
+    show(
+      GeckoBrowser,
+      id: string,
+      message: string,
+      anchorID: null | string,
+      PopupNotifications$Action,
+      secondary: ?(PopupNotifications$Action[]),
+      ?PopupNotifications$Options
+    ): PopupNotifications$Notification;
+  }
+
+  declare export interface PopupNotifications$Notification {
+    +id: string;
+    +message: string;
+    +anchorID: string;
+    +mainAction: PopupNotifications$Action;
+    +secondaryActions: null | PopupNotifications$Action[];
+    +options: PopupNotifications$Options;
+    +dismissed: boolean;
+    anchorElement: Element;
+    reshow(): void;
+    remove(): void;
+  }
+
+  declare export interface PopupNotifications$Action {
+    label: string;
+    accessKey: string;
+    callback(): void;
+  }
+
+  declare export interface PopupNotifications$Options {
+    persistence?: boolean;
+    timeout?: number;
+    persistWhileVisible?: boolean;
+    dismissed?: boolean;
+    eventCallback?: PopupNotifications$Event => void;
+    neverShow?: boolean;
+    removeOnDismissal?: boolean;
+    popupIconURL?: string;
+    learnMoreURL?: string;
+  }
+
+  declare export type PopupNotifications$Event =
+    | "dismissed"
+    | "removed"
+    | "showing"
+    | "shown"
 
   declare class ExtensionData {
     rootURI: nsIURI;
@@ -2734,6 +2860,8 @@ declare module "gecko" {
   }
 
   declare class Extension extends ExtensionData {
+    name: string;
+    iconURL: ?string;
     constructor(addonData: Object, startupReason: string): void;
     activePermissions: Object;
     callOnClose({ close(): void }): void;
@@ -2783,9 +2911,20 @@ declare module "gecko" {
       callback: () => out
     ): out;
     wrapPromise<a>(Promise<a>): Promise<a>;
+    pendingEventBrowser: ?GeckoBrowser;
+    xulBrowser: GeckoBrowser;
   }
 
-  declare export class ExtensionError extends Error {}
+  declare interface GeckoBrowser {
+    ownerDocument: Document & {
+      docShell: nsIDocShell
+    };
+    ownerGlobal: {
+      PopupNotifications: PopupNotifications
+    };
+  }
+
+  declare class ExtensionError extends Error {}
 
   declare type Tuple<a = *, b = *, c = *, d = *, e = *, f = *, g = *> =
     | []
@@ -2825,14 +2964,11 @@ declare module "gecko" {
   }
 
   declare export interface ExtensionUtils {
-    ExtensionUtils: {
-      getConsole(): typeof console
-    };
+    getConsole(): typeof console;
+    ExtensionError: typeof ExtensionError;
   }
 
-  declare export interface ExtensionCommon {
-    ExtensionCommon: {};
-  }
+  declare export interface ExtensionCommon {}
 
   declare class OS$File$DirectoryIterator$Entry {
     +isDir: boolean;
@@ -2845,11 +2981,9 @@ declare module "gecko" {
     +winLastWriteDate?: Date;
   }
 
-  declare interface OSFile {
-    OS: {
-      Path: {
-        fromFileURI(uri: nsIFileURL): string
-      }
+  declare interface OS {
+    Path: {
+      fromFileURI(uri: string): string
     };
   }
 
@@ -2863,4 +2997,6 @@ declare module "gecko" {
     add(Extension, Permissions): Promise<void>;
     removeAll(Extension): Promise<void>;
   }
+
+  declare interface ExtensionsUI {}
 }

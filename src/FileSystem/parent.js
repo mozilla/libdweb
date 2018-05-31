@@ -1,7 +1,8 @@
-// @flow
+// @flow strict
+
 /*::
-import { Cu, Cr, Ci, Cc } from "gecko"
-import { ExtensionAPI, BaseContext, ExtensionError } from "gecko"
+import { Cu, Cr, Ci, Cc, ExtensionAPI } from "gecko"
+import type {BaseContext} from "gecko"
 import type {
   FileSystemManager,
   FileSystem,
@@ -25,10 +26,20 @@ interface FileSystemSupervisor {
 Cu.importGlobalProperties(["URL"])
 const { Services } = Cu.import("resource://gre/modules/Services.jsm", {})
 const { OS } = Cu.import("resource://gre/modules/osfile.jsm", {})
+const { ExtensionUtils } = Cu.import(
+  "resource://gre/modules/ExtensionUtils.jsm",
+  {}
+)
 const { ExtensionPermissions } = Cu.import(
   "resource://gre/modules/ExtensionPermissions.jsm",
   {}
 )
+const { ExtensionsUI } = Cu.import("resource:///modules/ExtensionsUI.jsm", {})
+
+const { ExtensionError } = ExtensionUtils
+
+const DEFAULT_EXTENSION_ICON =
+  "chrome://mozapps/skin/extensions/extensionGeneric.svg"
 
 const accessFrom = ({ readable, writable, watchable }) /*:string*/ => {
   let params = []
@@ -46,18 +57,22 @@ const accessFrom = ({ readable, writable, watchable }) /*:string*/ => {
 }
 
 const normalizeFileURL = (href) /*: string*/ => {
-  const fileURI = Services.io
-    .newURI(href, null, null)
-    .QueryInterface(Ci.nsIFileURL)
-  const path = OS.Path.fromFileURI(fileURI)
-  return `file://${path}`
+  // const fileURI = Services.io
+  //   .newURI(href, null, null)
+  //   .QueryInterface(Ci.nsIFileURL)
+  // console.log("normalizeURL", href, fileURI)
+  // const path = OS.Path.fromFileURI(fileURI.spec)
+  const path = OS.Path.fromFileURI(href)
+  return `file://${path}/`
 }
 
-const requestDirectoryAccess = (window, options) =>
+const requestDirectoryAccess = (options) /*:Promise<string>*/ =>
   new Promise((resolve, reject) => {
     const filePicker = Cc["@mozilla.org/filepicker;1"].createInstance(
       Ci.nsIFilePicker
     )
+
+    const window = Services.wm.getMostRecentWindow("navigator:browser")
 
     filePicker.init(window, options.title, Ci.nsIFilePicker.modeGetFolder)
     filePicker.open(status => {
@@ -67,14 +82,25 @@ const requestDirectoryAccess = (window, options) =>
           return resolve(filePicker.fileURL.spec)
         case Ci.nsIFilePicker.returnCancel:
         default:
-          return reject(Error("User denied access"))
+          return reject(new ExtensionError("User denied directory access"))
       }
     })
   })
 
-const updatePermissions = (volume /*: Volume*/) => {
-  const access = accessFrom(volume)
-  const permission = `${volume.url}?${access}`
+const updatePermissions = async (volume /*: Volume*/, extension) => {
+  const permissions = []
+  const { url, readable, writable, watchable } = volume
+  if (readable) {
+    permissions.push(`read+${url}`)
+  }
+  if (writable) {
+    permissions.push(`write+${url}`)
+  }
+  if (watchable) {
+    permissions.push(`watch+${url}`)
+  }
+
+  await ExtensionPermissions.add(extension, { permissions, origins: [] })
 }
 
 const getPermissions = async (url, extension) => {
@@ -87,37 +113,128 @@ const getPermissions = async (url, extension) => {
   }
 }
 
-const requestPermissions = async (window, options) => {
-  return requestDirectoryAccess(window, options)
+const requestPermissions = async (options, extension) => {
+  const url = await requestDirectoryAccess(options)
+  const volume = {
+    url,
+    readable: options.read != false,
+    writable: options.write === true,
+    watchable: options.watch === true
+  }
+  await updatePermissions(volume, extension)
+  return volume
 }
 
-const self /*:window*/ = this
-self.FileSystem = class ExtensionAPI /*::<FileSystemSupervisor>*/ {
-  getAPI(context /*:BaseContext*/) {
-    return {
-      FileSystem: {
-        async mount(options /*:MountOptions*/) /*:Promise<Volume>*/ {
-          if (options.url) {
-            const volume = await getPermissions(
-              normalizeFileURL(options.url),
-              context.extension
-            )
-            if (!volume.readable && !volume.writable && !volume.watchable) {
-              throw new Error(
-                "Access to the requested directory was not granted."
-              )
-            }
-            return volume
-          } else {
-            const url = await requestPermissions(context.contentWindow, options)
-            const volume = {
-              url,
-              readable: options.read != false,
-              writable: options.write == true,
-              watchable: options.watch == true
-            }
+const requestVirtualVolume = async (options, extension) => {
+  const url = extension.getURL(".")
+  const volume = {
+    url,
+    readable: options.read != false,
+    writable: options.write === true,
+    watchable: options.watch === true
+  }
+  await updatePermissions(volume, extension)
+  return volume
+}
 
-            return volume
+const getTabBrowser = target => {
+  let browser = target
+  while (
+    browser.ownerDocument.docShell.itemType !== Ci.nsIDocShell.typeChrome
+  ) {
+    browser = browser.ownerDocument.docShell.chromeEventHandler
+  }
+  return browser
+}
+
+const promptPermissions = (
+  options /*:MountOptions*/,
+  context /*:BaseContext*/
+) =>
+  new Promise((resolve, reject) => {
+    const browser = getTabBrowser(
+      context.pendingEventBrowser || context.xulBrowser
+    )
+    const name = context.extension.name
+    const icon = context.extension.iconURL || DEFAULT_EXTENSION_ICON
+    let permissions = []
+    if (options.read != false) {
+      permissions.push("read")
+    }
+    if (options.write === true) {
+      permissions.push("write")
+    }
+    if (options.watch === true) {
+      permissions.push("watch")
+    }
+
+    browser.ownerGlobal.PopupNotifications.show(
+      browser,
+      "libdweb-fs-popup",
+      `${name} is requesting permission to ${permissions.join(
+        ", "
+      )} files in a local directory`,
+      null,
+      {
+        label: "Allow",
+        accessKey: "A",
+        callback() {
+          requestVirtualVolume(options, context.extension).then(resolve, reject)
+        }
+      },
+      [
+        {
+          label: "Choose directory",
+          accessKey: "C",
+          callback() {
+            requestPermissions(options, context.extension).then(resolve, reject)
+          }
+        },
+        {
+          label: "Deny permission",
+          accessKey: "D",
+          callback() {
+            reject(new ExtensionError("User denied directory access"))
+          }
+        }
+      ],
+      {
+        persistence: false,
+        popupIconURL: icon
+      }
+    )
+  })
+
+{
+  const self /*:window*/ = this
+  self.FileSystem = class ExtensionAPI /*::<FileSystemSupervisor>*/ {
+    getAPI(context /*:BaseContext*/) {
+      return {
+        FileSystem: {
+          async mount(options /*:MountOptions*/) /*:Promise<Volume>*/ {
+            if (options.url) {
+              const volume = await getPermissions(
+                normalizeFileURL(options.url),
+                context.extension
+              )
+
+              console.log("Granted permissions", volume)
+
+              if (!volume.readable && !volume.writable && !volume.watchable) {
+                throw new ExtensionError(
+                  "Access to the requested directory was not granted."
+                )
+              }
+              return volume
+            } else {
+              console.log("Request permissions", options)
+              const volume = await requestPermissions(
+                options,
+                context.extension
+              )
+
+              return volume
+            }
           }
         }
       }

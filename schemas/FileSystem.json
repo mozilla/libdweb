@@ -166,6 +166,11 @@
                 "type": "string",
                 "description": "Title to displayed in the user prompt"
               },
+              "url": {
+                "type":"string",
+                "description": "URL to previously mounted directory",
+                "optional": true
+              },
               "read": {
                 "type": "boolean",
                 "description": "Request read access",
@@ -185,14 +190,29 @@
                 "optional": true
               }
             }
-          },
-          {
-            "name": "handler",
-            "$ref": "ProtocolHandler",
-            "type": "function",
-            "description": "Protocol handler for the registered protocol"
           }
-        ]
+        ],
+        "returns": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "URL for the mounted filesystem"
+            },
+            "readable": {
+              "type": "boolean",
+              "description": "Whether the filesystem is readable"
+            },
+            "writable": {
+              "type": "boolean",
+              "description": "Whether the filesystem is writable"
+            },
+            "watchable": {
+              "type": "boolean",
+              "description": "Whether the filesystem is watchable"
+            }
+          }
+        }
       }
     ],
     "properties": {
