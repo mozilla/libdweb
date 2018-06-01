@@ -2741,6 +2741,10 @@ declare module "gecko" {
         JSM<
           "resource:///modules/ExtensionsUI.jsm",
           { ExtensionsUI: ExtensionsUI }
+        > &
+        JSM<
+          "resource://gre/modules/AddonManager.jsm",
+          { AddonManager: AddonManager }
         >
     },
     manager: Components$manager,
@@ -2769,6 +2773,14 @@ declare module "gecko" {
       io: nsIIOService,
       wm: nsIWindowMediator
     };
+  }
+
+  declare export interface AddonManager {
+    getAddonByID(string): Promise<AddonManager$Addon>;
+  }
+
+  declare export interface AddonManager$Addon {
+    +iconURL: string;
   }
 
   declare export interface XPCOMUtils {
@@ -2842,7 +2854,7 @@ declare module "gecko" {
     resourceURL: string;
     manifest: null;
     type: null;
-    id: null;
+    id: string;
     uuid: null;
     localeData: null;
     getURL(path: string): string;

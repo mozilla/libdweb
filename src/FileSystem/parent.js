@@ -35,6 +35,10 @@ const { ExtensionPermissions } = Cu.import(
   {}
 )
 const { ExtensionsUI } = Cu.import("resource:///modules/ExtensionsUI.jsm", {})
+const { AddonManager } = Cu.import(
+  "resource://gre/modules/AddonManager.jsm",
+  {}
+)
 
 const { ExtensionError } = ExtensionUtils
 
@@ -151,12 +155,14 @@ const promptPermissions = (
   options /*:MountOptions*/,
   context /*:BaseContext*/
 ) =>
-  new Promise((resolve, reject) => {
+  new Promise(async (resolve, reject) => {
     const browser = getTabBrowser(
       context.pendingEventBrowser || context.xulBrowser
     )
+    const addon = await AddonManager.getAddonByID(context.extension.id)
+
     const name = context.extension.name
-    const icon = context.extension.iconURL || DEFAULT_EXTENSION_ICON
+    const icon = addon.iconURL || DEFAULT_EXTENSION_ICON
     let permissions = []
     if (options.read != false) {
       permissions.push("read")
@@ -167,6 +173,8 @@ const promptPermissions = (
     if (options.watch === true) {
       permissions.push("watch")
     }
+
+    console.log("!!!!!!!!!!!!", addon)
 
     browser.ownerGlobal.PopupNotifications.show(
       browser,
@@ -228,10 +236,7 @@ const promptPermissions = (
               return volume
             } else {
               console.log("Request permissions", options)
-              const volume = await requestPermissions(
-                options,
-                context.extension
-              )
+              const volume = await promptPermissions(options, context)
 
               return volume
             }

@@ -34,5 +34,12 @@
   "background": { "scripts": ["demo/background.js"] },
   "protocol": {
     "goz": "demo/goz.js"
+  },
+  "icons": {
+    "48": "demo/logo-flyweb-grey.svg",
+    "96": "demo/logo-flyweb-grey.svg"
+  },
+  "options_ui": {
+    "page": "demo/options.html"
   }
 }
