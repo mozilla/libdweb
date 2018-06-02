@@ -19,8 +19,10 @@ import type {
   Permissions
 } from "./API"
 
-interface FileSystemSupervisor {
-
+interface Host {
+  +FileSystem: {
+    mount(MountOptions):Promise<Volume>
+  }
 }
 */
 Cu.importGlobalProperties(["URL"])
@@ -78,7 +80,7 @@ const requestDirectoryAccess = (options) /*:Promise<string>*/ =>
 
     const window = Services.wm.getMostRecentWindow("navigator:browser")
 
-    filePicker.init(window, options.title, Ci.nsIFilePicker.modeGetFolder)
+    filePicker.init(window, "", Ci.nsIFilePicker.modeGetFolder)
     filePicker.open(status => {
       switch (status) {
         case Ci.nsIFilePicker.returnOK:
@@ -119,14 +121,22 @@ const getPermissions = async (url, extension) => {
 
 const requestPermissions = async (options, extension) => {
   const url = await requestDirectoryAccess(options)
-  const volume = {
+  return await granPermissions(url, options, extension)
+}
+
+const granPermissions = async (url, options, extension) => {
+  const volume = createVolume(url, options)
+  await updatePermissions(volume, extension)
+  return volume
+}
+
+const createVolume = (url, options) => {
+  return {
     url,
     readable: options.read != false,
     writable: options.write === true,
     watchable: options.watch === true
   }
-  await updatePermissions(volume, extension)
-  return volume
 }
 
 const requestVirtualVolume = async (options, extension) => {
@@ -184,20 +194,13 @@ const promptPermissions = (
       )} files in a local directory`,
       null,
       {
-        label: "Allow",
-        accessKey: "A",
+        label: "Choose directory",
+        accessKey: "C",
         callback() {
-          requestVirtualVolume(options, context.extension).then(resolve, reject)
+          requestPermissions(options, context.extension).then(resolve, reject)
         }
       },
       [
-        {
-          label: "Choose directory",
-          accessKey: "C",
-          callback() {
-            requestPermissions(options, context.extension).then(resolve, reject)
-          }
-        },
         {
           label: "Deny permission",
           accessKey: "D",
@@ -213,33 +216,98 @@ const promptPermissions = (
     )
   })
 
-{
-  const self /*:window*/ = this
-  self.FileSystem = class ExtensionAPI /*::<FileSystemSupervisor>*/ {
-    getAPI(context /*:BaseContext*/) {
-      return {
-        FileSystem: {
-          async mount(options /*:MountOptions*/) /*:Promise<Volume>*/ {
-            if (options.url) {
-              const volume = await getPermissions(
-                normalizeFileURL(options.url),
-                context.extension
+const promptAdditonalPermissions = (
+  url /*:string*/,
+  options /*:MountOptions*/,
+  context /*:BaseContext*/
+) =>
+  new Promise(async (resolve, reject) => {
+    const browser = getTabBrowser(
+      context.pendingEventBrowser || context.xulBrowser
+    )
+    const addon = await AddonManager.getAddonByID(context.extension.id)
+
+    const name = context.extension.name
+    const icon = addon.iconURL || DEFAULT_EXTENSION_ICON
+    let permissions = []
+    if (options.read != false) {
+      permissions.push("read")
+    }
+    if (options.write === true) {
+      permissions.push("write")
+    }
+    if (options.watch === true) {
+      permissions.push("watch")
+    }
+    console.log("!!!!!!!!!!!!", addon)
+
+    browser.ownerGlobal.PopupNotifications.show(
+      browser,
+      "libdweb-fs-popup",
+      `${name} is requesting permission to ${permissions.join(
+        ", "
+      )} files in a local directory: ${url}`,
+      null,
+      {
+        label: "Grant permissions",
+        accessKey: "C",
+        callback() {
+          granPermissions(url, options, context.extension).then(resolve, reject)
+        }
+      },
+      [
+        {
+          label: "Deny permission",
+          accessKey: "D",
+          callback() {
+            reject(new ExtensionError("User denied directory access"))
+          }
+        }
+      ],
+      {
+        persistence: false,
+        popupIconURL: icon
+      }
+    )
+  })
+
+class HostFileSystem extends ExtensionAPI /*::<Host>*/ {
+  getAPI(context) {
+    return {
+      FileSystem: {
+        async mount(options /*:MountOptions*/) /*:Promise<Volume>*/ {
+          if (options.url) {
+            const volume = await getPermissions(
+              normalizeFileURL(options.url),
+              context.extension
+            )
+
+            console.log("Granted permissions", volume)
+
+            const { writable, readable, watchable } = volume
+            if (!writable && !readable && !watchable) {
+              throw new ExtensionError(
+                "Access to the requested directory was not granted."
               )
-
-              console.log("Granted permissions", volume)
-
-              if (!volume.readable && !volume.writable && !volume.watchable) {
-                throw new ExtensionError(
-                  "Access to the requested directory was not granted."
-                )
-              }
+            } else if (
+              options.read === readable &&
+              options.write === writable &&
+              options.watch === watchable
+            ) {
               return volume
             } else {
-              console.log("Request permissions", options)
-              const volume = await promptPermissions(options, context)
-
+              const volume = await promptAdditonalPermissions(
+                options.url,
+                options,
+                context
+              )
               return volume
             }
+          } else {
+            console.log("Request permissions", options)
+            const volume = await promptPermissions(options, context)
+
+            return volume
           }
         }
       }
@@ -247,74 +315,4 @@ const promptPermissions = (
   }
 }
 
-// Cu.import("resource://gre/modules/ExtensionPermissions.jsm")
-// Cu.import("resource://gre/modules/AddonManager.jsm")
-// Cu.import("resource://gre/modules/ExtensionParent.jsm")
-
-// ExtensionPermissions.get
-
-// addon = AddonManager.getAddonByID('698aaa1d0cb11d90b1d3b7b0b5cbd9052ca1d09c@temporary-addon').then($ => addon = $)
-
-// addons = AddonManager.getAllAddons().then($ => addons = $)
-
-// addons[9].__AddonInternal__
-// addon.startupPromise
-
-// inst = AddonManager.getAllInstalls().then($ => inst = $)
-
-// ext = {id:"698aaa1d0cb11d90b1d3b7b0b5cbd9052ca1d09c@temporary-addon"}
-// perm = ExtensionPermissions.get({id:"137562a2-595e-1840-ba66-3e61beebf12f"})
-
-// ExtensionParent.StartupCache
-
-// p = ExtensionPermissions.add(ext, {
-//   permissions: [
-//     "filesystem:///Users/gozala/Projects/libdweb/#rwo"
-//   ],
-//   origins: [
-
-//   ]
-// })
-
-// p1 = ExtensionPermissions.get(ext)
-
-// /*
-// async add(extension, perms) {
-//     let {permissions, origins} = await this._getCached(extension);
-
-//     let added = emptyPermissions();
-
-//     for (let perm of perms.permissions) {
-//       if (!permissions.includes(perm)) {
-//         added.permissions.push(perm);
-//         permissions.push(perm);
-//       }
-//     }
-
-//     for (let origin of perms.origins) {
-//       origin = new MatchPattern(origin, {ignorePath: true}).pattern;
-//       if (!origins.includes(origin)) {
-//         added.origins.push(origin);
-//         origins.push(origin);
-//       }
-//     }
-
-//     if (added.permissions.length > 0 || added.origins.length > 0) {
-//       this._saveSoon(extension);
-//       extension.emit("add-permissions", added);
-//     }
-//   }
-// */
-
-// url = new URL('file:///Users////gozala/Projects/libdweb/')
-
-// url.search = `?read&write&watch`
-
-// url.searchParams.set('write', '')
-// [...url.searchParams.keys()]
-
-// uri = Services.io.newURI('file:///Users/gozala////Projects/libdweb/#rwo')
-//   .QueryInterface(Ci.nsIFileURL)
-//   .resolve('foo')
-
-// OS.Path.toFileURI('file:///Users/gozala////Projects/libdweb/?read&write&watch'.substr('file://'.length))
+global.FileSystem = HostFileSystem

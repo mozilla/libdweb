@@ -12,20 +12,8 @@ export interface FileSystemManager {
   mount(MountOptions): Promise<FileSystem>;
 }
 
-export interface PathManager {
-  basename(Path): string;
-  dirname(Path): Path;
-  join(...Path[]): Path;
-  normalize(Path): Path;
-  split(Path): { components: string[], winDrive: ?string, absolute: boolean };
-  winGetDrive(Path): ?string;
-  winIsAbsolute(Path): ?boolean;
-}
-
 export interface MountOptions {
-  title: string;
   url?: string;
-
   read?: false;
   write?: true;
   watch?: true;

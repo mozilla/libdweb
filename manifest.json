@@ -1,40 +1,40 @@
 {
   "manifest_version": 2,
-  "version": "2.0",
-  "name": "Extension containing an experimental libdweb APIs",
+  "version": "0.1",
+  "name": "libdweb",
+  "description": "Extension containing an experimental libdweb APIs",
+  "permissions": [],
+
   "experiment_apis": {
     "protocol": {
-      "schema": "./schemas/protocol.json",
+      "schema": "./src/protocol/protocol.json",
       "child": {
         "scopes": ["addon_child"],
         "paths": [["protocol"]],
-        "script": "./src/protocol/child.js"
+        "script": "./src/protocol/client.js"
       },
       "parent": {
         "events": ["startup"],
         "scopes": ["addon_parent"],
         "paths": [["protocol"]],
-        "script": "./src/protocol/parent.js"
+        "script": "./src/protocol/host.js"
       }
     },
     "FileSystem": {
-      "schema": "./schemas/FileSystem.json",
+      "schema": "./src/FileSystem/FileSystem.json",
       "child": {
         "scopes": ["addon_child"],
         "paths": [["FileSystem"]],
-        "script": "./src/FileSystem/child.js"
+        "script": "./src/FileSystem/client.js"
       },
       "parent": {
         "scopes": ["addon_parent"],
         "paths": [["FileSystem"]],
-        "script": "./src/FileSystem/parent.js"
+        "script": "./src/FileSystem/host.js"
       }
     }
   },
   "background": { "scripts": ["demo/background.js"] },
-  "protocol": {
-    "goz": "demo/goz.js"
-  },
   "icons": {
     "48": "demo/logo-flyweb-grey.svg",
     "96": "demo/logo-flyweb-grey.svg"

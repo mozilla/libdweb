@@ -1,19 +1,44 @@
+let fs = null
+
 const onChoose = async () => {
   const volume = await browser.FileSystem.mount({
-    title: "Choose the default directory where your projects will be saved.",
-    read: true,
-    write: false,
-    watch: false
+    read: readable.checked,
+    write: writable.checked,
+    watch: watchable.checked
   })
+  onMount(volume)
+}
 
-  volumeURLField.value = volume.url
-  volumeField.value = volume.url
+const onMount = drive => {
+  console.log("mounted", drive)
+  fs = drive
+  volume.value = fs.url
+  readable.checked = fs.readable
+  writable.checked = fs.writable
+  watchable.checked = fs.watchable
+}
 
-  console.log("mounted URL", volume, volumeURLField, volumeField)
+const onChange = async event => {
+  if (fs) {
+    const options = {
+      url: fs.url,
+      read: readable.checked,
+      write: writable.checked,
+      watch: watchable.checked
+    }
+
+    console.log(`request permission ${JSON.stringify(options)}`)
+    onMount(await browser.FileSystem.mount(options))
+  }
 }
 
 const chooseButton = document.querySelector("#choose")
-const volumeURLField = document.querySelector("#volume-url")
-const volumeField = document.querySelector("#volume")
+const volume = document.querySelector("#volume")
+const readable = document.querySelector("#readable")
+const writable = document.querySelector("#writable")
+const watchable = document.querySelector("#watchable")
 
 chooseButton.onclick = onChoose
+readable.onchange = onChange
+writable.onchange = onChange
+watchable.onchange = onChange

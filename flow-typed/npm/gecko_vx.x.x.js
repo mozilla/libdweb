@@ -2716,6 +2716,7 @@ declare module "gecko" {
       ): a,
       getGlobalForObject<a: Object>(a): Object,
       importGlobalProperties(string[]): void,
+      unload(string): void,
       import: (<p, p$, c, c$, m, m$>(
         "resource://gre/modules/Services.jsm",
         {}

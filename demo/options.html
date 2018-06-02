@@ -10,9 +10,14 @@
   <form style="display: flex; flex-flow: column wrap;">
     <label>Choose the default directory where your projects will be saved.</label>
     <br/>
-    <input type="url" name="value-url" id="volume-url" style="display: none" />
     <div style="display: flex;">
       <output style="flex: 3;" name="volume" id="volume" for="volume-url"></output>
+      <label for="read">read</label>
+      <input type="checkbox" checked name="read" id="readable" />
+      <label for="read">write</label>
+      <input type="checkbox" name="write" id="writable" />
+      <label for="read">watch</label>
+      <input type="checkbox" name="watch" id="watchable" />
       <button style="flex: 1;" type="button" id="choose">Choose directory</button>
     </div>
   </form>

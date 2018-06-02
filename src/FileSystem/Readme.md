@@ -20,4 +20,6 @@ We encourage add-ons to request only previleges that are absolutely necessary
 and request additional permissions as they become necessary. Above API call
 would trigger following user interaction shown below:
 
+![User prompt](../../docs/mount-prompt.png)
+
 https://blocksplain.com/wp-content/uploads/2018/02/beaker_logo.png

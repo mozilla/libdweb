@@ -24,7 +24,8 @@
     "prettier": "^1.9.2",
     "rollup": "0.59.1",
     "rollup.config.flow": "1.1.0",
-    "source-map-support": "0.5.6"
+    "source-map-support": "0.5.6",
+    "web-ext": "2.7.0"
   },
   "scripts": {
     "//test": "npm run test:flow && npm run test:tape",
@@ -42,7 +43,9 @@
     "//prepublishOnly": "npm run build && npm run build:umd && npm test",
     "precommit": "lint-staged",
     "//start":
-      "flow-copy-source --watch --verbose src lib & babel --watch --out-dir lib src"
+      "flow-copy-source --watch --verbose src lib & babel --watch --out-dir lib src",
+    "debug":
+      "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging"
   },
   "lint-staged": {
     "*.js": ["prettier --no-semi --write", "git add"]

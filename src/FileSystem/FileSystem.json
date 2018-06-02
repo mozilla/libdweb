@@ -132,7 +132,7 @@
   {
     "namespace": "FileSystem",
     "description": "FileSystem API",
-    "manifest": ["FileSystem"],
+    "//permissions": ["FileSystem"],
     "types": [
       {
         "id": "Path",
@@ -162,12 +162,8 @@
             "description":
               "Request to mount specific directory as a virtual FileSystem.",
             "properties": {
-              "title": {
-                "type": "string",
-                "description": "Title to displayed in the user prompt"
-              },
               "url": {
-                "type":"string",
+                "type": "string",
                 "description": "URL to previously mounted directory",
                 "optional": true
               },
