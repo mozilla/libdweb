@@ -1,0 +1,24 @@
+[
+  {
+    "namespace": "mdns",
+    "description": "mDNS API",
+    "types": [],
+    "functions": [
+			{
+        "name": "startDiscovery",
+        "type": "function",
+        "description": "Start mDNS discovery.",
+        "async": true,
+        "parameters": [
+          {
+            "name": "serviceType",
+            "type": "string",
+            "description": "The service type to be discovered, E.g. '_http._tcp'."
+          }
+        ]
+      }
+    ],
+    "properties": {},
+    "events": []
+  }
+]
