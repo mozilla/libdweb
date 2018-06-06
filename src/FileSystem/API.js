@@ -10,41 +10,25 @@ export interface FileSystemManager {
   // This API will be limited to options_ui only so that user has a clear idea
   // what is requesting filesystem access.
   mount(MountOptions): Promise<FileSystem>;
-
-  Path: PathManager;
-}
-
-export interface PathManager {
-  basename(Path): string;
-  dirname(Path): Path;
-  join(...Path[]): Path;
-  normalize(Path): Path;
-  split(Path): string[];
-  winGetDrive(Path): ?string;
-  winIsAbsolute(Path): ?boolean;
 }
 
 export interface MountOptions {
-  title: string;
-  name: string;
-
+  url?: string;
   read?: false;
   write?: true;
   watch?: true;
 }
 
+export interface Volume {
+  +url: string;
+  +readable: boolean;
+  +writable: boolean;
+  +watchable: boolean;
+}
+
 export type Path = string
 
-export interface FileSystem {
-  +name: string;
-  +path: string;
-  +permission: { +read: boolean, +write: boolean, +watch: boolean };
-
-  // Operations that exceed mount permissions (as described above) will fail
-  // with error. Any attepts to read / write from outside the mounted directory
-  // will also fail.
-  +Path: PathManager;
-
+export interface FileSystem extends Volume {
   open(Path, ReadMode, options: ?OpenOptions): ReadableFile;
   open(Path, WriteMode, options: ?OpenOptions): WritableFile;
   open(Path, ReadWriteMode, options: ?OpenOptions): DuplexFile;
@@ -110,6 +94,7 @@ export type WriteFlags =
 export type ReadMode = { read: true, write?: false }
 export type WriteMode = { write: true, read?: false } & WriteFlags
 export type ReadWriteMode = { read: true, write: true } & WriteFlags
+export type Mode = ReadMode | WriteMode | ReadWriteMode
 
 export interface OpenOptions {
   unixFlags?: UnixAccessRights;
@@ -206,13 +191,13 @@ export interface DuplexFile extends GeneralFile, Readable, Writable {
 export type File = ReadableFile | WritableFile | DuplexFile
 
 export interface ReadOptions {
-  byteSize?: number;
-  byteOffset?: number;
+  size?: number;
+  offset?: number;
 }
 
 export interface WriteOptions {
-  byteSize?: number;
-  byteOffset?: number;
+  size?: number;
+  offset?: number;
 }
 
 export type Stat = WindowsStat | UnixStat

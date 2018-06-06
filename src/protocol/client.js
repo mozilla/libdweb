@@ -1,10 +1,10 @@
-// @flow
+// @flow strict
 
 /*::
 import { Cu, Cr } from "gecko"
 import type { nsIMessageSender } from "gecko"
 import { ExtensionAPI, BaseContext } from "gecko"
-import type { HandlerInbox, RequestStatus, HandlerOutbox, Inn, Out } from "./protocol"
+import type { HandlerInbox, RequestStatus, HandlerOutbox, Inn, Out } from "./router"
 
 interface Head {
   contentType?: string,
@@ -196,14 +196,14 @@ class Protocol /*::implements ConnectionManager*/ {
 }
 
 /*::
-interface API {
+interface Client {
   +protocol: {
     registerProtocol(string, Handler): Promise<void>
-  };
+  }
 }
 */
-const self /*: window */ = this
-self.protocol = class extends ExtensionAPI /*::<API>*/ {
+
+class ProtocolClient extends ExtensionAPI /*::<Client>*/ {
   getAPI(context) {
     const init = context.childManager.callParentAsyncFunction(
       "protocol.spawn",
@@ -222,3 +222,4 @@ self.protocol = class extends ExtensionAPI /*::<API>*/ {
     }
   }
 }
+global.protocol = ProtocolClient

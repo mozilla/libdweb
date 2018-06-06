@@ -1,0 +1,440 @@
+[
+  {
+    "namespace": "Path",
+    "description": "Functions designed to manipulate paths in a cross-platform manner.",
+    "manifest": [
+      "Path"
+    ],
+    "types": [],
+    "functions": [
+      {
+        "name": "basename",
+        "type": "function",
+        "async": false,
+        "description": "Return the final component of a path",
+        "parameters": [
+          {
+            "name": "path",
+            "description": "A valid path",
+            "type": "string"
+          }
+        ],
+        "returns": {
+          "type": "string",
+          "description": "The final component of path. This is everything after the last `/` (under Unix) or `\\` (under Windows)."
+        }
+      },
+      {
+        "name": "dirname",
+        "type": "function",
+        "description": "Return the directory part of the path.",
+        "async": false,
+        "parameters": [
+          {
+            "name": "path",
+            "description": "A valid path",
+            "type": "string"
+          }
+        ],
+        "returns": {
+          "type": "string",
+          "description": "Everything before the last `/` (under Unix) or `\\` (under Windows). If the path contains no directory, return `.`"
+        }
+      },
+      {
+        "name": "join",
+        "type": "function",
+        "async": false,
+        "description": "Join path components. This file is the recommended manner of getting the path of a file or a subdirectory contained in a directory.",
+        "parameters": [
+          {
+            "name": "path",
+            "description": "A valid path",
+            "type": "string"
+          },
+          {
+            "name": "subpath",
+            "description": "path component that must be appended to path"
+          },
+          {
+            "name": "subpath2",
+            "optional": true,
+            "description": "path component that must be appended to path"
+          },
+          {
+            "name": "subpath3",
+            "optional": true,
+            "description": "path component that must be appended to path"
+          },
+          {
+            "name": "subpath4",
+            "optional": true,
+            "description": "path component that must be appended to path"
+          }
+        ],
+        "returns": {
+          "type": "string",
+          "description": "The result of concatenaging the paths. If any of the subpaths is absolute, anything before this subpath is ignored. The path may not be normalized."
+        }
+      },
+      {
+        "name": "normalize",
+        "type": "function",
+        "async": false,
+        "description": "Normalize a path by removing unneeded ., .., /, .",
+        "parameters": [
+          {
+            "name": "path",
+            "description": "A valid path",
+            "type": "string"
+          }
+        ],
+        "returns": {
+          "type": "string",
+          "description": "A path equivalent to path, but in which needless occurrences of `.`, `..`, `/` and `\\` have been removed."
+        }
+      },
+      {
+        "name": "split",
+        "type": "function",
+        "description": "Split a path into its components",
+        "async": false,
+        "parameters": [
+          {
+            "name": "path",
+            "description": "A path. Generally, it should be normalized",
+            "type": "string"
+          }
+        ],
+        "returns": {
+          "type": "object",
+          "properties": {
+            "absolute": {
+              "type": "boolean",
+              "description": "true if path is absolute, false otherwise"
+            },
+            "components": {
+              "type": "array",
+              "description": "An array containing the components that define path"
+            }
+          }
+        }
+      }
+    ],
+    "properties": {},
+    "events": []
+  },
+  {
+    "namespace": "FileSystem",
+    "description": "FileSystem API",
+    "//permissions": [
+      "FileSystem"
+    ],
+    "types": [
+      {
+        "id": "Path",
+        "type": "object",
+        "properties": {
+          "basename": {
+            "type": "function",
+            "async": false,
+            "parameters": [
+              {
+                "name": "path"
+              }
+            ],
+            "returns": {
+              "type": "string",
+              "description": ""
+            }
+          }
+        }
+      }
+    ],
+    "functions": [
+      {
+        "name": "mount",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "options",
+            "type": "object",
+            "description": "Request to mount specific directory as a virtual FileSystem.",
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "URL to previously mounted directory",
+                "optional": true
+              },
+              "read": {
+                "type": "boolean",
+                "description": "Request read access",
+                "default": true,
+                "optional": true
+              },
+              "write": {
+                "type": "boolean",
+                "description": "Request write access",
+                "default": false,
+                "optional": true
+              },
+              "watch": {
+                "type": "boolean",
+                "description": "Request watch access",
+                "default": false,
+                "optional": true
+              }
+            }
+          }
+        ],
+        "//returns": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "URL for the mounted filesystem"
+            },
+            "readable": {
+              "type": "boolean",
+              "description": "Whether the filesystem is readable"
+            },
+            "writable": {
+              "type": "boolean",
+              "description": "Whether the filesystem is writable"
+            },
+            "watchable": {
+              "type": "boolean",
+              "description": "Whether the filesystem is watchable"
+            }
+          }
+        }
+      },
+      {
+        "name": "open",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "url",
+            "description": "file url to open descriptor for.",
+            "type": "string"
+          },
+          {
+            "name": "mode",
+            "description": "The opening mode for the file",
+            "type": "any",
+            "properties": {
+              "read": {
+                "description": "If true, the file will be opened for reading",
+                "type": "boolean",
+                "optional": true
+              },
+              "write": {
+                "description": "If true, the file will be opened for writing.",
+                "type": "boolean",
+                "default": false,
+                "optional": true
+              },
+              "truncate": {
+                "description": "If true, the file will be opened for writing. If the file does not exist, it will be created. If the file exists, its contents will be removed. Cannot be used with `create`.",
+                "type": "boolean",
+                "default": false,
+                "optional": true
+              },
+              "create": {
+                "description": "If true, file will be opened for writing. The file must not exist. If the file already exists, throw an error. Cannot be used with truncate or existing.",
+                "type": "boolean",
+                "default": false,
+                "optional": true
+              },
+              "existing": {
+                "description": "If true, the file must already exist. If the file does not exist, throw an error. Cannot be used with create.",
+                "type": "boolean",
+                "default": false,
+                "optional": true
+              },
+              "append": {
+                "description": "If true, the file will be opened for appending. The default is true, i.e. opening a file for appending. Specify append: `false` to open the file in regular mode.",
+                "type": "boolean",
+                "default": true,
+                "optional": true
+              }
+            }
+          },
+          {
+            "name": "options",
+            "description": "Platform-specific options for opening the file. For advanced users only. Most users will never have need of these options.",
+            "optional": true,
+            "type": "any",
+            "properties": {
+              "unixFlags": {
+                "description": "(ignored under non-Unix platforms) If specified, file opening flags, as per libc function open. If unspecified, build these flags from the contents of mode.",
+                "type": "number",
+                "optional": true
+              },
+              "unixMode": {
+                "description": "(ignored under non-Unix platforms) If specified, file creation mode, as per libc function open. If unspecified, files are created with a default mode of 0600 (file is private to the user, the user can read and write).",
+                "type": "number",
+                "optional": true
+              },
+              "winShare": {
+                "description": "(ignored under non-Windows platforms) If specified, a sharing policy, as per Windows function CreateFile. If unspecified, files are opened with a default sharing policy (file is not protected against being read/written/removed by another process or another use in the same process).",
+                "type": "number",
+                "optional": true
+              },
+              "winSecurity": {
+                "description": "(ignored under non-Windows platforms) If specified, a security policy, as per Windows function CreateFile. If unspecified, no security attributes",
+                "type": "number",
+                "optional": true
+              },
+              "winAccess": {
+                "description": "(ignored under non-Windows platforms) If specified, access mode, as per Windows function CreateFile. This also requires option winDisposition and this replaces argument mode. If unspecified, value is built from mode.",
+                "type": "number",
+                "optional": true
+              },
+              "winDisposition": {
+                "description": "(ignored under non-Windows platforms) If specified, disposition mode, as per Windows function CreateFile. This also requires option winAccess and this replaces argument mode. If unspecified, value is built from mode.",
+                "type": "number",
+                "optional": true
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "close",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "file",
+            "type": "any"
+          }
+        ]
+      },
+      {
+        "name": "flush",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "file",
+            "type": "any"
+          }
+        ]
+      },
+      {
+        "name": "stat",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "file",
+            "type": "any"
+          }
+        ]
+      },
+      {
+        "name": "byteOffset",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "file",
+            "type": "any"
+          }
+        ]
+      },
+      {
+        "name": "setDates",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "file",
+            "type": "any"
+          },
+          {
+            "name": "dates",
+            "type": "object",
+            "optional": true,
+            "properties": {
+              "access": {
+                "type": "number",
+                "optional": true
+              },
+              "modification": {
+                "type": "number",
+                "optional": true
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "read",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "file",
+            "type": "any"
+          },
+          {
+            "name": "options",
+            "type": "object",
+            "optional": true,
+            "properties": {
+              "offset": {
+                "type": "number",
+                "optional": true
+              },
+              "size": {
+                "type": "number",
+                "optional": true
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "write",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "file",
+            "type": "any"
+          },
+          {
+            "name": "content",
+            "type": "any"
+          },
+          {
+            "name": "options",
+            "type": "object",
+            "optional": true,
+            "properties": {
+              "offset": {
+                "type": "number",
+                "optional": true
+              },
+              "size": {
+                "type": "number",
+                "optional": true
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "properties": {
+      "Path": {
+        "type": "object",
+        "$ref": "Path"
+      }
+    },
+    "events": []
+  }
+]

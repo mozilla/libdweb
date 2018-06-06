@@ -1,6 +1,6 @@
-browser.protocol.registerProtocol("goz", request => {
+browser.protocol.registerProtocol("dweb", request => {
   switch (request.url) {
-    case "goz://stream/": {
+    case "dweb://stream/": {
       return {
         contentType: "text/html",
         content: (async function*() {

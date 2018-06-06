@@ -63,8 +63,7 @@ const { ID } = Components
 const componentRegistrar = Cm.QueryInterface(Ci.nsIComponentRegistrar)
 const pid = `@${appinfo.processType}#${appinfo.processID}`
 
-const getFactoryByCID = cid =>
-  componentRegistrar.getClassObject(cid, Ci.nsIFactory)
+const getFactoryByCID = cid => Cm.getClassObject(cid, Ci.nsIFactory)
 
 const getCIDByContractID = contractID =>
   componentRegistrar.contractIDToCID(contractID)
@@ -525,8 +524,8 @@ class Factory /*::implements nsIFactory<nsIProtocolHandler>*/ {
     this.instance = instance
   }
   createInstance(
-    outer /*: null | nsISupports<*> */,
-    iid /*: nsIIDRef */
+    outer /*: null | nsISupports<nsIProtocolHandler> */,
+    iid /*: nsIIDRef<nsIProtocolHandler> */
   ) /*: nsIProtocolHandler */ {
     if (outer != null) {
       throw Cr.NS_ERROR_NO_AGGREGATION
@@ -537,7 +536,9 @@ class Factory /*::implements nsIFactory<nsIProtocolHandler>*/ {
   lockFactory(lock /*: boolean */) /*: void */ {
     throw Cr.NS_ERROR_NOT_IMPLEMENTED
   }
-  QueryInterface(iid /*: nsIIDRef */) /*: self */ {
+  QueryInterface(
+    iid /*: nsIIDRef<nsIFactory<nsIProtocolHandler>> */
+  ) /*: nsIFactory<nsIProtocolHandler> */ {
     if (iid.equals(Ci.nsISupports) || iid.equals(Ci.nsIFactory)) {
       return this
     }
@@ -708,7 +709,7 @@ class Supervisor extends RequestHandler {
         return this.receiveHandlerMessage(message)
     }
   }
-  receiveAgentMessage({ data, target }) {
+  receiveAgentMessage({ data, target } /*:AgentOutbox*/) {
     const { handlers, agents, pid } = this
     const { scheme, requestID } = data
     const handler = handlers[scheme]
@@ -723,7 +724,7 @@ class Supervisor extends RequestHandler {
       handler.sendAsyncMessage(HANDLER_INBOX, data)
     }
   }
-  receiveHandlerMessage({ data, target }) {
+  receiveHandlerMessage({ data, target } /*:HandlerOutbox*/) {
     switch (data.type) {
       case "install":
         return this.register(data.scheme, target.messageManager)
@@ -731,7 +732,7 @@ class Supervisor extends RequestHandler {
         return this.forwardResponse(data)
     }
   }
-  forwardResponse(response) {
+  forwardResponse(response /*:Response*/) {
     debug && console.log(`-> response${this.pid} ${JSON.stringify(response)}`)
     const { agents } = this
     const { requestID } = response
@@ -756,7 +757,7 @@ class Supervisor extends RequestHandler {
       this.agentsPort.broadcastAsyncMessage(AGENT_INBOX, protocol)
     }
   }
-  unregister({ scheme, uuid }) {
+  unregister({ scheme, uuid } /*: ProtocolSpec*/) {
     const { protocols, handlers } = this
     if (protocols[scheme] != null) {
       delete protocols[scheme]
@@ -852,13 +853,13 @@ class Agent extends RequestHandler {
       scheme
     })
   }
-  head(head) {
+  head(head /*:Head*/) {
     this.requests[head.requestID].head(head)
   }
-  body(body) {
+  body(body /*:Body*/) {
     this.requests[body.requestID].body(body)
   }
-  end(end) {
+  end(end /*:End*/) {
     this.requests[end.requestID].end(end)
   }
   receiveMessage({ data } /*: AgentInbox */) {
@@ -867,7 +868,7 @@ class Agent extends RequestHandler {
 
     switch (data.type) {
       case "terminate":
-        return this.terminate(data)
+        return this.terminate()
       case "unregister":
         return this.unregister(data)
       case "register":
@@ -881,7 +882,7 @@ class Agent extends RequestHandler {
     }
   }
 
-  terminate(_) {
+  terminate() {
     debug && console.log(`Terminate ${this.pid}`)
 
     const { protocols, requests } = this
@@ -926,3 +927,7 @@ if (!isParent) {
 const self /*:window*/ = this
 self.Supervisor = Supervisor
 self.Agent = Agent
+
+/*::
+export {Supervisor, Agent}
+*/
