@@ -191,13 +191,13 @@ export interface DuplexFile extends GeneralFile, Readable, Writable {
 export type File = ReadableFile | WritableFile | DuplexFile
 
 export interface ReadOptions {
-  byteSize?: number;
-  byteOffset?: number;
+  size?: number;
+  offset?: number;
 }
 
 export interface WriteOptions {
-  byteSize?: number;
-  byteOffset?: number;
+  size?: number;
+  offset?: number;
 }
 
 export type Stat = WindowsStat | UnixStat

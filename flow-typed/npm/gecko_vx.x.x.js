@@ -2829,7 +2829,7 @@ declare module "gecko" {
   declare export interface PopupNotifications$Action {
     label: string;
     accessKey: string;
-    callback(): void;
+    callback: ?() => void;
   }
 
   declare export interface PopupNotifications$Options {
@@ -2872,7 +2872,7 @@ declare module "gecko" {
     };
   }
 
-  declare class Extension extends ExtensionData {
+  declare export class Extension extends ExtensionData {
     name: string;
     iconURL: ?string;
     constructor(addonData: Object, startupReason: string): void;
@@ -2998,6 +2998,65 @@ declare module "gecko" {
     Path: {
       fromFileURI(uri: string): string
     };
+    File: {
+      prototype: OS$File,
+
+      POS_START: OS$File$Origin,
+      POS_CUR: OS$File$Origin,
+      POS_END: OS$File$Origin,
+
+      open(
+        string,
+        mode?: {
+          read?: boolean,
+          write?: boolean,
+          truncate?: boolean,
+          trunc?: boolean,
+          create?: boolean,
+          existing?: boolean,
+          append?: boolean
+        },
+        options?: {
+          unixFlags?: long,
+          unixMode?: long,
+          winShare?: long,
+          winSecurity?: long,
+          winAccess?: long,
+          winDisposition?: long
+        }
+      ): Promise<OS$File>
+    };
+  }
+
+  declare opaque type OS$File$Origin: number
+  declare interface OS$File {
+    close(): Promise<void>;
+    flush(): Promise<void>;
+    getPosition(): Promise<number>;
+    read(bytes?: number): Promise<Uint8Array>;
+    setDates(
+      accessDate?: ?(Date | number),
+      modificationDate?: ?(Date | number)
+    ): Promise<void>;
+    setPosition(number, origin: OS$File$Origin): Promise<void>;
+    stat(): Promise<OS$File$Info>;
+    write(DataView, options?: { bytes: number }): Promise<void>;
+  }
+
+  declare interface OS$File$Info {
+    isDir: boolean;
+    isSymLink: boolean;
+    size: number;
+    lastAccessDate: Date;
+    lastModificationDate: Date;
+
+    unixOwner?: long;
+    unixGroup?: long;
+    unixMode?: long;
+    unixLastStatusChangeDate?: Date;
+
+    winBirthDate?: Date;
+    winAttributes?: { hidden: boolean, readOnly: boolean, system: boolean };
   }
 
   declare interface Permissions {
