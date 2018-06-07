@@ -507,6 +507,7 @@ declare module "gecko" {
     URI_FETCHABLE_BY_ANYONE: long;
     ORIGIN_IS_FULL_SPEC: long;
     URI_SCHEME_NOT_SELF_LINKABLE: long;
+    URI_IS_POTENTIALLY_TRUSTWORTHY: long;
   }
 
   declare export interface nsIProtocolHandler {

@@ -460,7 +460,8 @@ class ProtocolHandler /*::implements nsIProtocolHandler*/ {
     this.handler = handler
     this.protocolFlags =
       Ci.nsIProtocolHandler.URI_STD |
-      Ci.nsIProtocolHandler.URI_LOADABLE_BY_SUBSUMERS
+      Ci.nsIProtocolHandler.URI_LOADABLE_BY_SUBSUMERS |
+      Ci.nsIProtocolHandler.URI_IS_POTENTIALLY_TRUSTWORTHY
   }
   toJSON() {
     return {
