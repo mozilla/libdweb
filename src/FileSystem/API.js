@@ -1,4 +1,4 @@
-// @flow
+// @flow strict
 
 export interface FileSystemManager {
   // Will bring up a OS native file picker and allow user to select directory.

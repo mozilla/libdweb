@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {}
+
+
+    output,
+    code,
+    .input {
+      white-space: pre;
+      -moz-user-select: text;
+      font-family: monaco, 'Courier New', Courier, monospace;
+      display: flex;
+      box-sizing: border-box;
+      min-height: 30px;
+      line-height: 22px;
+      font-size: 14px;
+      padding: 5px;
+      border: none;
+      outline: none;
+      position: relative;
+
+    }
+
+    code {
+      border-left: 3px solid rgb(183, 185, 216);
+    }
+
+
+    output {
+      border-left: 3px solid rgb(97, 174, 197);
+    }
+
+    .input {
+      border-left: 3px solid rgb(47, 58, 207);
+    }
+
+    output::before {
+      content: " ";
+    }
+  </style>
+</head>
+
+<body>
+  <input class="input" contenteditable="true">
+  </input>
+</body>
+<script src="terminal.js"></script>
+
+</html>

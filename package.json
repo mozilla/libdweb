@@ -44,8 +44,14 @@
     "precommit": "lint-staged",
     "//start":
       "flow-copy-source --watch --verbose src lib & babel --watch --out-dir lib src",
-    "debug":
-      "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging"
+    "demo":
+      "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging",
+    "demo:mdns":
+      "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/mdns",
+    "demo:protocol":
+      "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/protocol",
+    "demo:fs":
+      "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/fs"
   },
   "lint-staged": {
     "*.js": ["prettier --no-semi --write", "git add"]

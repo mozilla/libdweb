@@ -92,7 +92,7 @@ class FSVolume /*::implements Volume*/ {
   static new(url, readable = false, writable = false, watchable = false) {
     return new this(url, readable, writable, watchable)
   }
-  static grant(volume /*:Volume*/, options /*:MountOptions*/) {
+  static grant(volume /*:Volume*/, options /*:MountOptions*/) /*:FSVolume*/ {
     return new this(
       volume.url,
       volume.readable || options.read != false,
@@ -188,9 +188,9 @@ class HostFileSystem {
   promptUser /*::<a:PromptAction>*/(
     options /*:{id:string, message:string, actions:a[]}*/
   ) /*:Promise<a>*/ {
-    const browser = getTabBrowser(
-      this.context.pendingEventBrowser || this.context.xulBrowser
-    )
+    const browser = Services.wm.getMostRecentWindow("navigator:browser")
+
+    debug && console.log("HostFileSystem.promptUser", options, browser)
 
     return new Promise((resolve, reject) => {
       const [primary, ...secondary] = options.actions.map(action => {
@@ -198,8 +198,8 @@ class HostFileSystem {
         return action
       })
 
-      browser.ownerGlobal.PopupNotifications.show(
-        browser,
+      browser.PopupNotifications.show(
+        browser.gBrowser.selectedBrowser,
         options.id,
         options.message,
         null,
@@ -339,7 +339,7 @@ class HostFileSystem {
 
       if (grant) {
         await this.addPermissions(permissions)
-        volumes[url] = FSVolume.grant(volume, access)
+        volumes[url] = FSVolume.grant(volume, options)
 
         return true
       } else {

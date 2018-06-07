@@ -3,7 +3,7 @@
   "version": "0.1",
   "name": "libdweb",
   "description": "Extension containing an experimental libdweb APIs",
-  "permissions": [],
+  "permissions": ["notifications"],
 
   "experiment_apis": {
     "protocol": {
@@ -20,6 +20,14 @@
         "script": "./src/protocol/host.js"
       }
     },
+    "mdns": {
+      "schema": "./src/mdns/mdns.json",
+      "parent": {
+        "scopes": ["addon_parent"],
+        "paths": [["mdns"]],
+        "script": "./src/mdns/mdns.js"
+      }
+    },
     "FileSystem": {
       "schema": "./src/FileSystem/FileSystem.json",
       "parent": {
@@ -29,12 +37,32 @@
       }
     }
   },
-  "background": { "scripts": ["demo/background.js"] },
+  "background": {
+    "scripts": ["demo/protocol/protocol.js", "demo/mdns/mdns.js"]
+  },
+  "browser_action": {
+    "default_title": "mDNS discovery",
+    "default_popup": "demo/mdns/popup.html",
+    "theme_icons": [
+      {
+        "light": "demo/mdns/logo-flyweb-white.svg",
+        "dark": "demo/mdns/logo-flyweb-grey.svg"
+      }
+    ]
+  },
   "icons": {
-    "48": "demo/logo-flyweb-grey.svg",
-    "96": "demo/logo-flyweb-grey.svg"
+    "48": "demo/mdns/logo-flyweb-grey.svg",
+    "96": "demo/mdns/logo-flyweb-grey.svg"
   },
   "options_ui": {
-    "page": "demo/options.html"
+    "page": "demo/mdns/options.html"
+  },
+  "sidebar_action": {
+    "default_icon": {
+      "16": "demo/mdns/logo-flyweb-grey.svg",
+      "32": "demo/mdns/logo-flyweb-grey.svg"
+    },
+    "default_title": "FileSystem",
+    "default_panel": "demo/fs/terminal.html"
   }
 }

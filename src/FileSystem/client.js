@@ -148,18 +148,6 @@ class ClientFileSystem extends ExtensionAPI /*::<Client>*/ {
       }
     }
 
-    const FS = Cu.exportFunction(Mount, context.cloneScope.wrapeedJSObject, {
-      defineAs: "FS"
-    })
-
-    context.cloneScope.wrapeedJSObject.FS.prototype = Cu.cloneInto(
-      Mount.prototype,
-      context.cloneScope,
-      {
-        cloneFunctions: true
-      }
-    )
-
     return {
       FileSystem: {
         async mount(options /*:MountOptions*/) {

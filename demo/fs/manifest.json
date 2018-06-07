@@ -1,0 +1,30 @@
+{
+  "manifest_version": 2,
+  "version": "0.1",
+  "name": "filesystem@libdweb",
+  "description": "Extension containing libdweb FileSystem API",
+  "permissions": [],
+
+  "experiment_apis": {
+    "FileSystem": {
+      "schema": "../../src/FileSystem/FileSystem.json",
+      "parent": {
+        "scopes": ["addon_parent"],
+        "paths": [["FileSystem"]],
+        "script": "../../src/FileSystem/host.js"
+      }
+    }
+  },
+  "icons": {
+    "48": "../mdns/logo-flyweb-grey.svg",
+    "96": "../mdns/logo-flyweb-grey.svg"
+  },
+  "sidebar_action": {
+    "default_icon": {
+      "16": "../mdns/logo-flyweb-grey.svg",
+      "32": "../mdns/logo-flyweb-grey.svg"
+    },
+    "default_title": "FileSystem",
+    "default_panel": "terminal.html"
+  }
+}

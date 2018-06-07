@@ -1,0 +1,31 @@
+{
+  "manifest_version": 2,
+  "version": "0.1",
+  "name": "protocol@libdweb",
+  "description": "Extension containing libdweb protocol API",
+  "permissions": [],
+
+  "experiment_apis": {
+    "protocol": {
+      "schema": "../../src/protocol/protocol.json",
+      "child": {
+        "scopes": ["addon_child"],
+        "paths": [["protocol"]],
+        "script": "../../src/protocol/client.js"
+      },
+      "parent": {
+        "events": ["startup"],
+        "scopes": ["addon_parent"],
+        "paths": [["protocol"]],
+        "script": "../../src/protocol/host.js"
+      }
+    }
+  },
+  "background": {
+    "scripts": ["protocol.js"]
+  },
+  "icons": {
+    "48": "../mdns/logo-flyweb-grey.svg",
+    "96": "../mdns/logo-flyweb-grey.svg"
+  }
+}
