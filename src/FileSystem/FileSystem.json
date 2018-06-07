@@ -223,18 +223,19 @@
           {
             "name": "mode",
             "description": "The opening mode for the file",
-            "type": "any",
+            "type": "object",
             "properties": {
               "read": {
                 "description": "If true, the file will be opened for reading",
                 "type": "boolean",
-                "optional": true
+                "optional": true,
+                "default": false
               },
               "write": {
                 "description": "If true, the file will be opened for writing.",
                 "type": "boolean",
-                "default": false,
-                "optional": true
+                "optional": true,
+                "default": false
               },
               "truncate": {
                 "description": "If true, the file will be opened for writing. If the file does not exist, it will be created. If the file exists, its contents will be removed. Cannot be used with `create`.",
@@ -255,9 +256,9 @@
                 "optional": true
               },
               "append": {
-                "description": "If true, the file will be opened for appending. The default is true, i.e. opening a file for appending. Specify append: `false` to open the file in regular mode.",
+                "description": "If true, the file will be opened for appending.",
                 "type": "boolean",
-                "default": true,
+                "default": false,
                 "optional": true
               }
             }

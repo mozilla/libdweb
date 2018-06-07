@@ -426,7 +426,16 @@ class HostFileSystem {
         file,
         options && options.size
       )
-      return content.buffer
+
+      debug && console.log(">> Host.read", content)
+      // When offset is at the end of the file read will produce
+      // Uint8Array instance for the fragment of the underlaying buffer.
+      const { buffer, byteOffset, byteLength } = content
+      if (byteLength < buffer.byteLength) {
+        return buffer.slice(byteOffset, byteLength)
+      } else {
+        return buffer
+      }
     } catch (error) {
       return new ExtensionError(error)
     }
@@ -435,6 +444,7 @@ class HostFileSystem {
     try {
       debug && console.log(">> Host.write", file, content, options)
       if (options && options.offset != null) {
+        console.log(">> Host.setPosition", file, options.offset)
         await OS.File.prototype.setPosition.call(
           file,
           options.offset,

@@ -1,3 +1,0 @@
-# Hi There
-
-Hello world

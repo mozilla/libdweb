@@ -5,10 +5,6 @@
 <head>
   <meta charset="utf-8">
   <style>
-    body {}
-
-
-    output,
     code,
     .input {
       white-space: pre;
@@ -16,9 +12,8 @@
       font-family: monaco, 'Courier New', Courier, monospace;
       display: flex;
       box-sizing: border-box;
-      min-height: 30px;
-      line-height: 22px;
-      font-size: 14px;
+      line-height: 14px;
+      font-size: 12px;
       padding: 5px;
       border: none;
       outline: none;
@@ -26,26 +21,27 @@
 
     }
 
-    code {
+    output .out {
       border-left: 3px solid rgb(183, 185, 216);
     }
 
 
-    output {
+    output .inn {
       border-left: 3px solid rgb(97, 174, 197);
     }
 
-    .input {
-      border-left: 3px solid rgb(47, 58, 207);
+    output .error {
+      border-left: 3px solid rgb(230, 106, 106);
     }
 
-    output::before {
-      content: " ";
+    .input {
+      border-left: 3px solid rgb(51, 109, 235);
     }
   </style>
 </head>
 
 <body>
+  <output></output>
   <input class="input" contenteditable="true">
   </input>
 </body>
