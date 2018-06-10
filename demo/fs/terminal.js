@@ -159,13 +159,13 @@ const execute = async state => {
       }
       case "flush": {
         const file = state.file(params.file)
-        await browser.FileSystem.flush(file)
+        await browser.File.flush(file)
         out.textContent = `flushed: ${params.file}`
         break
       }
       case "close": {
         const file = state.file(params.file)
-        await browser.FileSystem.close(file)
+        await browser.File.close(file)
         state.close(params.file)
         out.textContent = `closed: ${params.file}`
         break
@@ -177,7 +177,7 @@ const execute = async state => {
         delete params.file
         delete params.decode
 
-        const buffer = await browser.FileSystem.read(file, params)
+        const buffer = await browser.File.read(file, params)
         if (decode) {
           const decoder = new TextDecoder()
           const content = decoder.decode(buffer)
@@ -194,26 +194,26 @@ const execute = async state => {
         const encoder = new TextEncoder()
         const { buffer } = encoder.encode(params.encode)
         delete params.encode
-        const offset = await browser.FileSystem.write(file, buffer, params)
+        const offset = await browser.File.write(file, buffer, params)
         out.textContent = `wrote: ${offset}`
         break
       }
       case "stat": {
         const file = state.file(params.file)
-        const stat = await browser.FileSystem.stat(file)
+        const stat = await browser.File.stat(file)
         out.textContent = JSON.stringify(stat, null, 2)
         break
       }
-      case "byteOffset": {
+      case "getPosition": {
         const file = state.file(params.file)
-        const offset = await browser.FileSystem.byteOffset(file)
-        out.textContent = `byteOffset: ${offset}`
+        const position = await browser.File.getPosition(file)
+        out.textContent = `got position: ${position}`
         break
       }
       case "setDates": {
         const file = state.file(params.file)
         delete params.file
-        const offset = await browser.FileSystem.setDates(file, params)
+        await browser.File.setDates(file, params)
         out.textContent = `dates set`
         break
       }
