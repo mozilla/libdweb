@@ -5,24 +5,32 @@ import { Cu, Cr, Ci, Cc, ExtensionAPI } from "gecko"
 import type {BaseContext} from "gecko"
 import type {
   FileSystemManager,
-  FileSystem,
+  FileManager,
   Mode,
   OpenOptions,
   MountOptions,
-  Path,
   ReadOptions,
-  DirOptions,
+  WriteOptions,
+  CreateDirOptions,
+  RemoveFileOptions,
+  CopyOptions,
+  MoveOptions,
+  WatchOptions,
+  ReadDirOptions,
+  RemoveDirOptions,
   Dates,
   Stat,
   Entry,
   Volume,
-  Permissions
-} from "./API"
+  Permissions,
+  Readable,
+  Writable,
+  File
+} from "./FileSystem"
 
 interface Host {
-  +FileSystem: {
-    mount(MountOptions):Promise<Volume>
-  }
+  +File: FileManager;
+  +FileSystem: FileSystemManager;
 }
 */
 Cu.importGlobalProperties(["URL"])
@@ -82,6 +90,25 @@ interface PromptAction {
 }
 */
 
+class IOError extends ExtensionError {
+  /*::
+  operation:string;
+  becauseExists:boolean;
+  becauseNoSuchFile:boolean;
+  becauseClosed:boolean;
+  code:number;
+  */
+  static throw(error) /*:empty*/ {
+    const self = new this(error.message)
+    self.operation = self.operation
+    self.becauseExists = error.becauseExists
+    self.becauseNoSuchFile = error.becauseNoSuchFile
+    self.becauseClosed = error.becauseClosed
+    self.code = error.unixErrno || error.winLastError || -1
+    throw self
+  }
+}
+
 class FSVolume /*::implements Volume*/ {
   /*::
   url:string
@@ -109,7 +136,7 @@ class FSVolume /*::implements Volume*/ {
 }
 
 class FileStat {
-  static encode(stat) {
+  static encode(stat) /*:Stat*/ {
     return {
       isDir: stat.isDir,
       isSymLink: stat.isSymLink,
@@ -128,8 +155,23 @@ class FileStat {
   }
 }
 
-class HostFileSystem {
+class DirectoryEntry {
+  static encode(entry) {
+    return {
+      isDir: entry.isDir,
+      isSymLink: entry.isSymLink,
+      name: entry.name,
+      url: OS.Path.toFileURI(entry.path),
+      winLastAccessDate: entry.winLastAccessDate,
+      winCreationDate: entry.winCreationDate,
+      winLastWriteDate: entry.winLastWriteDate
+    }
+  }
+}
+
+class HostFileSystem /*::implements FileSystemManager*/ {
   /*::
+  File:FileManager
   context:BaseContext
   state: Promise<{
     volumes:{[string]:FSVolume},
@@ -139,6 +181,7 @@ class HostFileSystem {
   */
   constructor(context /*:BaseContext*/) {
     this.context = context
+    this.File = new HostFileManager()
   }
 
   async init() {
@@ -347,6 +390,16 @@ class HostFileSystem {
       }
     }
   }
+  async resolve(url /*:string*/, access) {
+    const fileURL = normalizeFileURL(url)
+    const { volumes } = await this.state
+    for (const volumeURL in volumes) {
+      if (fileURL.startsWith(volumeURL)) {
+        return OS.Path.fromFileURI(fileURL)
+      }
+    }
+    throw new ExtensionError(`Access to ${fileURL} requires user permission`)
+  }
 
   async mount(options /*:MountOptions*/) /*:Promise<Volume>*/ {
     debug && console.log(">> Host.mount", options)
@@ -378,18 +431,7 @@ class HostFileSystem {
       return volume
     }
   }
-
-  async resolve(url /*:string*/, access) {
-    const fileURL = normalizeFileURL(url)
-    const { volumes } = await this.state
-    for (const volumeURL in volumes) {
-      if (fileURL.startsWith(volumeURL)) {
-        return OS.Path.fromFileURI(fileURL)
-      }
-    }
-    throw new ExtensionError(`Access to ${fileURL} requires user permission`)
-  }
-  async open(url, mode, options) /*:Promise<{}>*/ {
+  async open(url, mode /*:Object*/, options /*:?Object*/) /*:any*/ {
     try {
       debug && console.log(">> Host.open", url, mode, options)
       const path = await this.resolve(url, mode)
@@ -399,92 +441,187 @@ class HostFileSystem {
         options != null ? options : undefined
       )
       debug && console.log("<< Host.open", file)
-      return file
+      const theFile /*:any*/ = file
+      return theFile
     } catch (error) {
-      throw new ExtensionError(error)
+      return IOError.throw(error)
     }
   }
-  async close(file) {
+  async readFile(url, options /*::?:ReadOptions*/) /*:Promise<ArrayBuffer>*/ {
+    const fs /*:FileSystemManager*/ = this
     try {
-      debug && console.log(">> Host.close", file)
-      await OS.File.prototype.close.call(file)
-    } catch (error) {
-      throw new ExtensionError(error)
-    }
-  }
-  async read(file, options) {
-    try {
-      debug && console.log(">> Host.read", file, options)
-      if (options && options.offset != null) {
-        await OS.File.prototype.setPosition.call(
-          file,
-          options.offset,
-          OS.File.POS_START
-        )
+      const file = await fs.open(url, { read: true })
+      try {
+        return await this.File.read(file, options)
+      } finally {
+        await this.File.close(file)
       }
-      const content = await OS.File.prototype.read.call(
-        file,
-        options && options.size
-      )
-      return content.buffer
     } catch (error) {
-      return new ExtensionError(error)
+      return IOError.throw(error)
     }
   }
-  async write(file, content, options) {
+  async writeFile(
+    url,
+    content /*:ArrayBuffer*/,
+    options /*::?:WriteOptions*/
+  ) /*:Promise<number>*/ {
+    const fs /*:FileSystemManager*/ = this
     try {
-      debug && console.log(">> Host.write", file, content, options)
-      if (options && options.offset != null) {
-        await OS.File.prototype.setPosition.call(
-          file,
-          options.offset,
-          OS.File.POS_START
-        )
+      const file = await fs.open(url, { write: true })
+      try {
+        return await this.File.write(file, content, options)
+      } finally {
+        await this.File.close(file)
       }
+    } catch (error) {
+      return IOError.throw(error)
+    }
+  }
 
-      return await OS.File.prototype.write.call(file, new DataView(content), {
-        bytes: options && options.size
+  async removeFile(url, options /*::?:RemoveFileOptions*/) /*: Promise<void>*/ {
+    try {
+      const file = await this.resolve(url)
+      return await OS.File.remove(file, options)
+    } catch (error) {
+      return IOError.throw(error)
+    }
+  }
+
+  async setDates(url, dates /*::?:Object*/) /*: Promise<void>*/ {
+    try {
+      const file = await this.resolve(url)
+
+      return await OS.File.setDates(
+        file,
+        dates && dates.access,
+        dates && dates.modification
+      )
+    } catch (error) {
+      return IOError.throw(error)
+    }
+  }
+  async setPermissions(url, permissions /*:Permissions*/) /*:Promise<void>*/ {
+    try {
+      const file = await this.resolve(url)
+      return await OS.File.setPermissions(file, permissions)
+    } catch (error) {
+      return IOError.throw(error)
+    }
+  }
+  async stat(url) /*: Promise<Stat>*/ {
+    try {
+      const file = await this.resolve(url)
+      return await OS.File.stat(file)
+    } catch (error) {
+      return IOError.throw(error)
+    }
+  }
+  async copy(from, to, options /*::?:CopyOptions*/) /*:Promise<void>*/ {
+    try {
+      const fromFile = await this.resolve(from)
+      const toFile = await this.resolve(to, true)
+      return await OS.File.copy(fromFile, toFile, options)
+    } catch (error) {
+      return IOError.throw(error)
+    }
+  }
+
+  async move(from, to, options /*::?:MoveOptions*/) /*:Promise<void>*/ {
+    try {
+      const fromFile = await this.resolve(from)
+      const toFile = await this.resolve(to, true)
+      return await OS.File.move(fromFile, toFile, options)
+    } catch (error) {
+      return IOError.throw(error)
+    }
+  }
+  async createSymbolicLink(from, to) /*:Promise<void>*/ {
+    try {
+      const fromFile = await this.resolve(from)
+      const toFile = await this.resolve(to, true)
+      return await OS.File.unixSymLink(fromFile, toFile)
+    } catch (error) {
+      return IOError.throw(error)
+    }
+  }
+  async exists(url) /*:Promise<boolean>*/ {
+    try {
+      const file = await this.resolve(url)
+      return await OS.File.exists(file)
+    } catch (error) {
+      return IOError.throw(error)
+    }
+  }
+  async watch(
+    url,
+    options /*::?:WatchOptions*/
+  ) /*:Promise<AsyncIterator<string>>*/ {
+    throw new ExtensionError("Not Implemented")
+  }
+  async addWatcher(url, options /*::?:WatchOptions*/) /*:Promise<void>*/ {
+    try {
+      const file = await this.resolve(url)
+      const watcher = Cc[
+        "@mozilla.org/toolkit/filewatcher/native-file-watcher;1"
+      ].getService(Ci.nsINativeFileWatcherService)
+
+      return await new Promise((resolve, reject) => {
+        watcher.addPath(
+          file,
+          (path, flags) => {
+            console.log("watch.changed", path, flags)
+          },
+          (xpcomError, osError) => {
+            reject(xpcomError)
+          },
+          resourcePath => {
+            resolve()
+          }
+        )
       })
     } catch (error) {
-      return new ExtensionError(error)
+      return IOError.throw(error)
     }
   }
-  async stat(file) {
+
+  async createDirectory(
+    url,
+    options /*::?: CreateDirOptions*/
+  ) /*: Promise<void>*/ {
     try {
-      debug && console.log(">> Host.stat", file)
-      const stat /*: Object*/ = await OS.File.prototype.stat.call(file)
-      debug && console.log("<< Host.stat", stat)
-      return FileStat.encode(stat)
+      const file = await this.resolve(url)
+      return await OS.File.makeDir(file, options)
     } catch (error) {
-      throw new ExtensionError(error)
+      return IOError.throw(error)
     }
   }
-  async flush(file) {
+  async removeDirectory(
+    url,
+    options /*::?: RemoveDirOptions*/
+  ) /*: Promise<void>*/ {
     try {
-      debug && console.log(">> Host.fluh", file)
-      return OS.File.prototype.flush.call(file)
+      const file = await this.resolve(url)
+      if (options && options.recursive) {
+        return await OS.File.removeDir(file, options)
+      } else {
+        return await OS.File.removeEmptyDir(file, options)
+      }
     } catch (error) {
-      throw new ExtensionError(error)
+      return IOError.throw(error)
     }
   }
-  async setDates(file, dates) {
+  async readDirectory(
+    url,
+    options /*::?:ReadDirOptions*/
+  ) /*: Promise<Entry[]>*/ {
     try {
-      debug && console.log(">> Host.setDates", file, dates)
-      return await OS.File.prototype.setDates.call(
-        file,
-        dates.access,
-        dates.modification
-      )
+      const file = await this.resolve(url)
+      const directory = new OS.File.DirectoryIterator(file, options)
+      const entries = await await directory.nextBatch()
+      directory.close()
+      return entries.map(DirectoryEntry.encode)
     } catch (error) {
-      throw new ExtensionError(error)
-    }
-  }
-  async byteOffset(file) {
-    try {
-      debug && console.log(">> Host.byteOffset", file)
-      return await OS.File.prototype.getPosition.call(file)
-    } catch (error) {
-      throw new ExtensionError(error)
+      return IOError.throw(error)
     }
   }
 
@@ -495,19 +632,138 @@ class HostFileSystem {
   }
 }
 
+class HostFileManager /*::implements FileManager*/ {
+  async close(file /*:File*/) /*:Promise<void>*/ {
+    try {
+      debug && console.log(">> Host.close", file)
+      await OS.File.prototype.close.call(file)
+    } catch (error) {
+      return IOError.throw(error)
+    }
+  }
+  async read(
+    file /*:Readable*/,
+    options /*::?:ReadOptions*/
+  ) /*:Promise<ArrayBuffer>*/ {
+    try {
+      debug && console.log(">> Host.read", file, options)
+      if (options && options.position != null) {
+        await OS.File.prototype.setPosition.call(
+          file,
+          options.position,
+          OS.File.POS_START
+        )
+      }
+      const content = await OS.File.prototype.read.call(
+        file,
+        options && options.size
+      )
+      return content.buffer
+    } catch (error) {
+      return IOError.throw(error)
+    }
+  }
+  async write(
+    file /*:Writable*/,
+    content /*:ArrayBuffer*/,
+    options /*::?:WriteOptions*/
+  ) /*:Promise<number>*/ {
+    try {
+      debug && console.log(">> Host.write", file, content, options)
+      if (options && options.position != null) {
+        await OS.File.prototype.setPosition.call(
+          file,
+          options.position,
+          OS.File.POS_START
+        )
+      }
+
+      const size = options && options.size
+      const writeOptions = size ? { bytes: size } : undefined
+      return await OS.File.prototype.write.call(
+        file,
+        new DataView(content),
+        writeOptions
+      )
+    } catch (error) {
+      return IOError.throw(error)
+    }
+  }
+  async stat(file) /*:Promise<Stat>*/ {
+    try {
+      debug && console.log(">> Host.stat", file)
+      const stat /*:Object*/ = await OS.File.prototype.stat.call(file)
+      debug && console.log("<< Host.stat", stat)
+      return FileStat.encode(stat)
+    } catch (error) {
+      return IOError.throw(error)
+    }
+  }
+  async flush(file /*:File*/) /*:Promise<void>*/ {
+    try {
+      debug && console.log(">> Host.fluh", file)
+      return OS.File.prototype.flush.call(file)
+    } catch (error) {
+      return IOError.throw(error)
+    }
+  }
+  async setDates(file, dates /*:?Object*/) {
+    try {
+      debug && console.log(">> Host.setDates", file, dates)
+      return await OS.File.prototype.setDates.call(
+        file,
+        dates && dates.access,
+        dates && dates.modification
+      )
+    } catch (error) {
+      return IOError.throw(error)
+    }
+  }
+  async getPosition(file /*:File*/) /*:Promise<number>*/ {
+    try {
+      debug && console.log(">> Host.getPosition", file)
+      return await OS.File.prototype.getPosition.call(file)
+    } catch (error) {
+      return IOError.throw(error)
+    }
+  }
+}
+
 global.FileSystem = class extends ExtensionAPI /*::<Host>*/ {
   getAPI(context) {
     const fs = HostFileSystem.new(context)
+
     return {
+      File: {
+        close: file => fs.File.close(file),
+        flush: file => fs.File.flush(file),
+        getPosition: file => fs.File.getPosition(file),
+        stat: file => fs.File.stat(file),
+        setDates: (file, dates) => fs.File.setDates(file, dates),
+        read: (file, options) => fs.File.read(file, options),
+        write: (file, content, options) => fs.File.write(file, content, options)
+      },
       FileSystem: {
         mount: options => fs.mount(options),
         open: (url, mode, options) => fs.open(url, mode, options),
-        close: file => fs.close(file),
-        read: (file, options) => fs.read(file, options),
-        write: (file, content, options) => fs.write(file, content, options),
-        stat: file => fs.stat(file),
-        byteOffset: file => fs.byteOffset(file),
-        setDates: (file, dates) => fs.setDates(file, dates)
+        readFile: (url, options) => fs.readFile(url, options),
+        writeFile: (url, content, options) =>
+          fs.writeFile(url, content, options),
+        removeFile: (url, options) => fs.removeFile(url, options),
+
+        setDates: (url, dates) => fs.setDates(url, dates),
+        setPermissions: (url, permissions) =>
+          fs.setPermissions(url, permissions),
+        stat: url => fs.stat(url),
+        copy: (from, to, options) => fs.copy(from, to, options),
+        move: (from, to, options) => fs.move(from, to, options),
+        createSymbolicLink: (from, to) => fs.createSymbolicLink(from, to),
+        exists: url => fs.exists(url),
+        watch: (url, options) => fs.watch(url, options),
+
+        createDirectory: (url, options) => fs.createDirectory(url, options),
+        removeDirectory: (url, options) => fs.removeDirectory(url, options),
+        readDirectory: (url, options) => fs.readDirectory(url, options)
       }
     }
   }

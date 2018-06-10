@@ -2378,6 +2378,33 @@ declare module "gecko" {
     run(): void;
   }
 
+  declare export interface nsINativeFileWatcherService {
+    addPath(
+      path: string,
+      nsINativeFileWatcherCallback,
+      ?nsINativeFileWatcherErrorCallback,
+      ?nsINativeFileWatcherSuccessCallback
+    ): void;
+    removePath(
+      path: string,
+      nsINativeFileWatcherCallback,
+      ?nsINativeFileWatcherErrorCallback,
+      ?nsINativeFileWatcherSuccessCallback
+    ): void;
+  }
+
+  declare export type nsINativeFileWatcherCallback =
+    | { (string, flags: int32_t): void }
+    | { changed(string, flags: int32_t): void }
+
+  declare export type nsINativeFileWatcherErrorCallback =
+    | { complete(xpcomError: nsresult, osError: long): void }
+    | { (xpcomError: nsresult, osError: long): void }
+
+  declare export type nsINativeFileWatcherSuccessCallback =
+    | { complete(resourcePath: string): void }
+    | { (resourcePath: string): void }
+
   // -------------------------
   declare export type JSM<url: string, jsm> = (url, {}) => jsm
 
@@ -2661,7 +2688,8 @@ declare module "gecko" {
         nsISocketTransportConstants,
       nsIX509Cert: nsIJSID<nsIX509Cert> & nsIX509CertConstants,
       nsIFilePicker: nsIJSID<nsIFilePicker> & nsIFilePickerConstants,
-      nsIDocShell: nsIJSID<nsIDocShell> & nsIDocShellConstants
+      nsIDocShell: nsIJSID<nsIDocShell> & nsIDocShellConstants,
+      nsINativeFileWatcherService: nsIJSCID<nsINativeFileWatcherService>
     },
     classes: {
       "@mozilla.org/xre/app-info;1": nsIJSCID<nsIXULAppInfo>,
@@ -2702,7 +2730,10 @@ declare module "gecko" {
       "@mozilla.org/network/standard-url-mutator;1": nsIJSCID<
         nsIStandardURLMutator
       >,
-      "@mozilla.org/filepicker;1": nsIJSCID<nsIFilePicker>
+      "@mozilla.org/filepicker;1": nsIJSCID<nsIFilePicker>,
+      "@mozilla.org/toolkit/filewatcher/native-file-watcher;1": nsIJSCID<
+        nsINativeFileWatcherService
+      >
     },
     utils: {
       waiveXrays<a>(a): a,
@@ -2714,6 +2745,15 @@ declare module "gecko" {
           wrapReflectors?: boolean
         }
       ): a,
+      exportFunction<f: Function>(
+        f,
+        Object,
+        ?{
+          defineAs?: string,
+          allowCallbacks?: boolean,
+          allowCrossOriginArguments?: boolean
+        }
+      ): f,
       getGlobalForObject<a: Object>(a): Object,
       importGlobalProperties(string[]): void,
       unload(string): void,
@@ -2986,8 +3026,8 @@ declare module "gecko" {
   declare class OS$File$DirectoryIterator$Entry {
     +isDir: boolean;
     +isSymLink: boolean;
-    +name: boolean;
-    +path: boolean;
+    +name: string;
+    +path: string;
 
     +winLastAccessDate?: Date;
     +winCreationDate?: Date;
@@ -2996,9 +3036,11 @@ declare module "gecko" {
 
   declare interface OS {
     Path: {
-      fromFileURI(uri: string): string
+      fromFileURI(uri: string): string,
+      toFileURI(path: string): string
     };
     File: {
+      DirectoryIterator: Class<OS$File$DirectoryIterator>,
       prototype: OS$File,
 
       POS_START: OS$File$Origin,
@@ -3024,11 +3066,107 @@ declare module "gecko" {
           winAccess?: long,
           winDisposition?: long
         }
-      ): Promise<OS$File>
+      ): Promise<OS$File>,
+      openUnique(
+        string,
+        options?: {
+          humanReadable?: boolean,
+          maxAttempts?: boolean
+        }
+      ): Promise<OS$File>,
+      copy(
+        sourcePath: string,
+        destPath: string,
+        options?: ?{
+          noOverwrite?: boolean
+        }
+      ): Promise<void>,
+      exists(string): Promise<boolean>,
+      getCurrentDirectory(): Promise<string>,
+      makeDir(
+        path: string,
+        options?: ?{
+          ignoreExisting?: boolean,
+          unixMode?: long,
+          winSecurity?: long,
+          from?: string
+        }
+      ): Promise<void>,
+      move(
+        sourcePath: string,
+        destPath: string,
+        options?: ?{
+          noOverwrite?: boolean,
+          noCopy?: boolean
+        }
+      ): Promise<void>,
+      read(path: string, bytes?: number): Uint8Array,
+      remove(
+        path: string,
+        options?: {
+          ignoreAbsent?: boolean
+        }
+      ): Promise<void>,
+      removeEmptyDir(
+        path: string,
+        options?: {
+          ignoreAbsent?: boolean
+        }
+      ): Promise<void>,
+      removeDir(
+        path: string,
+        options?: {
+          ignoreAbsent?: boolean,
+          ignorePermissions?: boolean
+        }
+      ): Promise<void>,
+      setCurrentDirectory(path: string): Promise<void>,
+      setDates(
+        path: string,
+        accessDate?: ?(Date | number),
+        modificationDate?: ?(Date | number)
+      ): Promise<void>,
+      setPermissions(
+        path: string,
+        options: {
+          winAttributes?: {
+            hidden?: boolean,
+            readOnly?: boolean,
+            system?: boolean
+          },
+          unixMode?: long,
+          unixHonorUmask?: boolean
+        }
+      ): Promise<void>,
+      stat(path: string): Promise<OS$File$Info>,
+      unixSymLink(pathTarget: string, pathCreate: string): Promise<void>,
+      writeAtomic(
+        path: string,
+        ArrayBufferView,
+        options: {
+          tmpPath?: string,
+          noOverwrite?: boolean,
+          flush?: boolean,
+          backupTo?: string
+        }
+      ): Promise<void>
     };
   }
 
   declare opaque type OS$File$Origin: number
+
+  declare interface OS$File$DirectoryIterator {
+    constructor(
+      path: string,
+      options?: {
+        winPattern?: string
+      }
+    ): void;
+    close(): void;
+    next(): Promise<OS$File$DirectoryIterator$Entry>;
+    nextBatch(entries?: number): Promise<OS$File$DirectoryIterator$Entry[]>;
+  }
+
   declare interface OS$File {
     close(): Promise<void>;
     flush(): Promise<void>;
@@ -3040,8 +3178,20 @@ declare module "gecko" {
     ): Promise<void>;
     setPosition(number, origin: OS$File$Origin): Promise<void>;
     stat(): Promise<OS$File$Info>;
-    write(DataView, options?: { bytes: number }): Promise<void>;
+    write(ArrayBufferView, options?: { bytes: number }): Promise<void>;
   }
+
+  declare type ArrayBufferView =
+    | DataView
+    | Int8Array
+    | Uint8Array
+    | Uint8ClampedArray
+    | Int16Array
+    | Uint16Array
+    | Int32Array
+    | Uint32Array
+    | Float32Array
+    | Float64Array
 
   declare interface OS$File$Info {
     isDir: boolean;

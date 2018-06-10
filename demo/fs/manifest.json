@@ -8,6 +8,11 @@
   "experiment_apis": {
     "FileSystem": {
       "schema": "../../src/FileSystem/FileSystem.json",
+      "child": {
+        "scopes": ["addon_child"],
+        "paths": [["FileSystem"]],
+        "script": "../../src/FileSystem/client.js"
+      },
       "parent": {
         "scopes": ["addon_parent"],
         "paths": [["FileSystem"]],
