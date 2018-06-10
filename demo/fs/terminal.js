@@ -1,5 +1,5 @@
-const input = document.querySelector(".input")
-
+const input = document.querySelector("input")
+const output = document.querySelector("output")
 document.onload = () => input.focus()
 
 const keydown = async function*() {
@@ -14,8 +14,84 @@ const keydown = async function*() {
   }
 }
 
+const readWhiteSpace = (input, offset, toknes) => {
+  while (offset < input.length) {
+    const char = input.charAt(offset)
+    if (char === " ") {
+      offset++
+    } else {
+      break
+    }
+  }
+  return offset
+}
+
+const readToken = (input, offset, tokens) => {
+  let position = offset
+  while (position < input.length) {
+    const char = input.charAt(position)
+    if (char === " ") {
+      break
+    } else {
+      position++
+    }
+  }
+  tokens.push(input.slice(offset, position))
+  return position
+}
+
+const readString = (quote, input, start, tokens) => {
+  let end = start + 1
+  let token = input.charAt(start)
+  while (end < input.length) {
+    const char = input.charAt(end)
+    switch (char) {
+      case quote: {
+        end++
+        token += char
+        tokens.push(token)
+        return end
+      }
+      case `\\`: {
+        token += char
+        end++
+        token += input.charAt(end)
+        end++
+        break
+      }
+      default: {
+        token += char
+        end++
+      }
+    }
+  }
+  throw RangeError(`String was not quoted properly: ${input.slice(start, end)}`)
+}
+
 const parseCommand = input => {
-  const [command, ...args] = input.trim().split(/\s+/)
+  const source = input.trim()
+  const tokens = []
+  let offset = 0
+  const size = source.length
+  while (offset < size) {
+    const char = input.charAt(offset)
+    switch (char) {
+      case `'`:
+      case `"`: {
+        offset = readString(char, input, offset, tokens)
+        break
+      }
+      case ` `: {
+        offset = readWhiteSpace(input, offset, tokens)
+        break
+      }
+      default: {
+        offset = readToken(input, offset, tokens)
+      }
+    }
+  }
+
+  const [command, ...args] = tokens
   const params = Object.create(null)
   let index = 0
   while (index < args.length) {
@@ -26,12 +102,17 @@ const parseCommand = input => {
       if (index == args.length || value.startsWith("--")) {
         params[name] = true
       } else {
-        params[name] = value
+        try {
+          params[name] = JSON.parse(value)
+        } catch (_) {
+          params[name] = value
+        }
       }
     }
   }
   return [command, params]
 }
+
 const serializeCommand = (command, params) => {
   let tokens = [command]
   for (const [key, value] of Object.entries(params)) {
@@ -44,42 +125,49 @@ const serializeCommand = (command, params) => {
 }
 
 const execute = async state => {
-  const [command, params] = parseCommand(input.value)
-  const log = document.createElement("code")
-  log.textContent = serializeCommand(command, params)
-  const output = document.createElement("output")
-  output.textContent = ""
+  const { value } = input
+  const inn = document.createElement("code")
+  inn.classList.add("inn")
+  inn.textContent = value
+  const out = document.createElement("code")
+  out.classList.add("out")
+  out.textContent = ""
 
-  input.parentElement.insertBefore(log, input)
-  input.parentElement.insertBefore(output, input)
+  output.appendChild(inn)
+  output.appendChild(out)
   input.value = ""
 
   try {
+    const [command, params] = parseCommand(value)
     switch (command) {
+      case "clear": {
+        output.innerHTML = ""
+        break
+      }
       case "mount": {
         const volume = await browser.FileSystem.mount(params)
         state.mount(volume)
-        output.textContent = JSON.stringify(volume, null, 2)
+        out.textContent = `mounted: ${JSON.stringify(volume, null, 2)}`
         break
       }
       case "open": {
         const url = state.resolve(params.url)
         delete params.url
         const file = await browser.FileSystem.open(url, params)
-        output.textContent = `opened: ${state.open(file)}`
+        out.textContent = `opened: ${state.open(file)}`
         break
       }
       case "flush": {
         const file = state.file(params.file)
         await browser.FileSystem.flush(file)
-        output.textContent = `flushed: ${params.file}`
+        out.textContent = `flushed: ${params.file}`
         break
       }
       case "close": {
         const file = state.file(params.file)
         await browser.FileSystem.close(file)
         state.close(params.file)
-        output.textContent = `closed: ${params.file}`
+        out.textContent = `closed: ${params.file}`
         break
       }
       case "read": {
@@ -93,23 +181,50 @@ const execute = async state => {
         if (decode) {
           const decoder = new TextDecoder()
           const content = decoder.decode(buffer)
-          console.log(content)
-          output.textContent = content
+          out.textContent = JSON.stringify(content)
         } else {
-          output.textContent = `<ArrayBuffer ${buffer.byteLength}>`
+          out.textContent = `<ArrayBuffer ${buffer.byteLength}>`
         }
         break
       }
       case "write": {
+        console.log(params)
+        const file = state.file(params.file)
+        delete params.file
+        const encoder = new TextEncoder()
+        const { buffer } = encoder.encode(params.encode)
+        delete params.encode
+        const offset = await browser.FileSystem.write(file, buffer, params)
+        out.textContent = `wrote: ${offset}`
+        break
+      }
+      case "stat": {
+        const file = state.file(params.file)
+        const stat = await browser.FileSystem.stat(file)
+        out.textContent = JSON.stringify(stat, null, 2)
+        break
+      }
+      case "byteOffset": {
+        const file = state.file(params.file)
+        const offset = await browser.FileSystem.byteOffset(file)
+        out.textContent = `byteOffset: ${offset}`
+        break
+      }
+      case "setDates": {
+        const file = state.file(params.file)
+        delete params.file
+        const offset = await browser.FileSystem.setDates(file, params)
+        out.textContent = `dates set`
         break
       }
       default: {
-        output.textContent = `command not found: ${command}`
+        out.textContent = `command not found: ${command}`
         break
       }
     }
   } catch (error) {
-    output.textContent = error.toString()
+    out.textContent = error.toString()
+    out.classList.add("error")
   }
 }
 
@@ -167,7 +282,12 @@ const main = async () => {
     switch (event.key) {
       case "Enter": {
         event.preventDefault()
-        execute(state.addEntry(input.value))
+        if (event.shiftKey) {
+          state.addEntry(input.value)
+          input.value = ""
+        } else {
+          execute(state.addEntry(input.value))
+        }
         break
       }
       case "ArrowUp": {

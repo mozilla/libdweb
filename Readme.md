@@ -64,6 +64,8 @@ Following command will launch [Firefox Nighly][] with FileSystem API a demo addo
 npm run demo:fs
 ```
 
+![FileSystem](./demo/fs/fs.gif)
+
 ### All APIs
 
 Following command will launch [Firefox Nighly][] with a demo containing all the above

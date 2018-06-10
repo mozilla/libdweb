@@ -658,7 +658,16 @@ class HostFileManager /*::implements FileManager*/ {
         file,
         options && options.size
       )
-      return content.buffer
+
+      debug && console.log(">> Host.read", content)
+      // When offset is at the end of the file read will produce
+      // Uint8Array instance for the fragment of the underlaying buffer.
+      const { buffer, byteOffset, byteLength } = content
+      if (byteLength < buffer.byteLength) {
+        return buffer.slice(byteOffset, byteLength)
+      } else {
+        return buffer
+      }
     } catch (error) {
       return IOError.throw(error)
     }

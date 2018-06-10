@@ -46,7 +46,8 @@
     "theme_icons": [
       {
         "light": "demo/mdns/logo-flyweb-white.svg",
-        "dark": "demo/mdns/logo-flyweb-grey.svg"
+        "dark": "demo/mdns/logo-flyweb-grey.svg",
+        "size": 96
       }
     ]
   },
