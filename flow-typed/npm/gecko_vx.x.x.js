@@ -2944,6 +2944,7 @@ declare module "gecko" {
     cloneScope: Object;
     extension: Extension;
     messageManager: nsIContentFrameMessageManager<*, *>;
+    parentMessageManager: nsIContentFrameMessageManager<*, *>;
     close(): void;
     getCaller(): nsIStackFrame;
     jsonStringify: typeof JSON.stringify;

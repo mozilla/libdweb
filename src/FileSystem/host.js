@@ -50,6 +50,10 @@ const { AddonManager } = Cu.import(
   {}
 )
 
+const watcherService = Cc[
+  "@mozilla.org/toolkit/filewatcher/native-file-watcher;1"
+].getService(Ci.nsINativeFileWatcherService)
+
 const { ExtensionError } = ExtensionUtils
 
 const DEFAULT_EXTENSION_ICON =
@@ -169,11 +173,70 @@ class DirectoryEntry {
   }
 }
 
+class Watcher {
+  /*::
+  id:string
+  path:string
+  recursive:boolean
+  context:BaseContext
+  */
+  constructor(
+    id /*:string*/,
+    path /*:string*/,
+    recursive /*:boolean*/,
+    context /*:BaseContext*/
+  ) {
+    this.id = id
+    this.path = path
+    this.recursive = recursive
+    this.context = context
+  }
+  changed(file, flags) {
+    const { path, recursive, id } = this
+    if (recursive || path === file) {
+      const url = `file://${file}`
+      const address = `libdweb/FileSystem/Watcher/notify`
+      this.context.parentMessageManager.sendAsyncMessage(address, {
+        url,
+        flags,
+        id
+      })
+    }
+  }
+  static new(id, path, recursive, context) {
+    const watcher = new Watcher(id, path, recursive, context)
+
+    return new Promise((resolve, reject) => {
+      watcherService.addPath(
+        path,
+        watcher,
+        (xpcomError, osError) => reject(xpcomError),
+        resourcePath => resolve(watcher)
+      )
+
+      resolve(watcher)
+    })
+  }
+  terminate() {
+    return new Promise((resolve, reject) => {
+      console.log("FileSystemHost.Watcher.terminate")
+      watcherService.removePath(
+        this.path,
+        this,
+        (xpcomError, osError) => reject(xpcomError),
+        resourcePath => resolve()
+      )
+    })
+  }
+}
+
 class HostFileSystem /*::implements FileSystemManager*/ {
   /*::
   File:FileManager
   context:BaseContext
   state: Promise<{
+    nextWatcherID: number;
+    watchers:{[string]:Watcher},
     volumes:{[string]:FSVolume},
     name:string,
     iconURL:string
@@ -215,7 +278,10 @@ class HostFileSystem /*::implements FileSystemManager*/ {
       }
     }
 
-    return { volumes, name, iconURL }
+    const watchers /*:Object*/ = Object.create(null)
+    const nextWatcherID = 0
+
+    return { volumes, name, iconURL, watchers, nextWatcherID }
   }
   addPermissions(permissions /*:string[]*/) {
     return ExtensionPermissions.add(this.context.extension, {
@@ -558,27 +624,28 @@ class HostFileSystem /*::implements FileSystemManager*/ {
   ) /*:Promise<AsyncIterator<string>>*/ {
     throw new ExtensionError("Not Implemented")
   }
-  async addWatcher(url, options /*::?:WatchOptions*/) /*:Promise<void>*/ {
+  async startWatcher(url, options /*::?:WatchOptions*/) /*:Promise<string>*/ {
     try {
       const file = await this.resolve(url)
-      const watcher = Cc[
-        "@mozilla.org/toolkit/filewatcher/native-file-watcher;1"
-      ].getService(Ci.nsINativeFileWatcherService)
-
-      return await new Promise((resolve, reject) => {
-        watcher.addPath(
-          file,
-          (path, flags) => {
-            console.log("watch.changed", path, flags)
-          },
-          (xpcomError, osError) => {
-            reject(xpcomError)
-          },
-          resourcePath => {
-            resolve()
-          }
-        )
-      })
+      const state = await this.state
+      const recursive = !!(options && options.recursive)
+      const id = `Watcher@${++state.nextWatcherID}`
+      const watcher = await Watcher.new(id, file, recursive, this.context)
+      state.watchers[id] = watcher
+      return id
+    } catch (error) {
+      return IOError.throw(error)
+    }
+  }
+  async stopWatcher(id) /*:Promise<void>*/ {
+    try {
+      const state = await await this.state
+      const watchers = state.watchers
+      const watcher = watchers[id]
+      delete watchers[id]
+      if (watcher) {
+        await watcher.terminate()
+      }
     } catch (error) {
       return IOError.throw(error)
     }
@@ -772,7 +839,10 @@ global.FileSystem = class extends ExtensionAPI /*::<Host>*/ {
 
         createDirectory: (url, options) => fs.createDirectory(url, options),
         removeDirectory: (url, options) => fs.removeDirectory(url, options),
-        readDirectory: (url, options) => fs.readDirectory(url, options)
+        readDirectory: (url, options) => fs.readDirectory(url, options),
+
+        startWatcher: (url, options) => fs.startWatcher(url, options),
+        stopWatcher: id => fs.stopWatcher(id)
       }
     }
   }
