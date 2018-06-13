@@ -2406,6 +2406,66 @@ declare module "gecko" {
     | { complete(resourcePath: string): void }
     | { (resourcePath: string): void }
 
+  declare export interface nsINetAddrConstants {
+    FAMILY_INET: 1;
+    FAMILY_INET6: 2;
+    FAMILY_LOCAL: 3;
+  }
+
+  declare export type nsNetAddrFamily = $Values<nsINetAddrConstants>
+
+  declare export interface nsINetAddr {
+    +family: nsNetAddrFamily;
+    +address: AUTF8String;
+    +port: short;
+    +flow: long;
+    +scope: long;
+    +isV4Mapped: boolean;
+  }
+
+  declare export interface nsIUDPSocket {
+    -multicastLoopback: boolean;
+    -multicastInterface: string;
+    +localAddr: nsINetAddr;
+    +port: long;
+
+    init(
+      aPort: long,
+      aLoopbackOnly: boolean,
+      aPrincipal: ?nsIPrincipal,
+      aAddressReuse?: boolean
+    ): void;
+    init2(
+      aAddr: AUTF8String,
+      aPort: long,
+      aPrincipal: ?nsIPrincipal,
+      aAddressReuse?: boolean
+    ): void;
+    close(): void;
+    asyncListen(nsIUDPSocketListener): void;
+    send(host: AUTF8String, port: short, Uint8Array, ?number): long;
+    sendWithAddr(nsINetAddr, Uint8Array, ?number): long;
+    sendBinaryStream(host: AUTF8String, port: short, nsIInputStream): void;
+    sendBinaryStreamWithAddress(nsINetAddr, nsIInputStream): void;
+    joinMulticast(address: AUTF8String, multicastInterface?: AUTF8String): void;
+    leaveMulticast(
+      address: AUTF8String,
+      multicastInterface?: AUTF8String
+    ): void;
+  }
+
+  declare export interface nsIUDPSocketListener {
+    onPacketReceived(nsIUDPSocket, nsIUDPMessage): void;
+    onStopListening(nsIUDPSocket, nsresult): void;
+  }
+
+  declare export interface nsIUDPMessage {
+    +fromAddr: nsINetAddr;
+    +data: ACString;
+    +outputStream: nsIOutputStream;
+    +rawData: Uint8Array;
+  }
+
   // -------------------------
   declare export type JSM<url: string, jsm> = (url, {}) => jsm
 
@@ -2690,7 +2750,12 @@ declare module "gecko" {
       nsIX509Cert: nsIJSID<nsIX509Cert> & nsIX509CertConstants,
       nsIFilePicker: nsIJSID<nsIFilePicker> & nsIFilePickerConstants,
       nsIDocShell: nsIJSID<nsIDocShell> & nsIDocShellConstants,
-      nsINativeFileWatcherService: nsIJSCID<nsINativeFileWatcherService>
+      nsINativeFileWatcherService: nsIJSCID<nsINativeFileWatcherService>,
+
+      nsINetAddr: nsIJSCID<nsINetAddr> & nsINetAddrConstants,
+      nsIUDPSocket: nsIJSCID<nsIUDPSocket>,
+      nsIUDPSocketListener: nsIJSCID<nsIUDPSocketListener>,
+      nsIUDPMessage: nsIJSCID<nsIUDPMessage>
     },
     classes: {
       "@mozilla.org/xre/app-info;1": nsIJSCID<nsIXULAppInfo>,
@@ -2734,7 +2799,8 @@ declare module "gecko" {
       "@mozilla.org/filepicker;1": nsIJSCID<nsIFilePicker>,
       "@mozilla.org/toolkit/filewatcher/native-file-watcher;1": nsIJSCID<
         nsINativeFileWatcherService
-      >
+      >,
+      "@mozilla.org/network/udp-socket;1": nsIJSCID<nsIUDPSocket>
     },
     utils: {
       waiveXrays<a>(a): a,
