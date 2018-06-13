@@ -73,6 +73,7 @@ global.FileSystem = class extends ExtensionAPI /*::<*>*/ {
             "FileSystem.stopWatcher",
             [this.id]
           )
+          delete watchers[this.id]
           const done = Cu.cloneInto({ done: true }, context.cloneScope)
           const self = Cu.waiveXrays(this)
           const { notify } = self
