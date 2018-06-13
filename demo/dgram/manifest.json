@@ -1,0 +1,35 @@
+{
+  "manifest_version": 2,
+  "version": "0.1",
+  "name": "dgram@libdweb",
+  "description": "Extension containing libdweb UDPSocket API",
+  "permissions": [],
+
+  "experiment_apis": {
+    "UDPSocket": {
+      "schema": "../../src/UDPSocket/UDPSocket.json",
+      "child": {
+        "scopes": ["addon_child"],
+        "paths": [["UDPSocket"]],
+        "script": "../../src/UDPSocket/client.js"
+      },
+      "parent": {
+        "scopes": ["addon_parent"],
+        "paths": [["UDPSocket"]],
+        "script": "../../src/UDPSocket/host.js"
+      }
+    }
+  },
+  "icons": {
+    "48": "../mdns/logo-flyweb-grey.svg",
+    "96": "../mdns/logo-flyweb-grey.svg"
+  },
+  "sidebar_action": {
+    "default_icon": {
+      "16": "../mdns/logo-flyweb-grey.svg",
+      "32": "../mdns/logo-flyweb-grey.svg"
+    },
+    "default_title": "UDPSocket",
+    "default_panel": "terminal.html"
+  }
+}

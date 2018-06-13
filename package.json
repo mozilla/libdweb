@@ -2,11 +2,7 @@
   "version": "0.0.0",
   "name": "libdweb",
   "description": "Experimental WebExtensions API for enabling DWeb protocols",
-  "keywords": [
-    "libdweb",
-    "typed",
-    "flow"
-  ],
+  "keywords": ["libdweb", "typed", "flow"],
   "main": "lib/libdweb",
   "module": "src/libdweb",
   "unpkg": "dist/libdweb",
@@ -33,28 +29,34 @@
   },
   "scripts": {
     "//test": "npm run test:flow && npm run test:tape",
-    "//test:tape": "blue-tape -r source-map-support/register -r babel-register 'test/**/*.js'",
+    "//test:tape":
+      "blue-tape -r source-map-support/register -r babel-register 'test/**/*.js'",
     "//test:flow": "flow check",
     "//build:clear": "rm -rf lib",
     "//build:types": "flow-copy-source --verbose src lib",
     "//build:umd": "BABEL_ENV=umd rollup -c --files libdweb",
     "//build:node": "babel --out-dir lib src",
     "//build:api": "documentation readme --section=API src/libdweb.js",
-    "//build:docs": "documentation build --document-exported src/** -f html --o docs",
+    "//build:docs":
+      "documentation build --document-exported src/** -f html --o docs",
     "//build": "npm run build:node && npm run build:types",
     "//prepublishOnly": "npm run build && npm run build:umd && npm test",
     "precommit": "lint-staged",
-    "//start": "flow-copy-source --watch --verbose src lib & babel --watch --out-dir lib src",
-    "demo": "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging",
-    "demo:mdns": "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/mdns",
-    "demo:protocol": "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/protocol",
-    "demo:fs": "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/fs"
+    "//start":
+      "flow-copy-source --watch --verbose src lib & babel --watch --out-dir lib src",
+    "demo":
+      "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging",
+    "demo:mdns":
+      "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/mdns",
+    "demo:protocol":
+      "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/protocol",
+    "demo:fs":
+      "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/fs",
+    "demo:dgram":
+      "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/dgram"
   },
   "lint-staged": {
-    "*.js": [
-      "prettier --no-semi --write",
-      "git add"
-    ]
+    "*.js": ["prettier --no-semi --write", "git add"]
   },
   "quokka": {
     "alias": {
@@ -62,8 +64,6 @@
     },
     "pro": true,
     "babel": true,
-    "plugins": [
-      "alias-quokka-plugin"
-    ]
+    "plugins": ["alias-quokka-plugin"]
   }
 }

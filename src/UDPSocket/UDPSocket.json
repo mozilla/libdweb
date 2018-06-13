@@ -12,6 +12,18 @@
             "type": "string"
           },
           "address": {
+            "type": "object",
+            "optional": true,
+            "description": "socket address",
+            "$ref": "Address"
+          }
+        }
+      },
+      {
+        "id": "Address",
+        "type": "object",
+        "properties": {
+          "host": {
             "type": "string",
             "description":
               "Either the IP address (FAMILY_INET, FAMILY_INET6) or the path (FAMILY_LOCAL) in string form."
@@ -21,19 +33,6 @@
             "description":
               "port number for a FAMILY_INET or FAMILY_INET6 address"
           },
-          "flow": {
-            "type": "number",
-            "description": "The flow label for a FAMILY_INET6 address."
-          },
-          "scope": {
-            "type": "number",
-            "description": "The address scope of a FAMILY_INET6 address."
-          },
-          "isV4Mapped": {
-            "type": "boolean",
-            "description":
-              "whether a FAMILY_INET6 address is mapped from FAMILY_INET."
-          },
           "family": {
             "type": "number",
             "description":
@@ -42,7 +41,17 @@
         }
       }
     ],
-    "properties": {},
+    "properties": {
+      "FAMILY_INET": {
+        "type": "number"
+      },
+      "FAMILY_INET6": {
+        "type": "number"
+      },
+      "FAMILY_LOCAL": {
+        "type": "number"
+      }
+    },
     "events": [],
     "functions": [
       {
@@ -55,8 +64,8 @@
             "name": "options",
             "type": "object",
             "properties": {
-              "address": {
-                "name": "address",
+              "host": {
+                "name": "host",
                 "type": "string",
                 "optional": true,
                 "description": "Destination hostname or IP address"
@@ -127,7 +136,7 @@
           },
           {
             "name": "data",
-            "type": "ArrayBuffer",
+            "type": "any",
             "description": "The buffer containing the data to be written"
           },
           {
@@ -210,6 +219,11 @@
         "async": true,
         "parameters": [
           {
+            "name": "socket",
+            "type": "object",
+            "$ref": "Socket"
+          },
+          {
             "name": "address",
             "type": "string",
             "description": "The multicast group address"
@@ -222,6 +236,23 @@
               "The local address of the interface on which to join the group.  If this is not specified, the OS may join the group on all interfaces  or only the primary interface."
           }
         ]
+      },
+      {
+        "name": "messages",
+        "type": "function",
+        "description":
+          "Returns async iterable for messages received on the socket",
+        "async": false,
+        "parameters": [
+          {
+            "name": "socket",
+            "type": "object",
+            "$ref": "Socket"
+          }
+        ],
+        "returns": {
+          "type": "object"
+        }
       }
     ]
   }

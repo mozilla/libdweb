@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <style>
+    code,
+    .input {
+      white-space: pre;
+      -moz-user-select: text;
+      font-family: monaco, 'Courier New', Courier, monospace;
+      display: flex;
+      box-sizing: border-box;
+      line-height: 14px;
+      font-size: 12px;
+      padding: 5px;
+      border: none;
+      outline: none;
+      position: relative;
+
+    }
+
+    output .out {
+      border-left: 3px solid rgb(183, 185, 216);
+    }
+
+
+    output .inn {
+      border-left: 3px solid rgb(97, 174, 197);
+    }
+
+    output .pending {
+      animation: blink-animation 1s steps(5, start) infinite;
+      border-left: 3px solid rgb(146, 218, 63);
+    }
+
+    @keyframes blink-animation {
+      to {
+        border-left: 3px solid rgb(39, 233, 136);
+      }
+    }
+
+    output .error {
+      border-left: 3px solid rgb(230, 106, 106);
+    }
+
+    .input {
+      border-left: 3px solid rgb(51, 109, 235);
+    }
+  </style>
+</head>
+
+<body>
+  <output></output>
+  <input class="input" contenteditable="true">
+  </input>
+</body>
+<script src="terminal.js"></script>
+
+</html>

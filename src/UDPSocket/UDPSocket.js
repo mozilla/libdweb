@@ -10,7 +10,7 @@ export interface UDPSocketManager {
     data: ArrayBuffer,
     size?: number
   ): Promise<number>;
-  messages(UDPSocket): AsyncIterator<{ socket: UDPSocket, data: ArrayBuffer }>;
+  messages(UDPSocket): AsyncIterator<UDPMessage>;
   setMulticastLoopback(UDPSocket, boolean): Promise<void>;
   setMulticastInterface(UDPSocket, string): Promise<void>;
   addMembership(
@@ -30,19 +30,25 @@ export type FAMILY_INET6 = 2
 export type FAMILY_LOCAL = 3
 export type Family = FAMILY_INET | FAMILY_INET6 | FAMILY_LOCAL
 
-export interface UDPSocket {
-  id: string;
-  address: string;
+export interface SocketAddress {
+  host: string;
   port: number;
-  flow: number;
-  scope: number;
-  isV4Mapped: boolean;
   family: Family;
 }
 
+export interface UDPSocket {
+  id: string;
+  address: SocketAddress;
+}
+
 export interface SocketOptions {
-  address?: string;
+  host?: string;
   port?: number;
   loopbackOnly?: boolean;
   addressReuse?: boolean;
+}
+
+export interface UDPMessage {
+  socket: UDPSocket;
+  data: ArrayBuffer;
 }

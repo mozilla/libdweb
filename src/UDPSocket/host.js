@@ -2,8 +2,15 @@
 
 /*::
 import { Cu, Cr, Ci, Cc, ExtensionAPI } from "gecko"
-import type {BaseContext, nsIUDPSocket} from "gecko"
-import type {UDPSocket, UDPSocketManager, SocketOptions, Family} from "./UDPSocket"
+import type {BaseContext, nsIUDPSocket, nsIUDPSocketListener, nsINetAddr} from "gecko"
+import type {
+  UDPSocket,
+  UDPSocketManager,
+  UDPMessage,
+  SocketAddress,
+  SocketOptions,
+  Family
+} from "./UDPSocket"
 
 interface Host {
   +UDPSocket: UDPSocketManager;
@@ -18,38 +25,38 @@ const { ExtensionUtils } = Cu.import(
 )
 
 const { ExtensionError } = ExtensionUtils
+
+const MAILBOX = "libdweb/UDPSocket/message"
 class IOError extends ExtensionError {
-  /*::
-  operation:string;
-  becauseExists:boolean;
-  becauseNoSuchFile:boolean;
-  becauseClosed:boolean;
-  code:number;
-  */
   static throw(message) /*:empty*/ {
     const self = new this(message)
     throw self
   }
 }
 
+class Address /*::implements SocketAddress*/ {
+  /*::
+  host:string;
+  port:number;
+  family:Family;
+  */
+  static from({ address, port, family } /*:nsINetAddr*/) {
+    return new this(address, port, family)
+  }
+  constructor(host, port, family) {
+    this.host = host
+    this.port = port
+    this.family = family
+  }
+}
 class Socket /*::implements UDPSocket*/ {
   /*::
   id: string;
-  address: string;
-  port: number;
-  flow: number;
-  scope: number;
-  isV4Mapped: boolean;
-  family: Family;
+  address: SocketAddress;
   */
-  constructor(id, { address, port, flow, scope, isV4Mapped, family }) {
+  constructor(id, address) {
     this.id = id
     this.address = address
-    this.port = port
-    this.family = family
-    this.flow = flow
-    this.scope = scope
-    this.isV4Mapped = isV4Mapped
   }
 }
 
@@ -57,43 +64,53 @@ class UDPSocketHost /*::implements UDPSocketManager*/ {
   /*::
   context:BaseContext;
   sockets:{[string]:nsIUDPSocket}
+  listeners:{[string]:nsIUDPSocketListener}
   nextSocketID:number
+
+  messages:(UDPSocket) => AsyncIterator<UDPMessage>
   */
   constructor(context /*:BaseContext*/) {
-    const sockets: Object = Object.create(null)
+    const sockets /*: Object*/ = Object.create(null)
+    const listeners /*:Object*/ = Object.create(null)
     this.context = context
     this.sockets = sockets
+    this.listeners = listeners
     this.nextSocketID = 0
   }
 
   async create(options /*:SocketOptions*/) /*: Promise<UDPSocket>*/ {
-    const socket = Cc["@mozilla.org/network/udp-socket;1"].createInstance(
-      Ci.nsIUDPSocket
-    )
-    if (options.address != null) {
-      socket.init2(
-        options.address,
-        options.port || -1,
-        null,
-        options.addressReuse != false
+    try {
+      const socket = Cc["@mozilla.org/network/udp-socket;1"].createInstance(
+        Ci.nsIUDPSocket
       )
-    } else {
-      socket.init(
-        options.port || -1,
-        options.loopbackOnly != false,
-        null,
-        options.addressReuse != false
-      )
-    }
 
-    const address = socket.localAddr
-    const id = `UPDSocket@${++this.nextSocketID}`
-    this.sockets[id] = socket
-    return new Socket(id, address)
+      if (options.host != null) {
+        socket.init2(
+          options.host,
+          options.port || -1,
+          null,
+          options.addressReuse != false
+        )
+      } else {
+        socket.init(
+          options.port || -1,
+          options.loopbackOnly != false,
+          null,
+          options.addressReuse != false
+        )
+      }
+
+      const id = `UPDSocket@${++this.nextSocketID}`
+      this.sockets[id] = socket
+      return new Socket(id, Address.from(socket.localAddr))
+    } catch (error) {
+      return IOError.throw(error)
+    }
   }
   async close({ id } /*:UDPSocket*/) /*: Promise<void>*/ {
     const socket = this.sockets[id]
     if (socket) {
+      delete this.sockets[id]
       return socket.close()
     } else {
       return IOError.throw("Unable to find corresponding socket")
@@ -105,7 +122,7 @@ class UDPSocketHost /*::implements UDPSocketManager*/ {
     port /*: number*/,
     data /*: ArrayBuffer*/,
     size /*::?: number*/
-  ): Promise<number> {
+  ) /*: Promise<number>*/ {
     const socket = this.sockets[id]
     if (socket) {
       return socket.send(
@@ -114,16 +131,6 @@ class UDPSocketHost /*::implements UDPSocketManager*/ {
         new Uint8Array(data),
         size || data.byteLength
       )
-    } else {
-      return IOError.throw("Unable to find corresponding socket")
-    }
-  }
-  messages(
-    { id } /*:UDPSocket*/
-  ) /*: AsyncIterator<{ socket: UDPSocket, data: ArrayBuffer }>*/ {
-    const socket = this.sockets[id]
-    if (socket) {
-      return IOError.throw("Implemented on client side")
     } else {
       return IOError.throw("Unable to find corresponding socket")
     }
@@ -142,7 +149,7 @@ class UDPSocketHost /*::implements UDPSocketManager*/ {
   async setMulticastInterface(
     { id } /*:UDPSocket*/,
     multicastInterface /*:string*/
-  ): Promise<void> {
+  ) /*: Promise<void>*/ {
     const socket = this.sockets[id]
     if (socket) {
       socket.multicastInterface = multicastInterface
@@ -174,15 +181,51 @@ class UDPSocketHost /*::implements UDPSocketManager*/ {
       return IOError.throw("Unable to find corresponding socket")
     }
   }
+  setMessageListener({ id } /*:UDPSocket*/) {
+    const { context, sockets, listeners } = this
+    const socket = sockets[id]
+    if (socket) {
+      const listener = {
+        onPacketReceived(socket, message) {
+          context.parentMessageManager.sendAsyncMessage(MAILBOX, {
+            to: id,
+            done: false,
+            from: Address.from(message.fromAddr),
+            data: message.rawData.buffer
+          })
+        },
+        onStopListening(socket, status) {
+          delete sockets[id]
+          context.parentMessageManager.sendAsyncMessage(MAILBOX, {
+            to: id,
+            done: true,
+            status
+          })
+        }
+      }
+      socket.asyncListen(listener)
+      listeners[id] = listener
+    } else {
+      return IOError.throw("Unable to find corresponding socket")
+    }
+  }
 
+  async removeMessageListener({ id } /*:UDPSocket*/) /*:Promise<void>*/ {
+    const listener = this.listeners[id]
+    if (listener) {
+      delete this.listeners[id]
+    } else {
+      return IOError.throw("Unable to find corresponding socket")
+    }
+  }
   static new(context /*:BaseContext*/) {
-    const fs = new this(context)
-    return fs
+    return new this(context)
   }
 }
 
 global.UDPSocket = class extends ExtensionAPI /*::<Host>*/ {
   getAPI(context) {
+    debug && console.log("UDPSocketHost.new")
     const socketManager = UDPSocketHost.new(context)
 
     return {
@@ -192,6 +235,9 @@ global.UDPSocket = class extends ExtensionAPI /*::<Host>*/ {
         send: (socket, host, port, data, size) =>
           socketManager.send(socket, host, port, data, size),
         messages: socket => socketManager.messages(socket),
+        setMessageListener: socket => socketManager.setMessageListener(socket),
+        removeMessageListener: socket =>
+          socketManager.removeMessageListener(socket),
         setMulticastLoopback: (socket, flag) =>
           socketManager.setMulticastLoopback(socket, flag),
         setMulticastInterface: (socket, multicastInterface) =>
