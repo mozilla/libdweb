@@ -24,7 +24,7 @@ You can help this effort in several ways:
 | [Protocol Handler][] | 🐥     |
 | [mdns][]             | 🐣     |
 | [File System][]      | 🐣     |
-| [UDP Socket][]       | 🥚     |
+| [UDP Socket][]       | 🐣     |
 | [TCP Socket][]       | 🥚     |
 | [µTP Socket]         | 🥚     |
 
