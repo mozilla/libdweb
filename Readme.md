@@ -38,7 +38,7 @@ the toolchain. Assuming you do have [Firefox Nighly][] installed you can run fol
 
 ### Protocol API
 
-Following command will launch [Firefox Nighly][] with protocol API a demo addon
+Following command will launch [Firefox Nighly][] with protocol API demo addon
 
 ```
 npm run demo:protocol
@@ -48,7 +48,7 @@ npm run demo:protocol
 
 ### mDNS API
 
-Following command will launch [Firefox Nighly][] with mDNS API a demo addon
+Following command will launch [Firefox Nighly][] with mDNS API demo addon
 
 ```
 npm run demo:mdns
@@ -58,13 +58,22 @@ npm run demo:mdns
 
 ### FileSystem API
 
-Following command will launch [Firefox Nighly][] with FileSystem API a demo addon
+Following command will launch [Firefox Nighly][] with FileSystem API demo addon
 
 ```
 npm run demo:fs
 ```
 
 ![FileSystem](./demo/fs/fs.gif)
+
+### UDPSocket API
+
+Following command will launch [Firefox Nighly][] with UDPSocket API demo addon
+
+```
+npm run demo:dgram
+```
+
 
 ### All APIs
 
