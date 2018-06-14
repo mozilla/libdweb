@@ -137,9 +137,9 @@ const execute = async state => {
   output.appendChild(out)
   input.value = ""
 
-  const toSocket = socket => {
-    id: `UPDSocket@${socket}`
-  }
+  const toSocket = socket => ({
+    id: `UPDSocket@${socket.id}`
+  })
   const fromSocket = socket => socket.id.replace(`UPDSocket@`, "")
 
   try {
@@ -151,7 +151,7 @@ const execute = async state => {
       }
       case "create": {
         const socket = await browser.UDPSocket.create(params)
-        const ref = fromSocket(id)
+        const ref = fromSocket(socket)
         out.textContent = `socket: ${ref} ${JSON.stringify(socket, null, 2)}`
         break
       }
@@ -222,15 +222,21 @@ const execute = async state => {
           out.classList.add("pending")
           const message = out.ownerDocument.createElement("code")
           message.classList.add("chunk")
-          for await (const { data, address } of browser.UDPSocket.messages(
+
+          const intro = message.cloneNode(true)
+          intro.textContent = "await messages:"
+          out.appendChild(intro)
+          out.appendChild(out.ownerDocument.createElement("br"))
+          for await (const { data, from } of browser.UDPSocket.messages(
             socket
           )) {
-            const view = message.cloneNode()
+            const view = message.cloneNode(true)
             const payload = decoder.decode(data)
-            view.textContent = `${JSON.stirgify(address)} -> ${JSON.stringify(
+            view.textContent = `${JSON.stringify(from)} -> ${JSON.stringify(
               payload
             )}`
             out.appendChild(view)
+            out.appendChild(out.ownerDocument.createElement("br"))
           }
           out.classList.remove("pending")
         }
@@ -327,7 +333,6 @@ const main = async () => {
         break
       }
       default: {
-        console.log(event)
       }
     }
   }

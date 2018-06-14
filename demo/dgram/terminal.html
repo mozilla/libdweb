@@ -23,6 +23,8 @@
 
     output .out {
       border-left: 3px solid rgb(183, 185, 216);
+      display: flex;
+      flex-flow: column;
     }
 
 
@@ -30,9 +32,11 @@
       border-left: 3px solid rgb(97, 174, 197);
     }
 
+
+
     output .pending {
       animation: blink-animation 1s steps(5, start) infinite;
-      border-left: 3px solid rgb(146, 218, 63);
+      border-left: 3px solid rgb(213, 63, 218);
     }
 
     @keyframes blink-animation {
