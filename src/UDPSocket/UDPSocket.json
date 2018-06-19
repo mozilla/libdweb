@@ -55,6 +55,49 @@
     "events": [],
     "functions": [
       {
+        "name": "open",
+        "description": "This method initializes a UDP socket.",
+        "type": "function",
+        "async": false,
+        "parameters": [
+          {
+            "name": "options",
+            "type": "object",
+            "properties": {
+              "host": {
+                "name": "host",
+                "type": "string",
+                "optional": true,
+                "description": "Destination hostname or IP address"
+              },
+              "port": {
+                "type": "number",
+                "description": "Destination port.",
+                "optional": true,
+                "default": -1
+              },
+              "loopbackOnly": {
+                "type": "boolean",
+                "optional": true,
+                "default": true,
+                "description":
+                  "If true, the UDP socket will only respond to connections on the local loopback interface. Otherwise, it will accept connections from any interface."
+              },
+              "addressReuse": {
+                "type": "boolean",
+                "optional": true,
+                "default": true,
+                "description":
+                  "If true, the socket is allowed to be bound to an address that is already in use. Default is true."
+              }
+            }
+          }
+        ],
+        "returns": {
+          "type": "any"
+        }
+      },
+      {
         "name": "create",
         "description": "This method initializes a UDP socket.",
         "type": "function",

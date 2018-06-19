@@ -49,6 +49,6 @@ export interface SocketOptions {
 }
 
 export interface UDPMessage {
-  socket: UDPSocket;
+  from: SocketAddress;
   data: ArrayBuffer;
 }

@@ -138,9 +138,9 @@ const execute = async state => {
   input.value = ""
 
   const toSocket = socket => ({
-    id: `UPDSocket@${socket.id}`
+    id: `UDPSocket@${socket.id}`
   })
-  const fromSocket = socket => socket.id.replace(`UPDSocket@`, "")
+  const fromSocket = socket => socket.id.replace(`UDPSocket@`, "")
 
   try {
     const [command, params] = parseCommand(value)

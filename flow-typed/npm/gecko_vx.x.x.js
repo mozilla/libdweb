@@ -2803,6 +2803,20 @@ declare module "gecko" {
       "@mozilla.org/network/udp-socket;1": nsIJSCID<nsIUDPSocket>
     },
     utils: {
+      Sandbox(
+        nsIPrincipal | nsIDOMWindow,
+        ?{
+          freshZone?: boolean,
+          sameZoneAs?: nsIDOMWindow,
+          sandboxName?: string,
+          sandboxPrototype?: Object,
+          wantComponents?: boolean,
+          wantExportHelpers?: boolean,
+          wantGlobalProperties?: boolean
+        }
+      ): Sandbox,
+      nukeSandbox(Sandbox): void,
+      evalInSandbox(string, Sandbox): any,
       waiveXrays<a>(a): a,
       cloneInto<a, b>(
         object: a,
@@ -2871,6 +2885,8 @@ declare module "gecko" {
   declare export var CID: typeof Components.ID
 
   // JSM
+
+  declare class Sandbox {}
 
   declare export interface Services<$p, p$, $c, c$, $m, m$> {
     Services: {
@@ -3012,6 +3028,7 @@ declare module "gecko" {
     messageManager: nsIContentFrameMessageManager<*, *>;
     parentMessageManager: nsIContentFrameMessageManager<*, *>;
     close(): void;
+    callOnClose({ close(): void }): void;
     getCaller(): nsIStackFrame;
     jsonStringify: typeof JSON.stringify;
     normalizeError(error: Object, nsIStackFrame): Error;

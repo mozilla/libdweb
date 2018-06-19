@@ -41,12 +41,7 @@
       "child": {
         "scopes": ["addon_child"],
         "paths": [["UDPSocket"]],
-        "script": "./src/UDPSocket/client.js"
-      },
-      "parent": {
-        "scopes": ["addon_parent"],
-        "paths": [["UDPSocket"]],
-        "script": "./src/UDPSocket/host.js"
+        "script": "./src/UDPSocket/Socket.js"
       }
     }
   },
