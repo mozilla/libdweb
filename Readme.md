@@ -10,12 +10,12 @@ This repositiory hosts community effort of implementing [experimental APIs][webe
 
 You can help this effort in several ways:
 
-* If there is a missing API to enable certain dweb protocol please submit an issue with clear description of:
+- If there is a missing API to enable certain dweb protocol please submit an issue with clear description of:
 
   1.  What protocol implementation requires it.
   2.  What is this API would protocol implementation allow / prevent.
 
-* Contribute code. Make sure to reach out first, then hack.
+- Contribute code. Make sure to reach out first, then hack.
 
 ## Status: In active development
 
@@ -26,12 +26,11 @@ You can help this effort in several ways:
 | [File System][]      | 🐣     |
 | [UDP Socket][]       | 🐣     |
 | [TCP Socket][]       | 🥚     |
-| [µTP Socket]         | 🥚     |
 
-* 🥚 : In design phase
-* 🐣 : Work in progress
-* 🐥 : Try it out
-* 🐓 : Usable
+- 🥚 : In design phase
+- 🐣 : Work in progress
+- 🐥 : Try it out
+- 🐓 : Usable
 
 You can try this out by cloning the repo and running `npm install` to get all
 the toolchain. Assuming you do have [Firefox Nighly][] installed you can run following demos:
@@ -73,7 +72,6 @@ Following command will launch [Firefox Nighly][] with UDPSocket API demo addon
 ```
 npm run demo:dgram
 ```
-
 
 ### All APIs
 
