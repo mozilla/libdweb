@@ -81,8 +81,8 @@ Following command will launch [Firefox Nighly][] with a demo containing all the 
 npm run demo
 ```
 
-[travis.icon]: https://travis-ci.org/Gozala/libdweb.svg?branch=master
-[travis.url]: https://travis-ci.org/Gozala/libdweb
+[travis.icon]: https://travis-ci.org/mozilla/libdweb.svg?branch=master
+[travis.url]: https://travis-ci.org/mozilla/libdweb
 [version.icon]: https://img.shields.io/npm/v/libdweb.svg
 [downloads.icon]: https://img.shields.io/npm/dm/libdweb.svg
 [package.url]: https://npmjs.org/package/libdweb
@@ -92,11 +92,11 @@ npm run demo
 [prettier.url]: https://github.com/prettier/prettier
 [webextension experiments]: https://webextensions-experiments.readthedocs.io/en/latest/index.html
 [new apis]: https://wiki.mozilla.org/WebExtensions/NewAPIs
-[protocol handler]: https://github.com/Gozala/libdweb/issues/2
-[udp socket]: https://github.com/Gozala/libdweb/issues/4
-[tcp socket]: https://github.com/Gozala/libdweb/issues/5
-[µtp socket]: https://github.com/Gozala/libdweb/issues/6
-[mdns]: https://github.com/Gozala/libdweb/issues/7
-[file system]: https://github.com/Gozala/libdweb/issues/8
+[protocol handler]: https://github.com/mozilla/libdweb/issues/2
+[udp socket]: https://github.com/mozilla/libdweb/issues/4
+[tcp socket]: https://github.com/mozilla/libdweb/issues/5
+[µtp socket]: https://github.com/mozilla/libdweb/issues/6
+[mdns]: https://github.com/mozilla/libdweb/issues/7
+[file system]: https://github.com/mozilla/libdweb/issues/8
 [web-ext]: https://www.npmjs.com/package/web-ext
 [firefox nighly]: https://blog.nightly.mozilla.org/
