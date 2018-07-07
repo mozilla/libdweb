@@ -2836,7 +2836,7 @@ declare module "gecko" {
           allowCrossOriginArguments?: boolean
         }
       ): f,
-      getGlobalForObject<a: Object>(a): Object,
+      getGlobalForObject<a: Object>(a): Globals,
       importGlobalProperties(string[]): void,
       unload(string): void,
       import: (<p, p$, c, c$, m, m$>(
@@ -3319,8 +3319,8 @@ declare module "gecko" {
       backlog?: short
     ): void;
 
-    onconnect: EventHandler;
-    onerror: EventHandler;
+    onconnect: ?EventHandler;
+    onerror: ?EventHandler;
     close(): void;
   }
 
@@ -3336,11 +3336,11 @@ declare module "gecko" {
     +readyState: TCPReadyState;
     +binaryType: TCPSocketBinaryType;
 
-    onopen: EventHandler;
-    ondrain: EventHandler;
-    ondata: EventHandler;
-    onerror: EventHandler;
-    onclose: EventHandler;
+    onopen: ?EventHandler;
+    ondrain: ?EventHandler;
+    ondata: ?EventHandler;
+    onerror: ?EventHandler;
+    onclose: ?EventHandler;
 
     constructor(host: string, port: short, options?: SocketOptions): void;
 
@@ -3364,5 +3364,11 @@ declare module "gecko" {
   declare export type SocketOptions = {
     useSecureTransport?: boolean,
     binaryType?: TCPSocketBinaryType
+  }
+
+  declare type Globals = {
+    TCPServerSocket: typeof TCPServerSocket,
+    TCPSocket: typeof TCPSocket,
+    URL: typeof URL
   }
 }

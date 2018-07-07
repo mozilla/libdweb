@@ -1,104 +1,60 @@
 [
   {
-    "namespace": "TCPSocket",
-    "description": "TCP Socket implementation",
-    "//permissions": ["TCPSocket"],
+    "namespace": "TCPClientSocket",
+    "description": "TCP Client Socket implementation",
+    "//permissions": ["TCPClientPSocket"],
     "types": [
       {
-        "id": "Socket",
+        "id": "ClientSocket",
         "type": "object",
         "properties": {
           "id": {
             "type": "string"
           },
-          "address": {
-            "type": "object",
-            "optional": true,
-            "description": "socket address",
-            "$ref": "Address"
+          "host": {
+            "type": "string",
+            "description": "socket host"
+          },
+          "port": {
+            "type": "number",
+            "description": "socket port"
+          },
+          "ssl": {
+            "type": "boolean",
+            "description": "secure connection"
           }
         }
       },
       {
-        "id": "Address",
+        "id": "Client",
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string"
+          },
           "host": {
             "type": "string",
-            "description":
-              "Either the IP address (FAMILY_INET, FAMILY_INET6) or the path (FAMILY_LOCAL) in string form."
+            "optional": true,
+            "description": "socket host"
           },
           "port": {
             "type": "number",
-            "description":
-              "port number for a FAMILY_INET or FAMILY_INET6 address"
+            "optional": true,
+            "description": "socket port"
           },
-          "family": {
-            "type": "number",
-            "description":
-              "The address family of the network address, which corresponds to one of the FAMILY_ constants."
+          "ssl": {
+            "type": "boolean",
+            "optional": true,
+            "description": "secure connection"
           }
         }
       }
     ],
-    "properties": {
-      "FAMILY_INET": {
-        "type": "number"
-      },
-      "FAMILY_INET6": {
-        "type": "number"
-      },
-      "FAMILY_LOCAL": {
-        "type": "number"
-      }
-    },
+    "properties": {},
     "events": [],
     "functions": [
       {
-        "name": "open",
-        "description": "This method initializes a TCP socket.",
-        "type": "function",
-        "async": false,
-        "parameters": [
-          {
-            "name": "options",
-            "type": "object",
-            "properties": {
-              "host": {
-                "name": "host",
-                "type": "string",
-                "optional": true,
-                "description": "Destination hostname or IP address"
-              },
-              "port": {
-                "type": "number",
-                "description": "Destination port.",
-                "optional": true,
-                "default": -1
-              },
-              "loopbackOnly": {
-                "type": "boolean",
-                "optional": true,
-                "default": true,
-                "description":
-                  "If true, the TCP socket will only respond to connections on the local loopback interface. Otherwise, it will accept connections from any interface."
-              },
-              "addressReuse": {
-                "type": "boolean",
-                "optional": true,
-                "default": true,
-                "description":
-                  "If true, the socket is allowed to be bound to an address that is already in use. Default is true."
-              }
-            }
-          }
-        ],
-        "returns": {
-          "type": "any"
-        }
-      },
-      {
-        "name": "create",
+        "name": "connect",
         "description": "This method initializes a TCP socket.",
         "type": "function",
         "async": true,
@@ -110,72 +66,154 @@
               "host": {
                 "name": "host",
                 "type": "string",
-                "optional": true,
                 "description": "Destination hostname or IP address"
               },
               "port": {
                 "type": "number",
-                "description": "Destination port.",
-                "optional": true,
-                "default": -1
+                "description": "Destination port."
               },
-              "loopbackOnly": {
+              "useSecureTransport": {
                 "type": "boolean",
                 "optional": true,
-                "default": true,
-                "description":
-                  "If true, the TCP socket will only respond to connections on the local loopback interface. Otherwise, it will accept connections from any interface."
-              },
-              "addressReuse": {
-                "type": "boolean",
-                "optional": true,
-                "default": true,
-                "description":
-                  "If true, the socket is allowed to be bound to an address that is already in use. Default is true."
+                "default": false,
+                "description": "use secure transport."
               }
             }
           }
         ],
         "returns": {
           "type": "object",
-          "$ref": "Socket"
+          "$ref": "ClientSocket"
+        }
+      },
+      {
+        "name": "suspend",
+        "type": "function",
+        "async": false,
+        "parameters": [
+          {
+            "name": "client",
+            "type": "object",
+            "$ref": "Client"
+          }
+        ]
+      },
+      {
+        "name": "resume",
+        "type": "function",
+        "async": false,
+        "parameters": [
+          {
+            "name": "client",
+            "type": "object",
+            "$ref": "Client"
+          }
+        ]
+      },
+      {
+        "name": "getBufferedAmount",
+        "type": "function",
+        "async": false,
+        "parameters": [
+          {
+            "name": "client",
+            "type": "object",
+            "$ref": "Client"
+          }
+        ],
+        "returns": {
+          "type": "number"
+        }
+      },
+      {
+        "name": "getStatus",
+        "type": "function",
+        "async": false,
+        "parameters": [
+          {
+            "name": "client",
+            "type": "object",
+            "$ref": "Client"
+          }
+        ],
+        "returns": {
+          "type": "string"
         }
       },
       {
         "name": "close",
         "type": "function",
-        "description":
-          "This method closes a TCP socket. This does not affect already connected client sockets (i.e., the nsISocketTransport instances created from this TCP socket). This will cause the onStopListening event to asynchronously fire with a status of NS_BINDING_ABORTED.",
+        "description": "This method closes a TCP socket.",
         "async": true,
         "parameters": [
           {
-            "name": "socket",
+            "name": "client",
             "type": "object",
-            "$ref": "Socket"
+            "$ref": "Client"
           }
         ]
       },
       {
-        "name": "send",
+        "name": "closed",
         "type": "function",
-        "description":
-          "Send out the datagram to specified remote host and port. DNS lookup will be triggered.",
+        "description": "This method closes a TCP socket.",
         "async": true,
         "parameters": [
           {
-            "name": "socket",
+            "name": "client",
             "type": "object",
-            "$ref": "Socket"
-          },
+            "$ref": "Client"
+          }
+        ]
+      },
+      {
+        "name": "opened",
+        "type": "function",
+        "description": "This method closes a TCP socket.",
+        "async": true,
+        "parameters": [
           {
-            "name": "host",
-            "type": "string",
-            "description": "host The remote host name."
-          },
+            "name": "client",
+            "type": "object",
+            "$ref": "Client"
+          }
+        ]
+      },
+      {
+        "name": "errored",
+        "type": "function",
+        "async": true,
+        "parameters": [
           {
-            "name": "port",
-            "type": "number",
-            "description": "port The remote port"
+            "name": "client",
+            "type": "object",
+            "$ref": "Client"
+          }
+        ]
+      },
+      {
+        "name": "read",
+        "type": "function",
+        "description": "Reads TCP packet from the socket",
+        "async": true,
+        "parameters": [
+          {
+            "name": "client",
+            "type": "object",
+            "$ref": "Client"
+          }
+        ]
+      },
+      {
+        "name": "write",
+        "type": "function",
+        "description": "Reads TCP packet from the socket",
+        "async": true,
+        "parameters": [
+          {
+            "name": "client",
+            "type": "object",
+            "$ref": "Client"
           },
           {
             "name": "data",
@@ -183,119 +221,103 @@
             "description": "The buffer containing the data to be written"
           },
           {
-            "name": "size",
-            "type": "number",
+            "name": "options",
             "optional": true,
-            "description": "The maximum number of bytes to be written"
+            "type": "object",
+            "properties": {
+              "byteOffset": {
+                "type": "number",
+                "optional": true,
+                "default": 0,
+                "description": "Byte offset"
+              },
+              "byteLength": {
+                "type": "number",
+                "optional": true,
+                "description": "The maximum number of bytes to be written"
+              }
+            }
           }
         ]
+      }
+    ]
+  },
+  {
+    "namespace": "TCPServerSocket",
+    "description": "TCP Server Socket",
+    "//permissions": ["TCPServerSocket"],
+    "types": [
+      {
+        "id": "Server",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        }
       },
       {
-        "name": "setMulticastLoopback",
+        "id": "TCPServerSocket",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "localPort": {
+            "type": "number"
+          }
+        }
+      }
+    ],
+    "properties": [],
+    "events": [],
+    "functions": [
+      {
+        "name": "serve",
         "type": "function",
-        "description":
-          "Sets or clears the IP_MULTICAST_LOOP socket option. When set to true, multicast packets will also be received on the local interface.",
         "async": true,
         "parameters": [
           {
-            "name": "socket",
+            "name": "options",
             "type": "object",
-            "$ref": "Socket"
-          },
-          {
-            "name": "flag",
-            "type": "boolean"
+            "properties": {
+              "port": {
+                "type": "number",
+                "description": "Port to listen on.",
+                "optional": true,
+                "default": -1
+              },
+              "useSecureTransport": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Use secrue transport"
+              }
+            }
           }
-        ]
+        ],
+        "returns": "any"
       },
       {
-        "name": "setMulticastInterface",
+        "name": "close",
         "type": "function",
-        "description":
-          "Sets the default outgoing multicast interface of the socket to a chosen interface or back to system interface selection.",
         "async": true,
         "parameters": [
           {
-            "name": "socket",
-            "type": "object",
-            "$ref": "Socket"
-          },
-          {
-            "name": "multicastInterface",
-            "type": "string",
-            "description":
-              "The interface that should be used for sending future multicast datagrams."
+            "name": "server",
+            "$ref": "Server"
           }
         ]
       },
       {
-        "name": "addMembership",
+        "name": "clients",
         "type": "function",
-        "description":
-          "Join the multicast group specified by an address. You are then able to receive future datagrams addressed to the group.",
-        "async": true,
-        "parameters": [
-          {
-            "name": "socket",
-            "type": "object",
-            "$ref": "Socket"
-          },
-          {
-            "name": "address",
-            "type": "string",
-            "description": "The multicast group address"
-          },
-          {
-            "name": "multicastInterface",
-            "type": "string",
-            "optional": "true",
-            "description":
-              "The local address of the interface on which to join the group.  If this is not specified, the OS may join the group on all interfaces  or only the primary interface."
-          }
-        ]
-      },
-      {
-        "name": "dropMembership",
-        "type": "function",
-        "description":
-          "Leave the multicast group specified by an address. You will no longer receive future datagrams addressed to the group.",
-        "async": true,
-        "parameters": [
-          {
-            "name": "socket",
-            "type": "object",
-            "$ref": "Socket"
-          },
-          {
-            "name": "address",
-            "type": "string",
-            "description": "The multicast group address"
-          },
-          {
-            "name": "multicastInterface",
-            "type": "string",
-            "optional": "true",
-            "description":
-              "The local address of the interface on which to join the group.  If this is not specified, the OS may join the group on all interfaces  or only the primary interface."
-          }
-        ]
-      },
-      {
-        "name": "messages",
-        "type": "function",
-        "description":
-          "Returns async iterable for messages received on the socket",
         "async": false,
         "parameters": [
           {
-            "name": "socket",
-            "type": "object",
-            "$ref": "Socket"
+            "name": "server",
+            "$ref": "Server"
           }
-        ],
-        "returns": {
-          "type": "object"
-        }
+        ]
       }
     ]
   }

@@ -1,48 +1,59 @@
 // @flow strict
 
-interface Client {
-  +id: string;
+export interface ServerManager {
+  serve(ServerOptions): Promise<ServerSocket>;
+
+  close(Server): Promise<void>;
 }
 
-interface Server {
-  +id: string;
+export interface ServerOptions {
+  port: number;
+  backlog?: number;
 }
 
-interface TCPServerSocket extends Server, AsyncIterator<TCPClientSocket> {
+export interface ServerSocket
+  extends Server /*, AsyncIterator<TCPClientSocket>*/ {
   +localPort: number;
 }
 
-type Status = "connecting" | "open" | "closing" | "closed"
-
-interface TCPClientSocket extends Client, AsyncIterator<ArrayBuffer> {
-  +host: string;
-  +port: number;
-  +ssl: boolean;
+export interface Server {
+  +id: string;
 }
 
-interface ClientManager {
-  connect({ port: number, host?: string }): Promise<TCPClientSocket>;
-  close(Client): void;
-  closeImmediately(Client): void;
+export interface ClientManager {
+  connect(ClientOptions): Promise<ClientSocket>;
+
   suspend(Client): void;
   resume(Client): void;
+  close(Client): Promise<void>;
+  closeImmediately(Client): Promise<void>;
   getBufferedAmount(Client): number;
   getStatus(Client): Status;
   write(
     Client,
     ArrayBuffer,
     options: ?{ byteOffset?: number, byteLength?: number }
-  ): Promise<boolean>;
+  ): ?Promise<void>;
   read(Client): Promise<ArrayBuffer>;
-
-  drained(Client): Promise<void>;
-  errored(Client): Promise<Error>;
+  closed(Client): Promise<void>;
   opened(Client): Promise<void>;
+  errored(Client): Promise<Error>;
 }
 
-interface ServerManager {
-  server({ port: number, backlog?: number }): TCPServerSocket;
-
-  onconnect(Server): Promise<TCPClientSocket>;
-  close(Server): void;
+export interface ClientOptions {
+  host: string;
+  port: number;
+  useSecureTransport?: boolean;
 }
+
+export interface ClientSocket extends Client /*, AsyncIterator<ArrayBuffer>*/ {
+  +host: string;
+  +port: number;
+  +ssl: boolean;
+}
+
+export interface Client {
+  +id: string;
+}
+
+export type Status = "connecting" | "open" | "closing" | "closed"

@@ -1,7 +1,5 @@
 [ignore]
-.*/node_modules/babel.*
-.*/node_modules/tap/*
-.*/node_modules/documentation/*
+.*/node_modules/.*
 
 [libs]
 

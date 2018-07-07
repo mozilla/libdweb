@@ -6,11 +6,11 @@
   "permissions": [],
 
   "experiment_apis": {
-    "TCPSocket": {
+    "TCP": {
       "schema": "../../src/TCPSocket/TCPSocket.json",
       "child": {
         "scopes": ["addon_child"],
-        "paths": [["TCPSocket"]],
+        "paths": [["TCPServerSocket"], ["TCPClientSocket"]],
         "script": "../../src/TCPSocket/Socket.js"
       }
     }
