@@ -33,11 +33,11 @@ You can help this effort in several ways:
 - 🐓 : Usable
 
 You can try this out by cloning the repo and running `npm install` to get all
-the toolchain. Assuming you do have [Firefox Nighly][] installed you can run following demos:
+the toolchain. Assuming you do have [Firefox Nightly][] installed you can run following demos:
 
 ### Protocol API
 
-Following command will launch [Firefox Nighly][] with protocol API demo addon
+Following command will launch [Firefox Nightly][] with protocol API demo addon
 
 ```
 npm run demo:protocol
@@ -47,7 +47,7 @@ npm run demo:protocol
 
 ### mDNS API
 
-Following command will launch [Firefox Nighly][] with mDNS API demo addon
+Following command will launch [Firefox Nightly][] with mDNS API demo addon
 
 ```
 npm run demo:mdns
@@ -57,7 +57,7 @@ npm run demo:mdns
 
 ### FileSystem API
 
-Following command will launch [Firefox Nighly][] with FileSystem API demo addon
+Following command will launch [Firefox Nightly][] with FileSystem API demo addon
 
 ```
 npm run demo:fs
@@ -67,7 +67,7 @@ npm run demo:fs
 
 ### UDPSocket API
 
-Following command will launch [Firefox Nighly][] with UDPSocket API demo addon
+Following command will launch [Firefox Nightly][] with UDPSocket API demo addon
 
 ```
 npm run demo:dgram
@@ -75,7 +75,7 @@ npm run demo:dgram
 
 ### All APIs
 
-Following command will launch [Firefox Nighly][] with a demo containing all the above
+Following command will launch [Firefox Nightly][] with a demo containing all the above
 
 ```
 npm run demo
@@ -99,4 +99,4 @@ npm run demo
 [mdns]: https://github.com/mozilla/libdweb/issues/7
 [file system]: https://github.com/mozilla/libdweb/issues/8
 [web-ext]: https://www.npmjs.com/package/web-ext
-[firefox nighly]: https://blog.nightly.mozilla.org/
+[firefox nightly]: https://blog.nightly.mozilla.org/
