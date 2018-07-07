@@ -25,7 +25,7 @@ You can help this effort in several ways:
 | [mdns][]             | 🐣     |
 | [File System][]      | 🐣     |
 | [UDP Socket][]       | 🐣     |
-| [TCP Socket][]       | 🥚     |
+| [TCP Socket][]       | 🐣     |
 
 - 🥚 : In design phase
 - 🐣 : Work in progress
@@ -73,6 +73,14 @@ Following command will launch [Firefox Nighly][] with UDPSocket API demo addon
 npm run demo:dgram
 ```
 
+### TCPSocket API
+
+Following command will launch [Firefox Nighly][] with UDPSocket API demo addon
+
+```
+npm run demo:tcp
+```
+
 ### All APIs
 
 Following command will launch [Firefox Nighly][] with a demo containing all the above
@@ -95,7 +103,6 @@ npm run demo
 [protocol handler]: https://github.com/Gozala/libdweb/issues/2
 [udp socket]: https://github.com/Gozala/libdweb/issues/4
 [tcp socket]: https://github.com/Gozala/libdweb/issues/5
-[µtp socket]: https://github.com/Gozala/libdweb/issues/6
 [mdns]: https://github.com/Gozala/libdweb/issues/7
 [file system]: https://github.com/Gozala/libdweb/issues/8
 [web-ext]: https://www.npmjs.com/package/web-ext

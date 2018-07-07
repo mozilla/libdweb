@@ -42,6 +42,7 @@ declare module "gecko" {
   declare export type AString = string
   declare export type wstring = string
   declare export type nsISupportsCString = string
+  declare export type USVString = string
 
   declare export type PRUint32 = number
   declare export type PRInt32 = number
@@ -2835,7 +2836,7 @@ declare module "gecko" {
           allowCrossOriginArguments?: boolean
         }
       ): f,
-      getGlobalForObject<a: Object>(a): Object,
+      getGlobalForObject<a: Object>(a): Globals,
       importGlobalProperties(string[]): void,
       unload(string): void,
       import: (<p, p$, c, c$, m, m$>(
@@ -3306,4 +3307,68 @@ declare module "gecko" {
   }
 
   declare interface ExtensionsUI {}
+
+  // webidl
+
+  declare export class TCPServerSocket extends EventTarget {
+    +localPort: short;
+
+    constructor(
+      port: short,
+      options?: ServerSocketOptions,
+      backlog?: short
+    ): void;
+
+    onconnect: ?EventHandler;
+    onerror: ?EventHandler;
+    close(): void;
+  }
+
+  declare export type ServerSocketOptions = {
+    binaryType: TCPSocketBinaryType
+  }
+
+  declare export class TCPSocket extends EventTarget {
+    +host: USVString;
+    +port: short;
+    +ssl: boolean;
+    +bufferedAmount: long;
+    +readyState: TCPReadyState;
+    +binaryType: TCPSocketBinaryType;
+
+    onopen: ?EventHandler;
+    ondrain: ?EventHandler;
+    ondata: ?EventHandler;
+    onerror: ?EventHandler;
+    onclose: ?EventHandler;
+
+    constructor(host: string, port: short, options?: SocketOptions): void;
+
+    upgradeToSecure(): void;
+    suspend(): void;
+    resume(): void;
+    close(): void;
+    closeImmediately(): void;
+    send(data: string): boolean;
+    send(data: ArrayBuffer, byteOffset?: long, byteLength?: number): boolean;
+  }
+
+  declare export type TCPReadyState =
+    | "connecting"
+    | "open"
+    | "closing"
+    | "closed"
+
+  declare export type TCPSocketBinaryType = "arraybuffer" | "string"
+
+  declare export type SocketOptions = {
+    useSecureTransport?: boolean,
+    binaryType?: TCPSocketBinaryType
+  }
+
+  declare type Globals = {
+    TCPServerSocket: typeof TCPServerSocket,
+    TCPSocket: typeof TCPSocket,
+    URL: typeof URL
+  }
 }
