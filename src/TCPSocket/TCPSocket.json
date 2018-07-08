@@ -253,6 +253,10 @@
         "properties": {
           "id": {
             "type": "string"
+          },
+          "localPort": {
+            "optional": true,
+            "type": "number"
           }
         }
       },
@@ -307,6 +311,18 @@
             "$ref": "Server"
           }
         ]
+      },
+      {
+        "name": "errored",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "server",
+            "$ref": "Server"
+          }
+        ],
+        "returns": "any"
       },
       {
         "name": "clients",

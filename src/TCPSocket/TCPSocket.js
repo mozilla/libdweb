@@ -4,6 +4,7 @@ export interface ServerManager {
   serve(ServerOptions): Promise<ServerSocket>;
 
   close(Server): Promise<void>;
+  errored(Server): Promise<Error>;
 }
 
 export interface ServerOptions {
@@ -29,16 +30,14 @@ export interface ClientManager {
   closeImmediately(Client): Promise<void>;
   getBufferedAmount(Client): number;
   getStatus(Client): Status;
-  write(
-    Client,
-    ArrayBuffer,
-    options: ?{ byteOffset?: number, byteLength?: number }
-  ): ?Promise<void>;
+  write(Client, ArrayBuffer, options: ?WriteOptions): ?Promise<void>;
   read(Client): Promise<ArrayBuffer>;
   closed(Client): Promise<void>;
   opened(Client): Promise<void>;
   errored(Client): Promise<Error>;
 }
+
+export interface WriteOptions { byteOffset?: number; byteLength?: number }
 
 export interface ClientOptions {
   host: string;

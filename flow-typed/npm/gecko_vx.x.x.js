@@ -27,7 +27,7 @@ declare module "gecko" {
 
   // Export nsIJSID as nsIIDRef as well since that is what exposed to scriptable
   // XPCOM.
-  declare export interface nsIIDRef<nsQIResult> extends nsIJSID<nsQIResult> {}
+  declare export interface nsIIDRef<+nsQIResult> extends nsIJSID<nsQIResult> {}
   declare export interface nsIDPtr extends nsIJSID<empty> {}
   declare export interface nsCIDRef<nsQIResult> extends nsIJSID<nsQIResult> {}
   declare export interface nsCIDPtr<nsQIResult> extends nsIJSID<nsQIResult> {}
@@ -53,8 +53,10 @@ declare module "gecko" {
   declare export type uint8 = number
   declare export type uint16 = number
   declare export type uint32 = number
+  declare export type int32 = number
   declare export type uint64 = number
   declare export type int32_t = number
+  declare export type uint32_t = number
 
   declare export type PRTime = number
   declare export type DOMHighResTimeStamp = number
@@ -184,6 +186,52 @@ declare module "gecko" {
     open2(): nsIInputStream;
   }
 
+  declare export interface nsIInputStreamPump extends nsIRequest {
+    init(
+      aStream: nsIInputStream,
+      aSegmentSize: long,
+      aSegmentCount: long,
+      aCloseWhenDone: boolean,
+      nsIEventTarget: ?nsIEventTarget
+    ): void;
+    asyncRead(nsIStreamListener, aListenerContext: ?nsISupports<*>): void;
+  }
+
+  declare export interface nsIAsyncStreamCopier extends nsIRequest {
+    init(
+      aSource: nsIInputStream,
+      aSink: nsIOutputStream,
+      aTarget: ?nsIEventTarget,
+      aSourceBuffered: boolean,
+      aSinkBuffered: boolean,
+      aChunkSize: long,
+      aCloseSource: boolean,
+      aCloseSink: boolean
+    ): void;
+    asyncCopy(
+      aObserver: nsIRequestObserver,
+      aObserverContext: ?nsISupports<*>
+    ): void;
+  }
+
+  declare export interface nsINSSErrorsServiceConstants {
+    ERROR_CLASS_SSL_PROTOCOL: long;
+    ERROR_CLASS_BAD_CERT: long;
+    NSS_SEC_ERROR_BASE: long;
+    NSS_SEC_ERROR_LIMIT: long;
+    NSS_SSL_ERROR_BASE: long;
+    NSS_SSL_ERROR_LIMIT: long;
+    MOZILLA_PKIX_ERROR_BASE: long;
+    MOZILLA_PKIX_ERROR_LIMIT: long;
+  }
+
+  declare export interface nsINSSErrorsService {
+    isNSSErrorCode(aNSPRCode: int32): boolean;
+    getXPCOMFromNSSError(aNSPRCode: number): nsresult;
+    getErrorMessage(aXPCOMErrorCode: nsresult): string;
+    getErrorClass(aXPCOMErrorCode: nsresult): uint32_t;
+  }
+
   declare export interface nsIProgressEventSink {
     onProgress(
       aRequest: nsIRequest,
@@ -199,7 +247,69 @@ declare module "gecko" {
     ): void;
   }
 
-  declare export interface nsISocketTransport {
+  declare export interface nsITransportConstants {
+    OPEN_BLOCKING: long;
+    OPEN_UNBUFFERED: long;
+    STATUS_READING: long;
+    STATUS_WRITING: long;
+  }
+
+  declare export type nsServerSocketFlag = long
+
+  declare export interface nsIServerSocketConstants {
+    LoopbackOnly: nsServerSocketFlag;
+    KeepWhenOffline: nsServerSocketFlag;
+  }
+
+  declare export interface nsIServerSocket {
+    init(aPort: long, aLoopbackOnly: boolean, aBackLog: long): void;
+    initSpecialConnection(
+      aPort: long,
+      aFlags: nsServerSocketFlag,
+      aBackLog: long
+    ): void;
+    initWithFilename(nsIFile, aPermissions: long, aBacklog: long): void;
+    close(): void;
+    asyncListen(nsIServerSocketListener): void;
+    +port: long;
+  }
+
+  declare export interface nsIServerSocketListener {
+    onSocketAccepted(
+      aServ: nsIServerSocket,
+      aTransport: nsISocketTransport
+    ): void;
+    onStopListening(aServ: nsIServerSocket, aStatus: nsresult): void;
+  }
+
+  declare export interface nsITransport {
+    openInputStream(
+      aFlags: long,
+      aSegmentSize: long,
+      aSegmentCount: long
+    ): nsIInputStream & nsISupports<nsIAsyncInputStream>;
+    openOutputStream(
+      aFlags: long,
+      aSegmentSize: long,
+      aSegmentCount: long
+    ): nsIOutputStream;
+    close(aReason: nsresult): void;
+    setEventSink(
+      aSink: nsITransportEventSink,
+      aEventTarget: ?nsIEventTarget
+    ): void;
+  }
+
+  declare export interface nsITransportEventSink {
+    onTransportStatus(
+      aTransport: nsITransport,
+      aStatus: nsresult,
+      aProgress: long,
+      aProgressMax: long
+    ): void;
+  }
+
+  declare export interface nsISocketTransport extends nsITransport {
     getTimeout(aType: nsSocketTransportTimeoutType): long;
     isAlive(): boolean;
     setTimeout(aType: nsSocketTransportTimeoutType, aValue: long): void;
@@ -210,6 +320,30 @@ declare module "gecko" {
     // securityCallbacks:nsIInterfaceRequestor<nsISSLSocketControl & nsIBadCertListener2 & nsISSLErrorListener>;
     securityInfo: nsISupports<nsISSLSocketControl> &
       nsISupports<nsITransportSecurityInfo>;
+  }
+
+  declare export interface nsISocketTransportService
+    extends nsISupports<nsIEventTarget> {
+    createTransport(
+      aSocketTypes: string[],
+      aTypeCount: long,
+      aHost: string,
+      aPort: long,
+      aProxyInfo: ?nsIProxyInfo
+    ): nsISocketTransport;
+  }
+
+  declare export interface nsIProxyInfoConstants {
+    TRANSPARENT_PROXY_RESOLVES_HOST: long;
+  }
+
+  declare export interface nsIProxyInfo {
+    failoverProxy: ?nsIProxyInfo;
+    failoverTimeout: long;
+    flags: long;
+    host: string;
+    port: long;
+    type: "http" | "socks" | "socks4" | "direct" | "unknown";
   }
 
   declare export interface nsISSLSocketControl {
@@ -1938,7 +2072,7 @@ declare module "gecko" {
       aCallback: nsIInputStreamCallback,
       aFlags: long,
       aRequestedCount: long,
-      aEventTarget: nsIEventTarget
+      aEventTarget: ?nsIEventTarget
     ): void;
   }
 
@@ -1976,7 +2110,8 @@ declare module "gecko" {
     read32(): uint32;
     read64(): uint64;
     readBoolean(): boolean;
-    readByteArray(length: number): Array<uint8>;
+    readArrayBuffer(length: number, ArrayBuffer): void;
+    readByteArray(length: number, Uint8Array): void;
     readBytes(length: number): string;
     readCString(): ACString;
     readDouble(): double;
@@ -2004,6 +2139,13 @@ declare module "gecko" {
 
   declare export interface nsIArrayBufferInputStream extends nsIInputStream {
     setData(buffer: ArrayBuffer, byteOffset: long, byteLength: long): void;
+  }
+
+  declare export interface nsIMultiplexInputStream
+    extends nsISupports<nsIInputStream> {
+    +count: long;
+    appendStream(stream: nsIInputStream): void;
+    getStream(index: long): nsIInputStream;
   }
 
   // See https://github.com/mozilla/gecko-dev/blob/7adb57a57f9a4a7968b9d9d05f916786ba029a55/xpcom/io/nsIFile.idl
@@ -2710,6 +2852,8 @@ declare module "gecko" {
       nsIFileURL: nsIJSID<nsIFileURL>,
 
       nsITransportSecurityInfo: nsIJSID<nsITransportSecurityInfo>,
+      nsISSLSocketControl: nsIJSCID<nsISSLSocketControl>,
+      nsISocketTransportService: nsIJSCID<nsISocketTransportService>,
 
       nsIInterfaceRequestor: nsIJSID<nsIInterfaceRequestor<*>>,
       nsISupports: nsIJSID<nsISupports<*>>,
@@ -2718,11 +2862,16 @@ declare module "gecko" {
       nsIComponentManager: nsIJSID<nsIComponentManager>,
       nsIComponentRegistrar: nsIJSID<nsIComponentRegistrar>,
       nsIFactory: nsIJSID<nsIFactory<*>>,
+      nsIEventTarget: nsIJSID<nsIEventTarget>,
+      nsIProxyInfo: nsIJSID<nsIEventTarget> & nsIProxyInfoConstants,
 
       nsISimpleEnumerator: nsIJSID<nsISimpleEnumerator<*>>,
 
       nsIAsyncInputStream: nsIJSID<nsIAsyncInputStream> &
         nsIAsyncInputStreamConstants,
+      nsIMultiplexInputStream: nsIJSCID<nsIMultiplexInputStream>,
+      nsIInputStreamPump: nsIJSCID<nsIInputStreamPump>,
+      nsIAsyncStreamCopier: nsIJSCID<nsIAsyncStreamCopier>,
       nsIAsyncOutputStream: nsIJSID<nsIAsyncOutputStream> &
         nsIAsyncOutputStreamConstants,
       nsIBinaryInputStream: nsIJSID<nsIBinaryInputStream>,
@@ -2748,6 +2897,8 @@ declare module "gecko" {
       nsIProgressEventSink: nsIJSID<nsIProgressEventSink>,
       nsISocketTransport: nsIJSID<nsISocketTransport> &
         nsISocketTransportConstants,
+      nsIServerSocket: nsIJSCID<nsIServerSocket> & nsIServerSocketConstants,
+      nsITransport: nsIJSCID<nsITransport> & nsITransportConstants,
       nsIX509Cert: nsIJSID<nsIX509Cert> & nsIX509CertConstants,
       nsIFilePicker: nsIJSID<nsIFilePicker> & nsIFilePickerConstants,
       nsIDocShell: nsIJSID<nsIDocShell> & nsIDocShellConstants,
@@ -2756,9 +2907,13 @@ declare module "gecko" {
       nsINetAddr: nsIJSCID<nsINetAddr> & nsINetAddrConstants,
       nsIUDPSocket: nsIJSCID<nsIUDPSocket>,
       nsIUDPSocketListener: nsIJSCID<nsIUDPSocketListener>,
-      nsIUDPMessage: nsIJSCID<nsIUDPMessage>
+      nsIUDPMessage: nsIJSCID<nsIUDPMessage>,
+
+      nsINSSErrorsService: nsIJSCID<nsINSSErrorsService> &
+        nsINSSErrorsServiceConstants
     },
     classes: {
+      "@mozilla.org/nss_errors_service;1": nsIJSCID<nsINSSErrorsService>,
       "@mozilla.org/xre/app-info;1": nsIJSCID<nsIXULAppInfo>,
       "@mozilla.org/network/simple-uri;1": nsIJSCID<nsIURI & nsIMutable>,
       "@mozilla.org/network/io-service;1": nsIJSCID<nsIIOService>,
@@ -2788,8 +2943,16 @@ declare module "gecko" {
       >,
       "@mozilla.org/systemprincipal;1": nsIJSCID<nsIPrincipal>,
       "@mozilla.org/nullprincipal;1": nsIJSCID<nsIPrincipal>,
+      "@mozilla.org/binaryinputstream;1": nsIJSCID<nsIBinaryInputStream>,
       "@mozilla.org/io/arraybuffer-input-stream;1": nsIJSCID<
         nsIArrayBufferInputStream
+      >,
+      "@mozilla.org/network/input-stream-pump;1": nsIJSCID<nsIInputStreamPump>,
+      "@mozilla.org/network/async-stream-copier;1": nsIJSCID<
+        nsIAsyncStreamCopier
+      >,
+      "@mozilla.org/io/multiplex-input-stream;1": nsIJSCID<
+        nsIMultiplexInputStream
       >,
       "@mozilla.org/network/simple-uri-mutator;1": nsIJSCID<
         nsIURLMutator | nsIURIMutator
@@ -2801,7 +2964,11 @@ declare module "gecko" {
       "@mozilla.org/toolkit/filewatcher/native-file-watcher;1": nsIJSCID<
         nsINativeFileWatcherService
       >,
-      "@mozilla.org/network/udp-socket;1": nsIJSCID<nsIUDPSocket>
+      "@mozilla.org/network/udp-socket;1": nsIJSCID<nsIUDPSocket>,
+      "@mozilla.org/network/server-socket;1": nsIJSCID<nsIServerSocket>,
+      "@mozilla.org/network/socket-transport-service;1": nsIJSCID<
+        nsISocketTransportService
+      >
     },
     utils: {
       Sandbox(
