@@ -4,6 +4,7 @@
 import { Components, Cu, Cr, Ci, Cc, ExtensionAPI } from "gecko"
 import type {
   BaseContext,
+  nsresult,
   nsISupports,
   nsISocketTransport,
   TCPReadyState,
@@ -16,12 +17,11 @@ import type {
 } from "gecko"
 import type {
   ServerManager,
-  Server,
   ServerOptions,
   ServerSocket,
+  Connection,
 
   ClientManager,
-  Client,
   ClientOptions,
   ClientSocket,
   WriteOptions,
@@ -53,7 +53,14 @@ const { ExtensionUtils } = Cu.import(
 
 const { ExtensionError } = ExtensionUtils
 
-const $Symbol /*:any*/ = Symbol
+const AsAsyncIterator = constructor => {
+  const $Symbol /*:any*/ = Symbol
+  const prototype /*:Object*/ = constructor.prototype
+  prototype[$Symbol.asyncIterator] = function() {
+    return this
+  }
+  return constructor
+}
 
 class IOError extends ExtensionError {
   static throw(message) /*:empty*/ {
@@ -132,60 +139,73 @@ class Supervisor /*::<delegate>*/ {
   }
 }
 
-class TCPServer /*::implements ServerSocket*/ {
+class Server {
   /*::
-  id: string;
-  localPort: number;
-  */
-  constructor(id /*: string*/, localPort /*: number*/) {
-    this.id = id
-    this.localPort = localPort
-  }
-  static new(id /*:string*/, localPort /*:number*/) /*:ServerSocket*/ {
-    return new this(id, localPort)
-  }
-}
-
-class ServerHandler {
-  /*::
-  id:string
-  supervisor:Supervisor<ServerHandler>
   socket:{close():void}
-  server:TCPServer
   errored:Promise<Error>
-  onerror:(Error) => void
+  closed:Promise<void>
+  onerrored:(Error) => void
+  onclosed:() => void
+  context:BaseContext
+  connections:AsyncIterator<Connection>
+  createConnection:(TCPSocketAdapter) => Connection
+  localPort:number
+  connectionObservers:{next({done:false, value:Connection}|{done:true}):void, throw(Error):void}[]
   */
   constructor(
-    id /*:string*/,
-    supervisor /*:Supervisor<ServerHandler>*/,
     socket /*:{close():void}*/,
-    server /*:TCPServer*/
+    localPort /*:number*/,
+    createConnection /*:(TCPSocketAdapter) => Connection*/
   ) {
-    this.id = id
-    this.supervisor = supervisor
     this.socket = socket
-    this.server = server
+    this.localPort = localPort
+    this.createConnection = createConnection
   }
 
-  static terminate(self /*:ServerHandler*/) {
-    self.socket.close()
-    ServerHandler.delete(self)
+  onSocketAccepted(server, client) {
+    this.onconnect(client)
   }
-  static delete(self /*:ServerHandler*/) {
-    delete self.supervisor
-    delete self.id
-    delete self.socket
-    delete self.server
-    delete self.errored
+  onStopListening(server, status) {
+    switch (status) {
+      case Cr.NS_OK:
+        return this.onclose(status)
+      case Cr.NS_BINDING_ABORTED: {
+        return this.onclose(status)
+      }
+      default: {
+        return this.onerror(status)
+      }
+    }
   }
-  static async serve(
-    supervisor /*:Supervisor<ServerHandler>*/,
-    id /*:string*/,
-    options /*:ServerOptions*/
-  ): Promise<ServerHandler> {
+  addConnectionObserver(resolve, reject) {
+    this.connectionObservers.push({ next: resolve, throw: reject })
+  }
+  cancelConnectionObservers() {
+    for (const observer of this.connectionObservers.splice(0)) {
+      observer.next({ done: true })
+    }
+  }
+  failConnecitonObservers(error) {
+    for (const observer of this.connectionObservers.splice(0)) {
+      observer.throw(error)
+    }
+  }
+
+  terminate() {
+    this.socket.close()
+    this.delete()
+  }
+  delete() {
+    delete this.socket
+    delete this.errored
+  }
+  static async new(
+    options /*:ServerOptions*/,
+    createConnection /*:(TCPSocketAdapter) => Connection*/
+  ) /*: Promise<Server>*/ {
     try {
       console.log(
-        `TCPServerSocket.serve@${id} ${options.port} ${String(options.backlog)}`
+        `TCPServerSocket.serve ${options.port} ${String(options.backlog)}`
       )
       // const socket = newTCPServerSocket(
       //   options.port,
@@ -196,35 +216,15 @@ class ServerHandler {
         Ci.nsIServerSocket
       )
       socket.init(options.port, false, options.backlog || -1)
-      const localPort = socket.port // socket.localPort
 
-      console.log(`new TCPServerSocket1 ${localPort}`)
+      console.log(`new TCPServerSocket1 ${socket.port}`)
 
-      const server = new TCPServer(id, localPort)
-      const self = new ServerHandler(id, supervisor, socket, server)
-      self.errored = new Promise(resolve => (self.onerror = resolve))
+      const self /*:Server*/ = new Server(socket, socket.port, createConnection)
+      self.errored = new Promise(resolve => (self.onerrored = resolve))
+      self.closed = new Promise(resolve => (self.onclosed = resolve))
+      self.connectionObservers = []
 
-      const eventHandler = event => ServerHandler.handleEvent(self, event)
-
-      // socket.onerror = eventHandler
-      // socket.onconnect = eventHandler
-      socket.asyncListen({
-        onSocketAccepted(server, client) {
-          eventHandler({ type: "connect", socket: client })
-        },
-        onStopListening(server, status) {
-          switch (status) {
-            case Cr.NS_OK:
-              return eventHandler({ type: "close" })
-            case Cr.NS_BINDING_ABORTED: {
-              return eventHandler({ type: "close" })
-            }
-            default: {
-              return eventHandler({ type: "error", status })
-            }
-          }
-        }
-      })
+      socket.asyncListen(self)
 
       return self
     } catch (error) {
@@ -232,29 +232,29 @@ class ServerHandler {
       return IOError.throw(error.message)
     }
   }
-  static handleEvent(self /*:ServerHandler*/, event) {
-    console.log(`TCPServerSocket.event@${self.id} ${event.type}`)
-    switch (event.type) {
-      case "error": {
-        console.log("Server error", event)
-        return ServerHandler.onerror(self, event)
-      }
-      case "connect": {
-        console.log("Server connection", event)
-        return ServerHandler.onconnect(self, event)
-      }
+  onconnect(socket /*:nsISocketTransport*/) {
+    console.log("received connection")
+    const { connectionObservers } = this
+    if (connectionObservers.length > 0) {
+      const observer = connectionObservers.pop()
+      const client = TCPSocketAdapter.fromTransport(socket)
+      const connection = this.createConnection(client)
+      observer.next({ done: false, value: connection })
+    } else {
+      socket.close(Cr.NS_BINDING_ABORTED)
     }
   }
-  static onconnect(self /*:ServerHandler*/, event /*:mixed*/) {}
-  static onerror(self /*:ServerHandler*/, event /*:mixed*/) {
-    self.supervisor.stopped(self.id)
-    ServerHandler.delete(self)
+  onclose(status /*:nsresult*/) {
+    this.onclosed()
+    this.cancelConnectionObservers()
   }
-  static close({ socket } /*:ServerHandler*/) {
-    return socket.close()
+  onerror(status /*:nsresult*/) {
+    const error = new Error(status)
+    this.failConnecitonObservers(error)
+    this.onerrored(error)
   }
-  static errored(self /*:ServerHandler*/) {
-    return self.errored
+  close() {
+    return this.socket.close()
   }
 }
 
@@ -465,29 +465,199 @@ class TCPClient /*::implements ClientSocket*/ {
 
 global.TCP = class extends ExtensionAPI /*::<Host>*/ {
   getAPI(context) {
+    const refs = new WeakMap()
+    const clients = new WeakMap()
+
+    const deref = /*::<a, b>*/ (
+      refs /*:WeakMap<a, b>*/,
+      handle /*:a*/
+    ) /*:b*/ => {
+      const ref = refs.get(handle)
+      if (!ref) {
+        return IOError.throw("Unable to find corresponding socket")
+      } else {
+        return ref
+      }
+    }
+
+    const derefServer = handle => deref(refs, handle)
+    const derefSocket = handle => deref(clients, handle)
+
     debug && console.log("!!!!!!!!! getAPI")
-    const serverManager /*:Supervisor<ServerHandler>*/ = new Supervisor()
+
+    const TCPServerConnection = exportClass(
+      context.cloneScope,
+      class ServerConnection {
+        /*::
+        */
+        constructor() {
+          throw TypeError("Illegal constructor")
+        }
+        get host() {
+          return derefSocket(this).host
+        }
+        get port() {
+          return derefSocket(this).port
+        }
+        get ssl() {
+          return derefSocket(this).ssl
+        }
+        get readyState() {
+          return derefSocket(this).readyState
+        }
+        get bufferedAmount() {
+          return derefSocket(this).bufferedAmount
+        }
+        send(buffer, byteOffset, byteLength) {
+          return context.wrapPromise(
+            new Promise(resolve => {
+              derefSocket(this).send(buffer, byteOffset, byteLength)
+              derefSocket(this).ondrain = resolve
+            })
+          )
+        }
+        read() {
+          return context.wrapPromise(
+            new Promise((resolve, reject) => {
+              derefSocket(this).ondata = resolve
+            })
+          )
+        }
+        close() {
+          return derefSocket(this).close()
+        }
+        closeImmediately() {
+          return derefSocket(this).closeImmediately()
+        }
+        upgradeToSecure() {
+          return derefSocket(this).upgradeToSecure()
+        }
+      }
+    )
+
+    const TCPServerConnections = exportClass(
+      context.cloneScope,
+      AsAsyncIterator(
+        class ServerConnections {
+          /*::
+        @@asyncIterator: () => self
+        server:TCPServerSocket
+        */
+          constructor() {
+            throw TypeError("Illegal constructor")
+          }
+          next() {
+            return new context.cloneScope.Promise((resolve, reject) => {
+              const server = derefServer(this.server)
+              // server.addConnectionObserver(resolve, reject)
+              server.addConnectionObserver(
+                ({ done, value }) => {
+                  const next = Cu.cloneInto({ done }, context.cloneScope)
+                  Reflect.set(Cu.waiveXrays(next), "value", value)
+                  resolve(next)
+                },
+                // wrapUnprivilegedFunction(resolve, context.cloneScope),
+                wrapUnprivilegedFunction(reject, context.cloneScope)
+              )
+            })
+          }
+          return() {
+            new context.cloneScope.Promise((resolve, reject) => {
+              const server = derefServer(this.server)
+              server.cancelConnectionObservers()
+              resolve(Cu.cloneInto({ done: true }, context.cloneScope))
+            })
+          }
+        }
+      )
+    )
+
+    const TCPServerSocket = exportClass(
+      context.cloneScope,
+      class TCPServerSocket {
+        constructor() {
+          throw TypeError("Illegal constructor")
+        }
+        close() {
+          const server = derefServer(this)
+          server.terminate()
+          sockets.delete(server)
+          refs.delete(server)
+        }
+        connections() {
+          const server = derefServer(this)
+          const { connections } = server
+          if (connections == null) {
+            const connections = createConnections()
+            connections.server = this
+
+            server.connections = connections
+            return connections
+          }
+          return connections
+        }
+        get localPort() {
+          return derefServer(this).localPort
+        }
+        get closed() {
+          return context.wrapPromise(derefServer(this).closed)
+        }
+        get errored() {
+          return context.wrapPromise(derefServer(this).errored)
+        }
+      }
+    )
+
     const clientManager /*:Supervisor<ClientHandler>*/ = new Supervisor()
+    const sockets = new Set()
 
     context.callOnClose({
       close() {
-        serverManager.stop(ServerHandler.terminate)
+        for (const socket of sockets) {
+          socket.terminate()
+        }
+
         clientManager.stop(ClientHandler.closeImmediately)
       }
     })
 
+    const createConnection = (
+      socket /*:TCPSocketAdapter*/
+    ) /*:TCPServerConnection*/ => {
+      const connection = exportInstance(context.cloneScope, TCPServerConnection)
+      clients.set(connection, socket)
+      console.log("TCPServerConnection", connection)
+
+      connection.opened = context.wrapPromise(
+        new Promise(resolve => (socket.onopen = resolve))
+      )
+      connection.closed = context.wrapPromise(
+        new Promise(resolve => (socket.onclose = resolve))
+      )
+      connection.errored = context.wrapPromise(
+        new Promise(resolve => (socket.onerror = resolve))
+      )
+
+      return connection
+    }
+
+    const createConnections = () /*:TCPServerConnections*/ =>
+      exportInstance(context.cloneScope, TCPServerConnections)
+
+    const createServer = () /*:ServerSocket*/ =>
+      exportInstance(context.cloneScope, TCPServerSocket)
+
     return {
       TCPServerSocket: {
-        serve: async options => {
-          const handler = await serverManager.start(
-            ServerHandler.serve,
-            options
-          )
-          return handler.server
-        },
-        close: async ({ id }) =>
-          serverManager.delegate(ServerHandler.close, id),
-        errored: ({ id }) => serverManager.delegate(ServerHandler.errored, id)
+        listen: options =>
+          new context.cloneScope.Promise(async (resolve, reject) => {
+            const server = await Server.new(options, createConnection)
+            const api = exportInstance(context.cloneScope, TCPServerSocket)
+            sockets.add(server)
+            refs.set(api, server)
+
+            resolve(api)
+          })
       },
       TCPClientSocket: {
         connect: async options => {
@@ -515,6 +685,56 @@ global.TCP = class extends ExtensionAPI /*::<Host>*/ {
       }
     }
   }
+}
+
+const exportClass = /*::<b, a:Class<b>>*/ (
+  scope /*:Object*/,
+  constructor /*:a*/
+) /*:a*/ => {
+  const clone = Cu.exportFunction(constructor, scope)
+  const unwrapped = Cu.waiveXrays(clone)
+  const prototype = Cu.waiveXrays(Cu.createObjectIn(scope))
+
+  const source = constructor.prototype
+  for (const key of Reflect.ownKeys(constructor.prototype)) {
+    if (key !== "constructor") {
+      const descriptor = Reflect.getOwnPropertyDescriptor(source, key)
+      console.log(key, descriptor)
+      Reflect.defineProperty(
+        prototype,
+        key,
+        Cu.waiveXrays(
+          Cu.cloneInto(descriptor, scope, {
+            cloneFunctions: true
+          })
+        )
+      )
+    }
+  }
+
+  Reflect.defineProperty(unwrapped, "prototype", {
+    value: prototype
+  })
+  Reflect.defineProperty(prototype, "constructor", {
+    value: unwrapped
+  })
+
+  return clone
+}
+
+const exportInstance = /*::<a:Object, b:a>*/ (
+  scope,
+  constructor /*:Class<b>*/,
+  properties /*::?:a*/
+) /*:b*/ => {
+  const instance /*:any*/ = properties
+    ? Cu.cloneInto(properties, scope)
+    : Cu.cloneInto({}, scope)
+  Reflect.setPrototypeOf(
+    Cu.waiveXrays(instance),
+    Cu.waiveXrays(constructor).prototype
+  )
+  return instance
 }
 
 const SEC_ERROR_BASE = Ci.nsINSSErrorsService.NSS_SEC_ERROR_BASE

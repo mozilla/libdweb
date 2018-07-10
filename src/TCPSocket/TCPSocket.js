@@ -1,10 +1,7 @@
 // @flow strict
 
 export interface ServerManager {
-  serve(ServerOptions): Promise<ServerSocket>;
-
-  close(Server): Promise<void>;
-  errored(Server): Promise<Error>;
+  listen(ServerOptions): Promise<ServerSocket>;
 }
 
 export interface ServerOptions {
@@ -12,13 +9,9 @@ export interface ServerOptions {
   backlog?: number;
 }
 
-export interface ServerSocket
-  extends Server /*, AsyncIterator<TCPClientSocket>*/ {
+export interface ServerSocket {
   +localPort: number;
-}
-
-export interface Server {
-  +id: string;
+  // connections(): AsyncIterator<ClientSocket>;
 }
 
 export interface ClientManager {
@@ -46,6 +39,12 @@ export interface ClientOptions {
 }
 
 export interface ClientSocket extends Client /*, AsyncIterator<ArrayBuffer>*/ {
+  +host: string;
+  +port: number;
+  +ssl: boolean;
+}
+
+export interface Connection {
   +host: string;
   +port: number;
   +ssl: boolean;

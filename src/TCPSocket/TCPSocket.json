@@ -277,7 +277,7 @@
     "events": [],
     "functions": [
       {
-        "name": "serve",
+        "name": "listen",
         "type": "function",
         "async": true,
         "parameters": [
@@ -300,40 +300,6 @@
           }
         ],
         "returns": "any"
-      },
-      {
-        "name": "close",
-        "type": "function",
-        "async": true,
-        "parameters": [
-          {
-            "name": "server",
-            "$ref": "Server"
-          }
-        ]
-      },
-      {
-        "name": "errored",
-        "type": "function",
-        "async": true,
-        "parameters": [
-          {
-            "name": "server",
-            "$ref": "Server"
-          }
-        ],
-        "returns": "any"
-      },
-      {
-        "name": "clients",
-        "type": "function",
-        "async": false,
-        "parameters": [
-          {
-            "name": "server",
-            "$ref": "Server"
-          }
-        ]
       }
     ]
   }

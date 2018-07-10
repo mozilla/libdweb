@@ -3003,6 +3003,7 @@ declare module "gecko" {
           allowCrossOriginArguments?: boolean
         }
       ): f,
+      createObjectIn(context: Object, options: ?{ defineAs?: string }): Object,
       getGlobalForObject<a: Object>(a): Globals,
       importGlobalProperties(string[]): void,
       unload(string): void,
