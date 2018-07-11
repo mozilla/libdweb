@@ -213,8 +213,8 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
   contentDispositionHeader: string
   notificationCallbacks: nsIInterfaceRequestor<nsIProgressEventSink> | null;
 
-  listener: ?nsIStreamListener
-  context: ?nsISupports<*>
+  listener: ?nsIStreamListener<mixed>
+  context: mixed
   handler: RequestHandler
   */
   constructor(
@@ -280,7 +280,8 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     debug && console.log(`asyncOpen${pid} ${JSON.stringify(this)}`)
     switch (this.readyState) {
       case IDLE: {
-        this.listener = listener
+        const mixedListener /*: nsIStreamListener<any>*/ = listener
+        this.listener = mixedListener
         this.context = context
         this.status = Cr.NS_OK
         this.loadGroup.addRequest(this, context)
@@ -390,10 +391,9 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     this.readyState = ACTIVE
 
     const { listener, context } = this
-    const ctx /*: any */ = context
     this.byteOffset = 0
     try {
-      listener && listener.onStartRequest(this, ctx)
+      listener && listener.onStartRequest(this, context)
     } catch (_) {
       console.error(_)
     }
@@ -413,8 +413,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
       )
 
     const { listener, context } = this
-    const ctx /*: any */ = context
-    listener && listener.onDataAvailable(this, ctx, stream, 0, byteLength)
+    listener && listener.onDataAvailable(this, context, stream, 0, byteLength)
     this.byteOffset += byteLength
   }
 
@@ -436,11 +435,10 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     delete this.listener
     delete this.context
     delete this.handler
-    const ctx /*: any */ = context
     try {
-      listener && listener.onStopRequest(this, ctx, status)
+      listener && listener.onStopRequest(this, context, status)
 
-      this.loadGroup.removeRequest(this, ctx, status)
+      this.loadGroup.removeRequest(this, context, status)
     } catch (_) {
       debug && console.error(`Failed onStopRequest${pid} ${_}`)
     }

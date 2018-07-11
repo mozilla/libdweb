@@ -180,8 +180,8 @@ declare module "gecko" {
     owner: nsISupports<*> | null;
     securityInfo: null | nsITransportSecurityInfo;
     URI: nsIURI;
-    asyncOpen(listener: nsIStreamListener, context: nsISupports<*>): void;
-    asyncOpen2(listener: nsIStreamListener): void;
+    asyncOpen<a>(listener: nsIStreamListener<a>, context: a): void;
+    asyncOpen2(listener: nsIStreamListener<null>): void;
     open(): nsIInputStream;
     open2(): nsIInputStream;
   }
@@ -194,7 +194,7 @@ declare module "gecko" {
       aCloseWhenDone: boolean,
       nsIEventTarget: ?nsIEventTarget
     ): void;
-    asyncRead(nsIStreamListener, aListenerContext: ?nsISupports<*>): void;
+    asyncRead<a>(nsIStreamListener<a>, aListenerContext: a): void;
   }
 
   declare export interface nsIAsyncStreamCopier extends nsIRequest {
@@ -208,10 +208,7 @@ declare module "gecko" {
       aCloseSource: boolean,
       aCloseSink: boolean
     ): void;
-    asyncCopy(
-      aObserver: nsIRequestObserver,
-      aObserverContext: ?nsISupports<*>
-    ): void;
+    asyncCopy<a>(aObserver: nsIRequestObserver<a>, aObserverContext: a): void;
   }
 
   declare export interface nsINSSErrorsServiceConstants {
@@ -721,24 +718,20 @@ declare module "gecko" {
 
   // See https://github.com/mozilla/gecko-dev/blob/62d7405e171e6ca7e50b578c59c96d07ee69cca0/netwerk/base/nsIRequestObserver.idl
 
-  declare export interface nsIRequestObserver {
+  declare export interface nsIRequestObserver<a> {
     // Called to signify the beginning of an asynchronous request.
     // Note: An exception thrown from onStartRequest has the side-effect of causing the request to be canceled.
-    onStartRequest(request: nsIRequest, context: nsISupports<*>): void;
+    onStartRequest(request: nsIRequest, context: a): void;
     // Called to signify the end of an asynchronous request. This call is always
     // preceded by a call to onStartRequest().
     // Note: An exception thrown from onStopRequest is generally ignored.
-    onStopRequest(
-      request: nsIRequest,
-      context: nsISupports<*>,
-      status: nsresult
-    ): void;
+    onStopRequest(request: nsIRequest, context: a, status: nsresult): void;
   }
 
   // See: https://github.com/mozilla/gecko-dev/blob/9769f2300a17d3dfbebcfb457b1244bd624275e3/netwerk/base/nsILoadGroup.idl
 
   declare export interface nsILoadGroup extends nsIRequest {
-    groupObserver: nsIRequestObserver;
+    groupObserver: nsIRequestObserver<*>;
     defaultLoadRequest: nsIRequest;
     requests: nsISimpleEnumerator<nsIRequest>;
     activeCount: long;
@@ -747,10 +740,10 @@ declare module "gecko" {
     defaultLoadFlags: nsLoadFlags;
     userAgentOverrideCache: ACString;
 
-    addRequest(aRequest: nsIRequest, aContext: null | nsISupports<*>): void;
-    removeRequest(
+    addRequest<a>(aRequest: nsIRequest, aContext: a): void;
+    removeRequest<a>(
       aRequest: nsIRequest,
-      aContext: null | nsISupports<*>,
+      aContext: a,
       aStatus: nsresult
     ): void;
   }
@@ -787,10 +780,10 @@ declare module "gecko" {
 
   // See https://github.com/mozilla/gecko-dev/blob/62d7405e171e6ca7e50b578c59c96d07ee69cca0/netwerk/base/nsIStreamListener.idl
 
-  declare export interface nsIStreamListener extends nsIRequestObserver {
+  declare export interface nsIStreamListener<a> extends nsIRequestObserver<a> {
     onDataAvailable(
       request: nsIRequest,
-      context: nsISupports<*>,
+      context: a,
       inputStream: nsIInputStream,
       offset: number,
       count: number
@@ -2462,10 +2455,10 @@ declare module "gecko" {
 
   // See: https://github.com/mozilla/gecko-dev/blob/374b919ce68bbfc3f9d13068e104ec15891a6f03/dom/interfaces/security/nsIContentSecurityManager.idl
   declare export interface nsIContentSecurityManager {
-    performSecurityCheck(
+    performSecurityCheck<a>(
       aChannel: nsIChannel,
-      aStreamListener: ?nsIStreamListener
-    ): nsIStreamListener;
+      aStreamListener: ?nsIStreamListener<a>
+    ): nsIStreamListener<a>;
     isOriginPotentiallyTrustworthy(aPrincipal: nsIPrincipal): boolean;
   }
 
@@ -2844,9 +2837,9 @@ declare module "gecko" {
       nsIProtocolHandler: nsIJSID<nsIProtocolHandler> &
         nsIProtocolHandlerConstants,
       nsIRequest: nsIJSID<nsIRequest> & nsIRequestConstants,
-      nsIRequestObserver: nsIJSID<nsIRequestObserver>,
+      nsIRequestObserver: nsIJSID<nsIRequestObserver<*>>,
       nsIStandardURL: nsIJSID<nsIStandardURL> & nsIStandardURLConstants,
-      nsIStreamListener: nsIJSID<nsIStreamListener>,
+      nsIStreamListener: nsIJSID<nsIStreamListener<*>>,
       nsIURI: nsIJSID<nsIURI>,
       nsIURL: nsIJSID<nsIURL>,
       nsIFileURL: nsIJSID<nsIFileURL>,
@@ -2986,6 +2979,7 @@ declare module "gecko" {
       nukeSandbox(Sandbox): void,
       evalInSandbox(string, Sandbox): any,
       waiveXrays<a>(a): a,
+      unwaiveXrays<a>(a): a,
       cloneInto<a, b>(
         object: a,
         scope: b,
@@ -3478,7 +3472,19 @@ declare module "gecko" {
 
   // webidl
 
-  declare export class TCPServerSocket extends EventTarget {
+  // See: https://github.com/mozilla/gecko-dev/blob/f51c4fa5d92d59fcb46f314e94edbf045cb3067c/dom/webidl/TCPServerSocketEvent.webidl
+  declare export interface TCPServerSocketEventAPI {
+    +type: "connect";
+    +socket: TCPSocketAPI;
+  }
+
+  declare export interface ErrorEventAPI {
+    +type: "error";
+    +name: string;
+    +message: string;
+  }
+
+  declare export interface TCPServerSocketAPI {
     +localPort: short;
 
     constructor(
@@ -3487,16 +3493,17 @@ declare module "gecko" {
       backlog?: short
     ): void;
 
-    onconnect: ?EventHandler;
-    onerror: ?EventHandler;
+    onconnect: ?(TCPServerSocketEventAPI) => mixed;
+    onerror: ?(ErrorEventAPI) => mixed;
     close(): void;
   }
+  declare export var TCPServerSocket: Class<TCPServerSocketAPI & EventTarget>
 
   declare export type ServerSocketOptions = {
     binaryType: TCPSocketBinaryType
   }
 
-  declare export class TCPSocket extends EventTarget {
+  declare export interface TCPSocketAPI {
     +host: USVString;
     +port: short;
     +ssl: boolean;
@@ -3504,11 +3511,11 @@ declare module "gecko" {
     +readyState: TCPReadyState;
     +binaryType: TCPSocketBinaryType;
 
-    onopen: ?EventHandler;
-    ondrain: ?EventHandler;
-    ondata: ?EventHandler;
-    onerror: ?EventHandler;
-    onclose: ?EventHandler;
+    onopen: ?({ type: "open" }) => mixed;
+    ondrain: ?({ type: "drain" }) => mixed;
+    ondata: ?({ type: "data", data: ArrayBuffer }) => mixed;
+    onerror: ?(ErrorEventAPI) => mixed;
+    onclose: ?({ type: "close" }) => mixed;
 
     constructor(host: string, port: short, options?: SocketOptions): void;
 
@@ -3517,9 +3524,10 @@ declare module "gecko" {
     resume(): void;
     close(): void;
     closeImmediately(): void;
-    send(data: string): boolean;
+    // send(data: string): boolean;
     send(data: ArrayBuffer, byteOffset?: long, byteLength?: number): boolean;
   }
+  declare export var TCPSocket: Class<TCPSocketAPI & EventTarget>
 
   declare export type TCPReadyState =
     | "connecting"
