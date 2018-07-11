@@ -180,8 +180,8 @@ declare module "gecko" {
     owner: nsISupports<*> | null;
     securityInfo: null | nsITransportSecurityInfo;
     URI: nsIURI;
-    asyncOpen<a>(listener: nsIStreamListener<a>, context: a): void;
-    asyncOpen2(listener: nsIStreamListener<null>): void;
+    asyncOpen(listener: nsIStreamListener, context: ?nsISupports<mixed>): void;
+    asyncOpen2(listener: nsIStreamListener): void;
     open(): nsIInputStream;
     open2(): nsIInputStream;
   }
@@ -194,7 +194,7 @@ declare module "gecko" {
       aCloseWhenDone: boolean,
       nsIEventTarget: ?nsIEventTarget
     ): void;
-    asyncRead<a>(nsIStreamListener<a>, aListenerContext: a): void;
+    asyncRead(nsIStreamListener, aListenerContext: ?nsISupports<mixed>): void;
   }
 
   declare export interface nsIAsyncStreamCopier extends nsIRequest {
@@ -208,7 +208,10 @@ declare module "gecko" {
       aCloseSource: boolean,
       aCloseSink: boolean
     ): void;
-    asyncCopy<a>(aObserver: nsIRequestObserver<a>, aObserverContext: a): void;
+    asyncCopy(
+      aObserver: nsIRequestObserver,
+      aObserverContext: ?nsISupports<mixed>
+    ): void;
   }
 
   declare export interface nsINSSErrorsServiceConstants {
@@ -718,20 +721,24 @@ declare module "gecko" {
 
   // See https://github.com/mozilla/gecko-dev/blob/62d7405e171e6ca7e50b578c59c96d07ee69cca0/netwerk/base/nsIRequestObserver.idl
 
-  declare export interface nsIRequestObserver<a> {
+  declare export interface nsIRequestObserver {
     // Called to signify the beginning of an asynchronous request.
     // Note: An exception thrown from onStartRequest has the side-effect of causing the request to be canceled.
-    onStartRequest(request: nsIRequest, context: a): void;
+    onStartRequest(request: nsIRequest, context: ?nsISupports<mixed>): void;
     // Called to signify the end of an asynchronous request. This call is always
     // preceded by a call to onStartRequest().
     // Note: An exception thrown from onStopRequest is generally ignored.
-    onStopRequest(request: nsIRequest, context: a, status: nsresult): void;
+    onStopRequest(
+      request: nsIRequest,
+      context: ?nsISupports<mixed>,
+      status: nsresult
+    ): void;
   }
 
   // See: https://github.com/mozilla/gecko-dev/blob/9769f2300a17d3dfbebcfb457b1244bd624275e3/netwerk/base/nsILoadGroup.idl
 
   declare export interface nsILoadGroup extends nsIRequest {
-    groupObserver: nsIRequestObserver<*>;
+    groupObserver: nsIRequestObserver;
     defaultLoadRequest: nsIRequest;
     requests: nsISimpleEnumerator<nsIRequest>;
     activeCount: long;
@@ -780,10 +787,10 @@ declare module "gecko" {
 
   // See https://github.com/mozilla/gecko-dev/blob/62d7405e171e6ca7e50b578c59c96d07ee69cca0/netwerk/base/nsIStreamListener.idl
 
-  declare export interface nsIStreamListener<a> extends nsIRequestObserver<a> {
+  declare export interface nsIStreamListener extends nsIRequestObserver {
     onDataAvailable(
       request: nsIRequest,
-      context: a,
+      context: ?nsISupports<mixed>,
       inputStream: nsIInputStream,
       offset: number,
       count: number
@@ -2455,10 +2462,10 @@ declare module "gecko" {
 
   // See: https://github.com/mozilla/gecko-dev/blob/374b919ce68bbfc3f9d13068e104ec15891a6f03/dom/interfaces/security/nsIContentSecurityManager.idl
   declare export interface nsIContentSecurityManager {
-    performSecurityCheck<a>(
+    performSecurityCheck(
       aChannel: nsIChannel,
-      aStreamListener: ?nsIStreamListener<a>
-    ): nsIStreamListener<a>;
+      aStreamListener: ?nsIStreamListener
+    ): nsIStreamListener;
     isOriginPotentiallyTrustworthy(aPrincipal: nsIPrincipal): boolean;
   }
 
@@ -2837,9 +2844,9 @@ declare module "gecko" {
       nsIProtocolHandler: nsIJSID<nsIProtocolHandler> &
         nsIProtocolHandlerConstants,
       nsIRequest: nsIJSID<nsIRequest> & nsIRequestConstants,
-      nsIRequestObserver: nsIJSID<nsIRequestObserver<*>>,
+      nsIRequestObserver: nsIJSID<nsIRequestObserver>,
       nsIStandardURL: nsIJSID<nsIStandardURL> & nsIStandardURLConstants,
-      nsIStreamListener: nsIJSID<nsIStreamListener<*>>,
+      nsIStreamListener: nsIJSID<nsIStreamListener>,
       nsIURI: nsIJSID<nsIURI>,
       nsIURL: nsIJSID<nsIURL>,
       nsIFileURL: nsIJSID<nsIFileURL>,

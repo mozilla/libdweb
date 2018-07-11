@@ -213,8 +213,8 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
   contentDispositionHeader: string
   notificationCallbacks: nsIInterfaceRequestor<nsIProgressEventSink> | null;
 
-  listener: ?nsIStreamListener<mixed>
-  context: mixed
+  listener: ?nsIStreamListener
+  context: ?nsISupports<mixed>
   handler: RequestHandler
   */
   constructor(
@@ -280,8 +280,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     debug && console.log(`asyncOpen${pid} ${JSON.stringify(this)}`)
     switch (this.readyState) {
       case IDLE: {
-        const mixedListener /*: nsIStreamListener<any>*/ = listener
-        this.listener = mixedListener
+        this.listener = listener
         this.context = context
         this.status = Cr.NS_OK
         this.loadGroup.addRequest(this, context)
