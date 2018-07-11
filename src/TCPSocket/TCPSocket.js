@@ -1,7 +1,8 @@
 // @flow strict
 
-export interface ServerManager {
+export interface API {
   listen(ServerOptions): Promise<ServerSocket>;
+  connect(ClientOptions): Promise<ClientSocket>;
 }
 
 export interface ServerOptions {
@@ -11,26 +12,9 @@ export interface ServerOptions {
 
 export interface ServerSocket {
   +localPort: number;
-  // connections(): AsyncIterator<ClientSocket>;
+  connections: AsyncIterator<ClientSocket>;
+  close(): void;
 }
-
-export interface ClientManager {
-  connect(ClientOptions): Promise<ClientSocket>;
-
-  suspend(Client): void;
-  resume(Client): void;
-  close(Client): Promise<void>;
-  closeImmediately(Client): Promise<void>;
-  getBufferedAmount(Client): number;
-  getStatus(Client): Status;
-  write(Client, ArrayBuffer, options: ?WriteOptions): ?Promise<void>;
-  read(Client): Promise<ArrayBuffer>;
-  closed(Client): Promise<void>;
-  opened(Client): Promise<void>;
-  errored(Client): Promise<Error>;
-}
-
-export interface WriteOptions { byteOffset?: number; byteLength?: number }
 
 export interface ClientOptions {
   host: string;
@@ -38,20 +22,23 @@ export interface ClientOptions {
   useSecureTransport?: boolean;
 }
 
-export interface ClientSocket extends Client /*, AsyncIterator<ArrayBuffer>*/ {
+export interface ClientSocket {
   +host: string;
   +port: number;
   +ssl: boolean;
-}
+  +readyState: Status;
+  +bufferedAmount: number;
 
-export interface Connection {
-  +host: string;
-  +port: number;
-  +ssl: boolean;
-}
+  +opened: Promise<void>;
+  +closed: Promise<void>;
 
-export interface Client {
-  +id: string;
+  write(ArrayBuffer, byteOffset?: number, byteLength?: number): Promise<void>;
+  read(): Promise<ArrayBuffer>;
+
+  suspend(): void;
+  resume(): void;
+  close(): Promise<void>;
+  closeImmediately(Client): Promise<void>;
 }
 
 export type Status = "connecting" | "open" | "closing" | "closed"

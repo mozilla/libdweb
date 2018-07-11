@@ -1,11 +1,42 @@
-var wait = promise => (
-  promise.then(ok => (promise.ok = ok), error => (promise.error = error)),
-  promise
-)
+var encoder = new TextEncoder()
+var decoder = new TextDecoder()
 
-var server = wait(browser.TCPServerSocket.listen({ port: 8090 }))
+var serve = async context => {
+  const server = await browser.TCPSocket.listen({ port: 8090 })
+  context.server = server
+  console.log("Server:", server)
 
-var serverStop = wait(server.ok.close())
+  async function listen(server) {
+    for await (const client of server.connections) {
+      console.log("Connection:", client)
+      context.connection = client
+      const message = await client.read()
+      console.log("Received message:", decoder.decode(message))
+      await client.write(
+        encoder.encode(`<echo>${decoder.decode(message)}</echo>`).buffer
+      )
+    }
+    console.log("Server is stopped", server)
+  }
 
-conns = server.ok.connections()
-conn = conns.next()
+  await listen(server)
+  return server
+}
+
+var consume = async context => {
+  const client = await browser.TCPSocket.connect({
+    host: "localhost",
+    port: 8090
+  })
+  context.client = client
+  await client.opened
+  console.log("Client connected:", client)
+
+  await client.write(encoder.encode("Hello TCP").buffer)
+  const response = await client.read()
+  console.log("Received response:", decoder.decode(response))
+  return client
+}
+
+serve(window)
+consume(window)

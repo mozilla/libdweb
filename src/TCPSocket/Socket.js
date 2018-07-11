@@ -7,31 +7,36 @@ import type {
   nsresult,
   nsISupports,
   nsISocketTransport,
+  nsIServerSocket,
   TCPReadyState,
   nsIInputStream,
   nsIOutputStream,
   nsIBinaryOutputStream,
   nsIBinaryInputStream,
   nsIAsyncInputStream,
-  nsIInputStreamPump
+  nsIInputStreamPump,
+  nsIRequestObserver,
+
+  TCPServerSocketAPI,
+  TCPSocketAPI,
+  SocketOptions,
+  TCPSocketBinaryType,
+  TCPServerSocketEventAPI,
+  ErrorEventAPI
 } from "gecko"
 import type {
-  ServerManager,
+  API,
   ServerOptions,
   ServerSocket,
-  Connection,
 
-  ClientManager,
   ClientOptions,
   ClientSocket,
-  WriteOptions,
 
   Status,
 } from "./TCPSocket"
 
 interface Host {
-  +TCPServerSocket: ServerManager;
-  +TCPClientSocket: ClientManager;
+  +TCPSocket: API;
 }
 */
 Cu.importGlobalProperties(["URL"])
@@ -44,10 +49,8 @@ const { ExtensionUtils } = Cu.import(
 )
 
 // const url = Components.stack.filename.split("->").pop()
-
-// console.log(">>>", new URL(`./TCP.js`, url).href)
-// const { newTCPSocket, newTCPServerSocket } = Cu.import(
-//   new URL(`./TCP.js?a=5`, url),
+// const { TCPSocketAdapter, TCPServerSocketAdapter } = Cu.import(
+//   new URL(`./TCP.js`, url),
 //   {}
 // )
 
@@ -72,185 +75,69 @@ class IOError extends ExtensionError {
 const wrapUnprivilegedFunction = (f, scope) => input =>
   f(Cu.cloneInto(input, scope))
 
-class Supervisor /*::<delegate>*/ {
-  /*::
-  id:number
-  delegates:{[string]:delegate}
-  */
-  constructor() {
-    const delegates /*:Object*/ = Object.create(null)
-    this.id = 0
-    this.delegates = delegates
-  }
-  async start /*::<in1, in2, in3>*/(
-    init /*:(Supervisor<delegate>, string, in1, in2, in3) => Promise<delegate>*/,
-    a1 /*:in1*/,
-    a2 /*:in2*/,
-    a3 /*:in3*/
-  ) /*:Promise<delegate>*/ {
-    const id = `${++this.id}`
-    const child = await init(this, id, a1, a2, a3)
-    this.delegates[id] = child
-    return child
-  }
-  async stop /*::<in1, in2, out>*/(
-    f /*:(delegate, in1, in2) => out*/,
-    a1 /*:in1*/,
-    a2 /*:in2*/
-  ) {
-    const { delegates } = this
-    for (const id in delegates) {
-      const delegate = delegates[id]
-      delete delegates[id]
-      await f(delegate, a1, a2)
-    }
-  }
-  stopped(id /*:string*/) {
-    delete this.delegates[id]
-  }
-  terminate /*::<in1, in2, out>*/(
-    f /*:(delegate, in1, in2) => out*/,
-    id /*:string*/,
-    a1 /*:in1*/,
-    a2 /*:in2*/
-  ) /*:out*/ {
-    const { delegates } = this
-    const dalegate = delegates[id]
-    if (dalegate) {
-      delete delegates[id]
-      return f(dalegate, a1, a2)
-    } else {
-      return IOError.throw("Unable to find corresponding socket")
-    }
-  }
-  delegate /*::<in1, in2, out>*/(
-    f /*:(delegate, in1, in2) => out*/,
-    id /*:string*/,
-    a1 /*:in1*/,
-    a2 /*:in2*/
-  ) /*:out*/ {
-    const { delegates } = this
-    const dalegate = delegates[id]
-    if (dalegate) {
-      return f(dalegate, a1, a2)
-    } else {
-      return IOError.throw("Unable to find corresponding socket")
-    }
-  }
-}
-
 class Server {
   /*::
-  socket:{close():void}
-  errored:Promise<Error>
+  socket:TCPServerSocketAPI
   closed:Promise<void>
   onerrored:(Error) => void
   onclosed:() => void
   context:BaseContext
-  connections:AsyncIterator<Connection>
-  createConnection:(TCPSocketAdapter) => Connection
+  connections:Connections
   localPort:number
-  connectionObservers:{next({done:false, value:Connection}|{done:true}):void, throw(Error):void}[]
   */
   constructor(
-    socket /*:{close():void}*/,
+    socket /*:TCPServerSocketAPI*/,
     localPort /*:number*/,
-    createConnection /*:(TCPSocketAdapter) => Connection*/
+    connections /*:Connections*/
   ) {
     this.socket = socket
     this.localPort = localPort
-    this.createConnection = createConnection
+    this.connections = connections
   }
 
-  onSocketAccepted(server, client) {
-    this.onconnect(client)
-  }
-  onStopListening(server, status) {
-    switch (status) {
-      case Cr.NS_OK:
-        return this.onclose(status)
-      case Cr.NS_BINDING_ABORTED: {
-        return this.onclose(status)
-      }
-      default: {
-        return this.onerror(status)
-      }
-    }
-  }
-  addConnectionObserver(resolve, reject) {
-    this.connectionObservers.push({ next: resolve, throw: reject })
-  }
-  cancelConnectionObservers() {
-    for (const observer of this.connectionObservers.splice(0)) {
-      observer.next({ done: true })
-    }
-  }
-  failConnecitonObservers(error) {
-    for (const observer of this.connectionObservers.splice(0)) {
-      observer.throw(error)
-    }
-  }
-
-  terminate() {
+  closeImmediately() {
+    debug && console.log("terminate server")
     this.socket.close()
     this.delete()
   }
   delete() {
     delete this.socket
-    delete this.errored
+    delete this.closed
   }
-  static async new(
-    options /*:ServerOptions*/,
-    createConnection /*:(TCPSocketAdapter) => Connection*/
-  ) /*: Promise<Server>*/ {
+  static async new(options /*:ServerOptions*/) /*: Promise<Server>*/ {
     try {
       console.log(
         `TCPServerSocket.serve ${options.port} ${String(options.backlog)}`
       )
-      // const socket = newTCPServerSocket(
-      //   options.port,
-      //   { binaryType: "arraybuffer" },
-      //   options.backlog || undefined
-      // )
-      const socket = Cc["@mozilla.org/network/server-socket;1"].createInstance(
-        Ci.nsIServerSocket
+      const socket = new TCPServerSocketAdapter(
+        options.port,
+        { binaryType: "arraybuffer" },
+        options.backlog || undefined
       )
-      socket.init(options.port, false, options.backlog || -1)
 
-      console.log(`new TCPServerSocket1 ${socket.port}`)
+      console.log(`new TCPServerSocket1 ${socket.localPort}`)
+      const connections = new Connections()
+      const server = new Server(socket, socket.localPort, connections)
 
-      const self /*:Server*/ = new Server(socket, socket.port, createConnection)
-      self.errored = new Promise(resolve => (self.onerrored = resolve))
-      self.closed = new Promise(resolve => (self.onclosed = resolve))
-      self.connectionObservers = []
+      socket.onconnect = event => connections.connect(event.socket)
+      server.closed = new Promise((resolve, reject) => {
+        socket.onerror = ({ name, message }) =>
+          reject(new Error(`${name}: ${message}`))
+        // self.onclose = () => resolve()
+      })
 
-      socket.asyncListen(self)
-
-      return self
+      return server
     } catch (error) {
-      console.error("THROW!", error.toString())
       return IOError.throw(error.message)
-    }
-  }
-  onconnect(socket /*:nsISocketTransport*/) {
-    console.log("received connection")
-    const { connectionObservers } = this
-    if (connectionObservers.length > 0) {
-      const observer = connectionObservers.pop()
-      const client = TCPSocketAdapter.fromTransport(socket)
-      const connection = this.createConnection(client)
-      observer.next({ done: false, value: connection })
-    } else {
-      socket.close(Cr.NS_BINDING_ABORTED)
     }
   }
   onclose(status /*:nsresult*/) {
     this.onclosed()
-    this.cancelConnectionObservers()
+    this.connections.close()
   }
   onerror(status /*:nsresult*/) {
     const error = new Error(status)
-    this.failConnecitonObservers(error)
+    this.connections.close(error)
     this.onerrored(error)
   }
   close() {
@@ -258,215 +145,52 @@ class Server {
   }
 }
 
-class ClientHandler {
+class Connections {
   /*::
-  id:string
-  supervisor:Supervisor<ClientHandler>
-  socket:TCPSocket
-  client:ClientSocket
-  readRequests:{resolve(ArrayBuffer):void, reject(Error):void}[]
-  availableChunks:ArrayBuffer[]
-
-  onclose:() => void
-  onopen:() => void
-  onerror:(Error) => void
-  errored:Promise<Error>
-  closed:Promise<void>
-  opened:Promise<void>
+  requests:{resolve(?TCPSocketAPI):void, reject(Error):void}[]
   */
-
-  static handleEvent(self /*:ClientHandler*/, event) {
-    switch (event.type) {
-      case "open": {
-        return self.onopen()
-      }
-      case "closed": {
-        self.onclose()
-        return ClientHandler.terminate(self)
-      }
-      case "data": {
-        return ClientHandler.ondata(self, event.data)
-      }
-      case "error": {
-        return ClientHandler.onerror(self, event)
-      }
+  constructor() {
+    this.requests = []
+  }
+  request(resolve, reject) {
+    this.requests.push({ resolve, reject })
+  }
+  connect(socket /*:TCPSocketAPI*/) {
+    const request = this.requests.shift()
+    if (request) {
+      request.resolve(socket)
+    } else {
+      socket.closeImmediately()
     }
   }
-
-  static async connect(
-    supervisor /*:Supervisor<ClientHandler>*/,
-    id /*:string*/,
-    options /*:ClientOptions*/
-  ) {
-    const { host, port, useSecureTransport } = options
-    console.log("Client.connect", host, port, useSecureTransport)
-
-    const socket = new TCPSocket(host, port, {
-      binaryType: "arraybuffer",
-      useSecureTransport: !!useSecureTransport
-    })
-
-    console.log("Client.socket", socket)
-
-    try {
-      await new Promise((resolve, reject) => {
-        socket.onopen = resolve
-        socket.onerror = reject
-      })
-
-      const client = new TCPClient(id, socket.host, socket.port, socket.ssl)
-      const self = new ClientHandler()
-
-      self.id = id
-      self.supervisor = supervisor
-      self.socket = socket
-      self.client = client
-      self.errored = new Promise(resolve => (self.onerror = resolve))
-
-      const eventHandler = event => ClientHandler.handleEvent(self, event)
-      socket.onclose = eventHandler
-      socket.ondata = eventHandler
-      socket.onerror = eventHandler
-
-      return self
-    } catch (error) {
-      return IOError.throw(`${error.name}: ${error.message}`)
-    }
-  }
-
-  static terminate(self /*:ClientHandler*/) {
-    self.supervisor.stopped(self.id)
-    ClientHandler.delete(self)
-  }
-
-  static opened(handler /*:ClientHandler*/) {
-    return handler.opened
-  }
-  static closed(handler /*:ClientHandler*/) {
-    return handler.closed
-  }
-  static errored(handler /*:ClientHandler*/) {
-    return handler.errored
-  }
-  static bufferedAmount({ socket } /*:ClientHandler*/) {
-    return socket.bufferedAmount
-  }
-  static readyState({ socket } /*:ClientHandler*/) {
-    return socket.readyState
-  }
-  static delete(handler /*:ClientHandler*/) {
-    delete handler.socket
-    delete handler.client
-    delete handler.supervisor
-    delete handler.id
-  }
-  static async close(handler /*:ClientHandler*/) {
-    const { socket } = handler
-    ClientHandler.delete(handler)
-    socket.close()
-  }
-  static async closeImmediately(handler /*:ClientHandler*/) {
-    const { socket } = handler
-    ClientHandler.delete(handler)
-    socket.closeImmediately()
-  }
-  static suspend({ socket } /*:ClientHandler*/) {
-    socket.suspend()
-  }
-  static resume({ socket } /*:ClientHandler*/) {
-    socket.resume()
-  }
-  static async write(
-    handler /*:ClientHandler*/,
-    buffer /*:ArrayBuffer*/,
-    options /*::?:WriteOptions*/
-  ) /*:Promise<void>*/ {
-    const { socket } = handler
-    let wrote = false
-    if (options) {
-      const byteOffset = options.byteOffset || 0
-      if (options.byteLength != null) {
-        wrote = socket.send(buffer, byteOffset, options.byteLength)
+  close(error) {
+    const { requests } = this
+    while (requests.length) {
+      const request = requests.shift()
+      if (error) {
+        request.reject(error)
       } else {
-        wrote = socket.send(buffer, byteOffset)
+        request.resolve()
       }
-    } else {
-      wrote = socket.send(buffer)
     }
+  }
+}
 
-    if (!wrote) {
-      return ClientHandler.ondrain(handler)
-    }
-  }
-  static async read(self /*:ClientHandler*/) /*: Promise<ArrayBuffer>*/ {
-    const { availableChunks, readRequests, socket } = self
-    if (availableChunks.length > 0) {
-      return availableChunks.shift()
-    } else if (socket.readyState === "closed") {
-      return IOError.throw("Socket is closed")
-    } else {
-      return await new Promise((resolve, reject) => {
-        readRequests.push({ resolve, reject })
-      })
-    }
-  }
-  static ondata(self /*:ClientHandler*/, data /*:ArrayBuffer*/) {
-    const { readRequests, availableChunks } = self
-    if (readRequests.length > 0) {
-      readRequests.shift().resolve(data)
-    } else {
-      availableChunks.push(data)
-    }
-  }
-  static ondrain({ socket } /*:ClientHandler*/) /*: Promise<void>*/ {
-    return new Promise(resolve => {
-      socket.ondrain = () => {
-        resolve()
-        socket.ondrain = null
+global.TCPSocket = class extends ExtensionAPI /*::<Host>*/ {
+  getAPI(context) {
+    const servers = new WeakMap()
+    const clients = new WeakMap()
+    const connections = new WeakMap()
+    const sockets = new Set()
+
+    context.callOnClose({
+      close() {
+        console.log(`!!!! Unload ${sockets.size}`)
+        for (const socket of sockets) {
+          socket.closeImmediately()
+        }
       }
     })
-  }
-  static onerror(self /*:ClientHandler*/, event) {
-    const names = []
-    for (const name in event) {
-      names.push(name)
-    }
-    console.log(
-      "TCPClient.onerror",
-      event.message,
-      names,
-      String(event),
-      event.error,
-      event.stack
-    )
-    self.onerror(event)
-  }
-}
-
-class TCPClient /*::implements ClientSocket*/ {
-  /*::
-  id:string;
-  host:string;
-  port:number;
-  ssl:boolean;
-  */
-  constructor(
-    id /*:string*/,
-    host /*:string*/,
-    port /*:number*/,
-    ssl /*:boolean*/
-  ) {
-    this.id = id
-    this.host = host
-    this.port = port
-    this.ssl = ssl
-  }
-}
-
-global.TCP = class extends ExtensionAPI /*::<Host>*/ {
-  getAPI(context) {
-    const refs = new WeakMap()
-    const clients = new WeakMap()
 
     const deref = /*::<a, b>*/ (
       refs /*:WeakMap<a, b>*/,
@@ -480,15 +204,16 @@ global.TCP = class extends ExtensionAPI /*::<Host>*/ {
       }
     }
 
-    const derefServer = handle => deref(refs, handle)
+    const derefServer = handle => deref(servers, handle)
     const derefSocket = handle => deref(clients, handle)
+    const derefConnections = handle => deref(connections, handle)
 
-    debug && console.log("!!!!!!!!! getAPI")
-
-    const TCPServerConnection = exportClass(
+    const TCPClient = exportClass(
       context.cloneScope,
-      class ServerConnection {
+      class TCPClient {
         /*::
+        opened:Promise<void>
+        closed:Promise<void>
         */
         constructor() {
           throw TypeError("Illegal constructor")
@@ -508,26 +233,38 @@ global.TCP = class extends ExtensionAPI /*::<Host>*/ {
         get bufferedAmount() {
           return derefSocket(this).bufferedAmount
         }
-        send(buffer, byteOffset, byteLength) {
-          return context.wrapPromise(
-            new Promise(resolve => {
-              derefSocket(this).send(buffer, byteOffset, byteLength)
-              derefSocket(this).ondrain = resolve
+        write(buffer, byteOffset, byteLength) {
+          const socket = derefSocket(this)
+          if (socket.send(buffer, byteOffset, byteLength)) {
+            return voidPromise
+          } else {
+            return new context.cloneScope.Promise((resolve, reject) => {
+              socket.ondrain = () => resolve()
+              socket.onerror = ({ name, message }) =>
+                reject(IOError(`${name}: ${message}`))
             })
-          )
+          }
         }
         read() {
           return context.wrapPromise(
             new Promise((resolve, reject) => {
-              derefSocket(this).ondata = resolve
+              derefSocket(this).ondata = event => resolve(event.data)
             })
           )
         }
+        suspend() {
+          derefSocket(this).suspend()
+        }
+        resume() {
+          derefSocket(this).resume()
+        }
         close() {
-          return derefSocket(this).close()
+          derefSocket(this).close()
+          return voidPromise
         }
         closeImmediately() {
-          return derefSocket(this).closeImmediately()
+          derefSocket(this).closeImmediately()
+          return voidPromise
         }
         upgradeToSecure() {
           return derefSocket(this).upgradeToSecure()
@@ -535,66 +272,50 @@ global.TCP = class extends ExtensionAPI /*::<Host>*/ {
       }
     )
 
-    const TCPServerConnections = exportClass(
+    const TCPConnections = exportClass(
       context.cloneScope,
       AsAsyncIterator(
-        class ServerConnections {
+        class TCPConnections {
           /*::
         @@asyncIterator: () => self
-        server:TCPServerSocket
+          // server:Server
         */
           constructor() {
             throw TypeError("Illegal constructor")
           }
           next() {
             return new context.cloneScope.Promise((resolve, reject) => {
-              const server = derefServer(this.server)
-              // server.addConnectionObserver(resolve, reject)
-              server.addConnectionObserver(
-                ({ done, value }) => {
-                  const next = Cu.cloneInto({ done }, context.cloneScope)
-                  Reflect.set(Cu.waiveXrays(next), "value", value)
-                  resolve(next)
-                },
-                // wrapUnprivilegedFunction(resolve, context.cloneScope),
-                wrapUnprivilegedFunction(reject, context.cloneScope)
-              )
+              const self = derefConnections(this)
+              self.request(socket => {
+                if (socket) {
+                  resolve(next(createClientSocket(socket)))
+                } else {
+                  resolve(done)
+                }
+              }, reject)
             })
           }
           return() {
-            new context.cloneScope.Promise((resolve, reject) => {
-              const server = derefServer(this.server)
-              server.cancelConnectionObservers()
-              resolve(Cu.cloneInto({ done: true }, context.cloneScope))
-            })
+            derefConnections(this).close()
           }
         }
       )
     )
 
-    const TCPServerSocket = exportClass(
+    const TCPServer = exportClass(
       context.cloneScope,
-      class TCPServerSocket {
+      class TCPServer {
+        /*::
+        connections:AsyncIterator<ClientSocket>
+        */
         constructor() {
           throw TypeError("Illegal constructor")
         }
         close() {
           const server = derefServer(this)
-          server.terminate()
+          server.close()
           sockets.delete(server)
-          refs.delete(server)
-        }
-        connections() {
-          const server = derefServer(this)
-          const { connections } = server
-          if (connections == null) {
-            const connections = createConnections()
-            connections.server = this
-
-            server.connections = connections
-            return connections
-          }
-          return connections
+          servers.delete(server)
         }
         get localPort() {
           return derefServer(this).localPort
@@ -602,86 +323,82 @@ global.TCP = class extends ExtensionAPI /*::<Host>*/ {
         get closed() {
           return context.wrapPromise(derefServer(this).closed)
         }
-        get errored() {
-          return context.wrapPromise(derefServer(this).errored)
-        }
       }
     )
 
-    const clientManager /*:Supervisor<ClientHandler>*/ = new Supervisor()
-    const sockets = new Set()
-
-    context.callOnClose({
-      close() {
-        for (const socket of sockets) {
-          socket.terminate()
-        }
-
-        clientManager.stop(ClientHandler.closeImmediately)
-      }
-    })
-
-    const createConnection = (
-      socket /*:TCPSocketAdapter*/
-    ) /*:TCPServerConnection*/ => {
-      const connection = exportInstance(context.cloneScope, TCPServerConnection)
-      clients.set(connection, socket)
-      console.log("TCPServerConnection", connection)
-
-      connection.opened = context.wrapPromise(
-        new Promise(resolve => (socket.onopen = resolve))
-      )
-      connection.closed = context.wrapPromise(
-        new Promise(resolve => (socket.onclose = resolve))
-      )
-      connection.errored = context.wrapPromise(
-        new Promise(resolve => (socket.onerror = resolve))
-      )
-
-      return connection
+    const voidPromise = context.cloneScope.Promise.resolve()
+    const done = Cu.cloneInto({ done: true }, context.cloneScope)
+    const next = value => {
+      const result = Cu.cloneInto({ done: false }, context.cloneScope)
+      Reflect.defineProperty(result, "value", { value })
+      return result
     }
 
-    const createConnections = () /*:TCPServerConnections*/ =>
-      exportInstance(context.cloneScope, TCPServerConnections)
+    const createClientSocket = (socket /*:TCPSocketAPI*/) /*:ClientSocket*/ => {
+      const client = exportInstance(context.cloneScope, TCPClient)
+      clients.set(client, socket)
+      sockets.add(socket)
 
-    const createServer = () /*:ServerSocket*/ =>
-      exportInstance(context.cloneScope, TCPServerSocket)
+      client.opened =
+        socket.readyState === "open"
+          ? voidPromise
+          : new context.cloneScope.Promise((resolve, reject) => {
+              socket.onopen = () => resolve()
+            })
+
+      client.closed = context.wrapPromise(
+        new Promise((resolve, reject) => {
+          socket.onclose = () => resolve()
+          socket.onerror = event =>
+            reject(IOError(`${event.name}: ${event.message}`))
+        })
+      )
+
+      return client
+    }
+
+    const createConnections = () /*:TCPConnections*/ =>
+      exportInstance(context.cloneScope, TCPConnections)
+
+    const createServerSocket = () /*:ServerSocket*/ => {
+      const connections = createConnections()
+      const server = exportInstance(context.cloneScope, TCPServer)
+      Reflect.defineProperty(server, "connections", { value: connections })
+      return server
+    }
 
     return {
-      TCPServerSocket: {
+      TCPSocket: {
         listen: options =>
           new context.cloneScope.Promise(async (resolve, reject) => {
-            const server = await Server.new(options, createConnection)
-            const api = exportInstance(context.cloneScope, TCPServerSocket)
-            sockets.add(server)
-            refs.set(api, server)
+            try {
+              const socket = createServerSocket()
+              const server = await Server.new(options)
 
-            resolve(api)
+              sockets.add(server)
+              connections.set(socket.connections, server.connections)
+              servers.set(socket, server)
+
+              resolve(socket)
+            } catch (error) {
+              reject(error)
+            }
+          }),
+        connect: options =>
+          new context.cloneScope.Promise(async (resolve, reject) => {
+            try {
+              const socket = new TCPSocket(options.host, options.port, {
+                useSecureTransport: options.useSecureTransport,
+                binaryType: "arraybuffer"
+              })
+
+              const client = createClientSocket(socket)
+              // await client.opened
+              resolve(client)
+            } catch (error) {
+              reject(error)
+            }
           })
-      },
-      TCPClientSocket: {
-        connect: async options => {
-          const handler = await clientManager.start(
-            ClientHandler.connect,
-            options
-          )
-          return handler.client
-        },
-        suspend: ({ id }) => clientManager.delegate(ClientHandler.suspend, id),
-        resume: ({ id }) => clientManager.delegate(ClientHandler.resume, id),
-        close: ({ id }) => clientManager.delegate(ClientHandler.close, id),
-        closeImmediately: ({ id }) =>
-          clientManager.delegate(ClientHandler.closeImmediately, id),
-        getBufferedAmount: ({ id }) =>
-          clientManager.delegate(ClientHandler.bufferedAmount, id),
-        getStatus: ({ id }) =>
-          clientManager.delegate(ClientHandler.readyState, id),
-        write: ({ id }, data, options) =>
-          clientManager.delegate(ClientHandler.write, id, data, options),
-        read: ({ id }) => clientManager.delegate(ClientHandler.read, id),
-        closed: ({ id }) => clientManager.delegate(ClientHandler.closed, id),
-        opened: ({ id }) => clientManager.delegate(ClientHandler.opened, id),
-        errored: ({ id }) => clientManager.delegate(ClientHandler.errored, id)
       }
     }
   }
@@ -699,7 +416,6 @@ const exportClass = /*::<b, a:Class<b>>*/ (
   for (const key of Reflect.ownKeys(constructor.prototype)) {
     if (key !== "constructor") {
       const descriptor = Reflect.getOwnPropertyDescriptor(source, key)
-      console.log(key, descriptor)
       Reflect.defineProperty(
         prototype,
         key,
@@ -757,10 +473,88 @@ const SSL_ERROR_BAD_CERT_DOMAIN = SSL_ERROR_BASE + 12
 
 const BUFFER_SIZE = 65536
 
-class TCPSocketAdapter {
+// Port of: https://github.com/mozilla/gecko-dev/blob/f51c4fa5d92d59fcb46f314e94edbf045cb3067c/dom/network/TCPServerSocket.cpp
+class TCPServerSocketAdapter /*::implements TCPServerSocketAPI*/ {
+  /*::
+  onconnect: ?(TCPServerSocketEventAPI) => mixed;
+  onerror: ?(ErrorEventAPI) => mixed;
+  localPort: number;
+  serverSocket: ?nsIServerSocket;
+  */
+  constructor(port, options, backlog) {
+    const serverSocket = Cc[
+      "@mozilla.org/network/server-socket;1"
+    ].createInstance(Ci.nsIServerSocket)
+    serverSocket.init(port, false, backlog || -1)
+    this.serverSocket = serverSocket
+    this.localPort = serverSocket.port
+
+    serverSocket.asyncListen(this)
+  }
+  close() {
+    debug && console.log("TPCServerSocketAdapter.close", this.serverSocket)
+    if (this.serverSocket) {
+      this.serverSocket.close()
+    }
+  }
+
+  // nsIServerSocketListener
+  onSocketAccepted(server, transport) {
+    const socket = TCPSocketAdapter.createAcceptedSocket(transport)
+    TCPServerSocketAdapter.fireEvent(this, "connect", socket)
+  }
+  onStopListening(server, status) {
+    this.serverSocket = null
+    switch (status) {
+      case Cr.NS_BINDING_ABORTED: {
+        // return void this.onclose(status)
+        break
+      }
+      default: {
+        TCPServerSocketAdapter.fireErrorEvent(
+          this,
+          "NetworkError",
+          "Server socket was closed by unexpected reason."
+        )
+      }
+    }
+  }
+
+  // Statics
+  static fireEvent(self, type, socket /*:TCPSocketAPI*/) {
+    switch (type) {
+      case "connect": {
+        if (self.onconnect) {
+          self.onconnect({
+            type: "connect",
+            socket
+          })
+        }
+        break
+      }
+    }
+  }
+  static fireErrorEvent(self, name, message) {
+    if (self.onerror) {
+      self.onerror({
+        type: "error",
+        name,
+        message
+      })
+    }
+  }
+}
+
+// Port of: https://github.com/mozilla/gecko-dev/blob/f51c4fa5d92d59fcb46f314e94edbf045cb3067c/dom/network/TCPSocket.cpp#L411
+const DO_NOT_INIT = {}
+const ASYNC_COPY = { type: "asyncCopy" }
+const ASYNC_READ = { type: "asyncRead" }
+
+class TCPSocketAdapter /*::implements TCPSocketAPI*/ {
   /*::
   host:string;
   port:number;
+  binaryType: TCPSocketBinaryType;
   bufferedAmount:number;
   transport:nsISocketTransport;
   readyState:TCPReadyState;
@@ -775,17 +569,22 @@ class TCPSocketAdapter {
   waitingForStartTLS:boolean
   pendingData:nsIInputStream[]
   pendingDataAfterStartTLS:nsIInputStream[]
+  copyObserver:nsIRequestObserver
 
-  onopen:?({type:"open"}) => void
-  onclose:?({type:"close"}) => void
-  ondrain:?({type:"drain"}) => void
-  ondata:?({type:"data", data:ArrayBuffer}) => void
-  onerror:?({type:"error", name:string, message:string}) => void
+  onopen:?({type:"open"}) => mixed
+  onclose:?({type:"close"}) => mixed
+  ondrain:?({type:"drain"}) => mixed
+  ondata:?({type:"data", data:ArrayBuffer}) => mixed
+  onerror:?(ErrorEventAPI) => mixed
   */
-  constructor(host /*:string*/, port /*:number*/, ssl /*:boolean*/) {
+  constructor(
+    host /*:string*/,
+    port /*:number*/,
+    options /*::?:SocketOptions*/
+  ) {
     this.host = host
     this.port = port
-    this.ssl = ssl
+    this.ssl = options && options.useSecureTransport ? true : false
     this.readyState = "closed"
     this.asyncCopierActive = false
     this.waitingForDrain = false
@@ -794,24 +593,25 @@ class TCPSocketAdapter {
     this.waitingForStartTLS = false
     this.pendingData = []
     this.pendingDataAfterStartTLS = []
+    this.binaryType = "arraybuffer"
+    this.copyObserver = new CopierObserver(this)
+
+    if (options !== DO_NOT_INIT) {
+      TCPSocketAdapter.init(this)
+    }
   }
-  static fromTransport(transport /*:nsISocketTransport*/) {
-    const self = new TCPSocketAdapter(transport.host, transport.port, false)
+  static createAcceptedSocket(transport /*:nsISocketTransport*/) {
+    const self = new TCPSocketAdapter(
+      transport.host,
+      transport.port,
+      DO_NOT_INIT
+    )
     self.transport = transport
 
     TCPSocketAdapter.createStream(self)
     TCPSocketAdapter.createInputStreamPump(self)
     self.readyState = "open"
 
-    return self
-  }
-  static connect(
-    host /*:string*/,
-    port /*:number*/,
-    options /*:{useSecureTransport?:boolean}*/
-  ) {
-    const self = new TCPSocketAdapter(host, port, !!options.useSecureTransport)
-    TCPSocketAdapter.init(self)
     return self
   }
   static init(self) {
@@ -858,6 +658,7 @@ class TCPSocketAdapter {
 
     self.binaryInputStream = binaryInputStream
     self.socketInputStream = socketInputStream
+    self.socketOutputStream = socketOutputStream
   }
   static createInputStreamPump(self) {
     const { socketInputStream } = self
@@ -981,7 +782,7 @@ class TCPSocketAdapter {
 
       TCPSocketAdapter.fireErrorEvent(self, errorName, errorType)
     }
-    TCPSocketAdapter.fireEvent(self, "closed")
+    TCPSocketAdapter.fireEvent(self, "close")
   }
   static fireErrorEvent(self, name, type) {
     const { onerror } = self
@@ -1044,6 +845,7 @@ class TCPSocketAdapter {
     }
   }
   static send(self, stream, byteLength) {
+    console.log(`TCPSocketAdapter.send ${stream.available()}`)
     self.bufferedAmount += byteLength
     const isBufferFull = self.bufferedAmount > BUFFER_SIZE
     if (isBufferFull) {
@@ -1060,8 +862,9 @@ class TCPSocketAdapter {
     return !isBufferFull
   }
   static ensureCopying(self) {
-    const { socketOutputStream } = self
-    if (self.asyncCopierActive || !socketOutputStream) {
+    const { socketOutputStream, asyncCopierActive } = self
+
+    if (asyncCopierActive || !socketOutputStream) {
       return
     }
     self.asyncCopierActive = true
@@ -1085,6 +888,10 @@ class TCPSocketAdapter {
 
     const target = socketTransportService.QueryInterface(Ci.nsIEventTarget)
 
+    console.log(
+      `TCPSocketAdapter.ensureCopying copy ${stream.available()} bytes`
+    )
+
     copier.init(
       stream,
       socketOutputStream,
@@ -1096,12 +903,13 @@ class TCPSocketAdapter {
       false
     )
 
-    copier.asyncCopy(new CopierCallbacks(self), null)
+    copier.asyncCopy(self.copyObserver, null)
   }
   static notifyCopyComplete(self, status) {
+    console.log(`TCPSocketAdapter.notifyCopyComplete ${status}`)
     self.asyncCopierActive = false
     let bufferedAmount = 0
-    for (let stream of self.pendingData) {
+    for (const stream of self.pendingData) {
       bufferedAmount += stream.available()
     }
     self.bufferedAmount = bufferedAmount
@@ -1110,7 +918,7 @@ class TCPSocketAdapter {
       return TCPSocketAdapter.maybeReportErrorAndCloseIfOpen(self, status)
     }
 
-    if (bufferedAmount != null) {
+    if (bufferedAmount > 0) {
       return TCPSocketAdapter.ensureCopying(self)
     }
 
@@ -1149,6 +957,7 @@ class TCPSocketAdapter {
     const socketControl = securityInfo.QueryInterface(Ci.nsISSLSocketControl)
     if (socketControl) {
       socketControl.StartTLS()
+      self.ssl = true
     }
   }
 
@@ -1160,11 +969,11 @@ class TCPSocketAdapter {
   onStartRequest(request, context) {}
   onDataAvailable(request, context, stream /*:nsIInputStream*/, offset, size) {
     const buffer = new ArrayBuffer(size)
-    let actual = 0
     this.binaryInputStream.readArrayBuffer(size, buffer)
     TCPSocketAdapter.fireDataEvent(this, buffer)
   }
   onStopRequest(request, context, status) {
+    console.log(`TCPSocketAdapter.notifyReadComplete ${status}`)
     this.inputStreamPump = null
     if (this.asyncCopierActive && status === Cr.NS_OK) {
       // If we have some buffered output still, and status is not an
@@ -1180,8 +989,14 @@ class TCPSocketAdapter {
   onInputStreamReady(asyncStream /*:nsIAsyncInputStream*/) /*:void*/ {
     // Only used for detecting if the connection was refused.
     try {
-      asyncStream.available()
+      const available = asyncStream.available()
+      debug &&
+        console.log(
+          `TCPSocketAdapter.onInputStreamReady available: ${available}`
+        )
     } catch (error) {
+      debug &&
+        console.log(`TCPSocketAdapter.onInputStreamReady unavailable: ${error}`)
       TCPSocketAdapter.maybeReportErrorAndCloseIfOpen(this, error)
     }
   }
@@ -1198,8 +1013,10 @@ class TCPSocketAdapter {
       "@mozilla.org/io/arraybuffer-input-stream;1"
     ].createInstance(Ci.nsIArrayBufferInputStream)
     stream.setData(buffer, byteOffset, byteLength)
-    TCPSocketAdapter.send(this, stream, byteLength)
+    return TCPSocketAdapter.send(this, stream, byteLength)
   }
+  suspend() {}
+  resume() {}
   close() {
     TCPSocketAdapter.close(this, true)
   }
@@ -1221,7 +1038,7 @@ class TCPSocketAdapter {
   }
 }
 
-class CopierCallbacks {
+class CopierObserver {
   /*::
   owner:TCPSocketAdapter
   */
@@ -1236,99 +1053,3 @@ class CopierCallbacks {
 }
 
 const debug = true
-
-// class RemoteIterator {
-//   /*::
-//   socket:UDPSocket;
-//   promise: ?{resolve:({value:UDPMessage, done:false}|{done:true}) => void, reject:Error => void}
-//   done:boolean
-//   */
-//   constructor(socket /*:UDPSocket*/) {
-//     this.socket = socket
-//     this.done = false
-//   }
-//   onPacketReceived(socket, message) {
-//     debug &&
-//       console.log(`TCPSocket/onPacketReceived ${this.socket.id}`, message)
-//     this.continue({
-//       from: Address.from(message.fromAddr),
-//       data: message.rawData.buffer
-//     })
-//   }
-//   onStopListening(socket, status) {
-//     debug && console.log(`TCPSocket/onStopListening ${this.socket.id}`, status)
-
-//     if (status === Cr.NS_BINDING_ABORTED) {
-//       return this.abort(null)
-//     } else {
-//       return this.abort(new Error(`Socket was closed with error: ${status}`))
-//     }
-//   }
-//   continue(value) {
-//     const { promise, done } = this
-//     this.promise = null
-//     debug &&
-//       console.log("UDPSocketClient.AsyncIterator.continue", promise, value)
-//     if (promise && !done) {
-//       promise.resolve({ value, done: false })
-//     }
-//   }
-//   abort(reason) {
-//     const { promise, done } = this
-//     this.promise = null
-//     debug && console.log("UDPSocketClient.AsyncIterator.break", promise)
-//     if (promise && !done) {
-//       if (reason) {
-//         promise.reject(reason)
-//       } else {
-//         promise.resolve({ done: true })
-//       }
-//     }
-//     this.done = true
-//   }
-
-//   getAPI(context) /*:AsyncIterator<UDPMessage>*/ {
-//     const iterator = Cu.cloneInto(
-//       {
-//         /*::
-//         @@asyncIterator: () => iterator,
-//         */
-//         next: () => {
-//           return new context.cloneScope.Promise((resolve, reject) => {
-//             if (this.done) {
-//               resolve(Cu.cloneInto({ done: true }, context.cloneScope))
-//             } else {
-//               this.promise = {
-//                 resolve: wrapUnprivilegedFunction(resolve, context.cloneScope),
-//                 reject: wrapUnprivilegedFunction(reject, context.cloneScope)
-//               }
-//             }
-//           })
-//         },
-//         return: () => {
-//           new context.cloneScope.Promise((resolve, reject) => {
-//             const done = { done: true }
-//             const { promise } = this
-//             if (promise) {
-//               this.promise = null
-//               this.done = true
-//               promise.resolve(done)
-//             }
-//             resolve(Cu.cloneInto(done, context.cloneScope))
-//           })
-//         }
-//       },
-//       context.cloneScope,
-//       {
-//         cloneFunctions: true
-//       }
-//     )
-
-//     const unwrappedIterator /*:Object*/ = Cu.waiveXrays(iterator)
-//     unwrappedIterator[$Symbol.asyncIterator] = Cu.exportFunction(function() {
-//       return this
-//     }, context.cloneScope)
-
-//     return iterator
-//   }
-// }
