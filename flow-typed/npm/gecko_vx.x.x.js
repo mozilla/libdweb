@@ -3037,7 +3037,8 @@ declare module "gecko" {
         JSM<
           "resource://gre/modules/AddonManager.jsm",
           { AddonManager: AddonManager }
-        >
+        > &
+        JSM<"resource://gre/modules/Console.jsm", { console: typeof console }>
     },
     manager: Components$manager,
     ID<a>(iid: string): nsIJSID<a>,

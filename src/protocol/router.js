@@ -40,19 +40,16 @@ const { ppmm, cpmm, mm, appinfo } = Cu.import(
   "resource://gre/modules/Services.jsm",
   {}
 ).Services
-const { getConsole } = Cu.import(
-  "resource://gre/modules/ExtensionUtils.jsm",
-  {}
-).ExtensionUtils
+
 const { XPCOMUtils } = Cu.import("resource://gre/modules/XPCOMUtils.jsm", {})
 const { setTimeout } = Cu.import("resource://gre/modules/Timer.jsm", {})
+const { console } = Cu.import("resource://gre/modules/Console.jsm", {})
 const PR_UINT32_MAX = 0xffffffff
 
 const { generateUUID } = Cc["@mozilla.org/uuid-generator;1"].getService(
   Ci.nsIUUIDGenerator
 )
 
-XPCOMUtils.defineLazyGetter(this, "console", getConsole)
 const contentSecManager = Cc[
   "@mozilla.org/contentsecuritymanager;1"
 ].getService(Ci.nsIContentSecurityManager)
