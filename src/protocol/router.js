@@ -214,7 +214,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
   notificationCallbacks: nsIInterfaceRequestor<nsIProgressEventSink> | null;
 
   listener: ?nsIStreamListener
-  context: ?nsISupports<*>
+  context: ?nsISupports<mixed>
   handler: RequestHandler
   */
   constructor(
@@ -390,10 +390,9 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     this.readyState = ACTIVE
 
     const { listener, context } = this
-    const ctx /*: any */ = context
     this.byteOffset = 0
     try {
-      listener && listener.onStartRequest(this, ctx)
+      listener && listener.onStartRequest(this, context)
     } catch (_) {
       console.error(_)
     }
@@ -413,8 +412,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
       )
 
     const { listener, context } = this
-    const ctx /*: any */ = context
-    listener && listener.onDataAvailable(this, ctx, stream, 0, byteLength)
+    listener && listener.onDataAvailable(this, context, stream, 0, byteLength)
     this.byteOffset += byteLength
   }
 
@@ -436,11 +434,10 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     delete this.listener
     delete this.context
     delete this.handler
-    const ctx /*: any */ = context
     try {
-      listener && listener.onStopRequest(this, ctx, status)
+      listener && listener.onStopRequest(this, context, status)
 
-      this.loadGroup.removeRequest(this, ctx, status)
+      this.loadGroup.removeRequest(this, context, status)
     } catch (_) {
       debug && console.error(`Failed onStopRequest${pid} ${_}`)
     }
