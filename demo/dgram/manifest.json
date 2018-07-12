@@ -3,7 +3,7 @@
   "version": "0.1",
   "name": "dgram@libdweb",
   "description": "Extension containing libdweb UDPSocket API",
-  "permissions": [],
+  "permissions": ["dns"],
 
   "experiment_apis": {
     "UDPSocket": {

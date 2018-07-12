@@ -37,8 +37,6 @@ You can help this effort in following ways:
 
 Protocol API allows you to provide custom protocol implementation to a firefox such that firefox. This is different from existing [WebExtensions protocol handler API][webextensions protocol_handlers] in that it does not register a website for handling corresponding URLs but rather allows WebExtension to implement a handler instead.
 
-#### Example
-
 Following example implements a simple `dweb://` protocol. When firefox is navigated to say `dweb://hello/world` it will invoke registered handler and pass it a `request` object containing request URL as `request.url` string property. Handler is expected to return a repsonse with a `content` that is [async iterator][] of [`ArrayBuffer`][]s. In our example we use `repsond` [async generator][] function to respond with some HTML markup.
 
 ```js
@@ -89,7 +87,7 @@ async function* streamRespond(request) {
 }
 ```
 
-You can see a dom of this API in [Firefox Nightly][] by running following command
+You can see the demo of the example above in [Firefox Nightly][] by running following command. Try navigating to [dweb://hello/world](dweb://hello/world) or [dweb://stream/](dweb://stream/)
 
 ```
 npm run demo:protocol
@@ -109,7 +107,64 @@ npm run demo:mdns
 
 ### FileSystem API
 
-Following command will launch [Firefox Nightly][] with FileSystem API demo addon
+FileSystem API provides access to an OS file system, but restricted to a user chosen directory. Below example illustrates writing a content to a file in user chosen directory.
+
+```js
+void (async () => {
+  const volume = await browser.FileSystem.mount({
+    read: true,
+    write: true
+  })
+  console.log("Mounted", volume)
+  localStorage.setItem("volumeURL", volume.url)
+
+  const fileURL = new URL("hello.md", volume.url).href
+  const encoder = new TextEncoder()
+  const content = encoder.encode("# Hello World\n").buffer
+  const size = await browser.FileSystem.writeFile(fileURL, content)
+  console.log(`Wrote ${size} bytes to ${fileURL}`)
+})()
+```
+
+Call to `FileSystem.mount` will notify user that corresponding WebExtension is requesting `read / write` access to the file system, which user can deny or grant by choosing a directory. If user denies to access then promise returned by `mount` will be rejected, if user chooses to grant access to a speicific directory promise will resolve to an object like.
+
+```js
+{
+  url:"file:///Users/user/dweb/",
+  readable:true,
+  writable:true
+}
+```
+
+The rest of the example that writes content into a file should be pretty stright forward.
+
+> **Note:** Granted access is be preserved across sessions, and WebExtension could mount same directory without prompting a user again.
+
+Following is more complete example that will either mount directory that user has already granted access to or request access to new directory otherwise.
+
+```js
+void (async () => {
+  const url = localStorage.getItem("volumeURL")
+  const volume = await browser.FileSystem.mount({ url, read: true })
+
+  const fileURL = new URL("hello.md", volume.url).href
+  const file = await browser.FileSystem.open(fileURL, { read: true })
+  const chunk = await browser.File.read(file, { position: 2, size: 5 })
+  console.log(`Read file fragment from ${fileURL}`, chunk)
+  const decoder = new TextDecoder()
+  const content = decoder.decode(chunk)
+  console.log(`Decode read fragment`, content)
+  await browser.File.close(file)
+})()
+```
+
+> **Note:** Attempt to mount a URL that user has not previously granted access to will fail without even prompting a user.
+
+FileSystem API has many other functions available you can follow the links for detailed API interface definitions of [`browser.FileSystem`][] and [`browser.File`][]
+
+You can try demo WebExtension that provides a [REPL][] in the sidebar exposing all of the FileSystem API, which you can run in [Firefox Nightly][] via following command
+
+> **Note:** Commands recognized by [REPL][] correspond to the API functions names and all the parameters are names prefixed by `--` and followed by value.
 
 ```
 npm run demo:fs
@@ -119,7 +174,51 @@ npm run demo:fs
 
 ### UDPSocket API
 
-Following command will launch [Firefox Nightly][] with UDPSocket API demo addon
+API provides an implementation of UDP Datagram sockets. Follow the link for detailed API interface for [`browser.UDPSocket`][] which corresponds to `UDPSocketManager`.
+
+There is also a [@libdweb/dgram-adapter][] project that provides [nodejs dgram][] API adapter.
+
+#### Example
+
+Following example opens UDP socket on port `41234` that will act as a server and will continuously print incoming messages.
+
+```js
+void (async () => {
+  const server = await browser.UDPSocket.create({
+    port: 41234
+  })
+  console.log(`listening ${server.address.host}:${server.address.port}`)
+
+  const decoder = new TextDecoder()
+  for await (const { from, data } of browser.UDPSocket.messages(server)) {
+    console.log(`receive message`)
+    const message = decoder.decode(data)
+    console.log(`server got: ${message} from ${from.host}:${from.port}`)
+  }
+})()
+```
+
+> **Note:** Incoming messages are represented via [async iterator][] which can be consumed via `for await`, but be aware that **messages are not buffered** so if you use `await` inside the `for await` block chances are you will miss message which will be dropped.
+
+Following example opens socket on arbitrary port and then sends a message to the server socket from the above example.
+
+```js
+void (async () => {
+  const client = await browser.UDPSocket.create({ host: "127.0.0.1" })
+  console.log(`opened socket ${client.address.host}:${client.address.port}`)
+  const encoder = new TextEncoder()
+  const message = encoder.encode("Hello UDP").buffer
+  await browser.UDPSocket.send(client, "127.0.0.1", 41234, message)
+})()
+```
+
+> **Note**: UDPSocket API unlike one in nodejs is not going to resolve hostnames like `"localhost"`. You need to use WebExtensions [dns][webextensions dns] API to resolve hostnames.
+
+#### Demo
+
+You can try demo WebExtension that provides a [REPL][] in the sidebar exposing all of the UDPSocket API, which you can run in [Firefox Nightly][] via following command
+
+> **Note:** Commands recognized by [REPL][] correspond to the API functions names and all the parameters are names prefixed by `--` and followed by corresponding values.
 
 ```
 npm run demo:dgram
@@ -127,18 +226,55 @@ npm run demo:dgram
 
 ### TCPSocket API
 
-Following command will launch [Firefox Nightly][] with TCPSocket API demo addon
+TCPSocket API provides a client and server socket APIs for [TCP][] networking.
 
+#### Example
+
+Following example starts echo TCP server on port `8090`. It will accept incoming
+connections read first chunk of data, respond by echoing messages back to.
+
+```js
+void (async () => {
+  const encoder = new TextEncoder()
+  const decoder = new TextDecoder()
+
+  const server = await browser.TCPSocket.listen({ port: 8090 })
+  console.log("Started TCP Server", server)
+
+  const onconnect = async client => {
+    console.log("Client connected:", client)
+    const message = await client.read()
+    console.log("Received message from client:", decoder.decode(message))
+    const response = encoder.encode(`<echo>${decoder.decode(message)}</echo>`)
+    await client.write(response.buffer)
+  }
+
+  for await (const client of server.connections) {
+    onconnect(client)
+  }
+})()
 ```
-npm run demo:tcp
-```
 
-### All APIs
+> **Note:** `server.connections` are represented via [async iterator][] which can be consumed via `for await`, but be aware that connections are **not buffered** which is why handle each connection in `onconnect` function so our server can accept more connections. If you use `await` inside the `for await` block chances are you will miss connection, in which case it will be automatically closed.
 
-Following command will launch [Firefox Nightly][] with a demo containing all the above
+Following example connects to server from the example above writes a message to it and then reads message received back.
 
-```
-npm run demo
+```js
+void (async () => {
+  const encoder = new TextEncoder()
+  const decoder = new TextDecoder()
+
+  const client = await browser.TCPSocket.connect({
+    host: "localhost",
+    port: 8090
+  })
+  await client.opened
+  console.log("Client connected:", client)
+
+  await client.write(encoder.encode("Hello TCP").buffer)
+  const response = await client.read()
+  console.log("Received response:", decoder.decode(response))
+})()
 ```
 
 [travis.icon]: https://travis-ci.org/mozilla/libdweb.svg?branch=master
@@ -165,3 +301,11 @@ npm run demo
 [async iterator]: https://github.com/tc39/proposal-async-iteration#async-iterators-and-async-iterables
 [`arraybuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
 [async generator]: https://github.com/tc39/proposal-async-iteration#async-generator-functions
+[`browser.filesystem`]: https://github.com/mozilla/libdweb/blob/master/src/FileSystem/FileSystem.js#L8-L39
+[`browser.file`]: https://github.com/mozilla/libdweb/blob/master/src/FileSystem/FileSystem.js#L41-L51
+[repl]: https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop
+[`browser.udpsocket`]: https://github.com/mozilla/libdweb/blob/master/src/UDPSocket/UDPSocket.js
+[webextensions dns]: https://developer.mozilla.org/en-US/Add-ons/WebExtensions/API/dns
+[@libdweb/dgram-adapter]: https://github.com/libdweb/dgram-adapter
+[nodejs dgram]: https://nodejs.org/api/dgram.html
+[tcp]: https://en.wikipedia.org/wiki/Transmission_Control_Protocol
