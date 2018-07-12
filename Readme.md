@@ -25,7 +25,7 @@ You can help this effort in several ways:
 | [mdns][]             | 🐣     |
 | [File System][]      | 🐣     |
 | [UDP Socket][]       | 🐣     |
-| [TCP Socket][]       | 🥚     |
+| [TCP Socket][]       | 🐣     |
 
 - 🥚 : In design phase
 - 🐣 : Work in progress
@@ -71,6 +71,14 @@ Following command will launch [Firefox Nightly][] with UDPSocket API demo addon
 
 ```
 npm run demo:dgram
+```
+
+### TCPSocket API
+
+Following command will launch [Firefox Nightly][] with TCPSocket API demo addon
+
+```
+npm run demo:tcp
 ```
 
 ### All APIs

@@ -1,0 +1,65 @@
+[
+  {
+    "namespace": "TCPSocket",
+    "description": "TCP Client Socket implementation",
+    "//permissions": ["TCPClientSocket", "TCPServerSocket"],
+    "types": [],
+    "properties": {},
+    "events": [],
+    "functions": [
+      {
+        "name": "connect",
+        "description": "This method initializes a TCP socket.",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "options",
+            "type": "object",
+            "properties": {
+              "host": {
+                "name": "host",
+                "type": "string",
+                "description": "Destination hostname or IP address"
+              },
+              "port": {
+                "type": "number",
+                "description": "Destination port."
+              },
+              "useSecureTransport": {
+                "type": "boolean",
+                "optional": true,
+                "default": false,
+                "description": "use secure transport."
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "listen",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "options",
+            "type": "object",
+            "properties": {
+              "port": {
+                "type": "number",
+                "description": "Port to listen on.",
+                "optional": true,
+                "default": -1
+              },
+              "useSecureTransport": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Use secrue transport"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+]
