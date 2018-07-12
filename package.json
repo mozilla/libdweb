@@ -29,7 +29,8 @@
     "rollup": "0.60.1",
     "rollup.config.flow": "1.1.0",
     "source-map-support": "0.5.6",
-    "web-ext": "2.7.0"
+    "web-ext": "2.7.0",
+    "cross-env": "^5.2.0"
   },
   "scripts": {
     "//test": "npm run test:flow && npm run test:tape",
@@ -45,12 +46,12 @@
     "//prepublishOnly": "npm run build && npm run build:umd && npm test",
     "precommit": "lint-staged",
     "//start": "flow-copy-source --watch --verbose src lib & babel --watch --out-dir lib src",
-    "demo": "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging",
-    "demo:mdns": "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/mdns",
-    "demo:protocol": "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/protocol",
-    "demo:fs": "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/fs",
-    "demo:dgram": "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/dgram",
-    "demo:tcp": "env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/tcp"
+    "demo": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging",
+    "demo:mdns": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/mdns",
+    "demo:protocol": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/protocol",
+    "demo:fs": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/fs",
+    "demo:dgram": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/dgram",
+    "demo:tcp": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/tcp"
   },
   "lint-staged": {
     "*.js": [
