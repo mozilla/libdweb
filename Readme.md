@@ -4,15 +4,15 @@
 [![package][version.icon] ![downloads][downloads.icon]][package.url]
 [![styled with prettier][prettier.icon]][prettier.url]
 
-This repositiory hosts community effort of implementing [experimental APIs][webextension experiments] for Firefox WebExtensions with a goal of enabling dweb protocols in Firefox through an add-ons. The long term goal of this project is to eventually integrate this APIs into [WebExtensions][new apis] ecosystem.
+This repositiory hosts a community effort to implement [experimental APIs][webextension experiments] for Firefox WebExtensions with a goal of enabling dweb protocols in Firefox through browser add-ons. The long term goal of this project is to integrate these APIs into the [WebExtensions][new apis] ecosystem.
 
 ## Participation
 
 You can help this effort in following ways:
 
-1.  Use this APIs to make something illustrating it's value to help build up the case for further investment.
-2.  Get involved in driving this effort. Help with an implementation, maintenance, etc...
-3.  Help build [API adapters][] to enable seamless integration with existing libraries.
+1. Use these APIs to make something illustrating its value, to build the case for adoption in the core WebExtension API set.
+2. Get involved in driving this effort: Help with an API implementation, maintenance, testing, code samples, etc.
+3. Help build [API adapters][] to enable seamless integration with existing libraries.
 
 ## Status: In active development
 
@@ -35,9 +35,9 @@ You can help this effort in following ways:
 
 ### Protocol API
 
-Protocol API allows you to provide custom protocol implementation to a firefox such that firefox. This is different from existing [WebExtensions protocol handler API][webextensions protocol_handlers] in that it does not register a website for handling corresponding URLs but rather allows WebExtension to implement a handler instead.
+The Protocol API allows you to handle custom protocols from your Firefox extension. This is different from the existing [WebExtensions protocol handler API][webextensions protocol_handlers] in that it does not register a website for handling corresponding URLs but rather allows your WebExtension to implement the handler.
 
-Following example implements a simple `dweb://` protocol. When firefox is navigated to say `dweb://hello/world` it will invoke registered handler and pass it a `request` object containing request URL as `request.url` string property. Handler is expected to return a repsonse with a `content` that is [async iterator][] of [`ArrayBuffer`][]s. In our example we use `repsond` [async generator][] function to respond with some HTML markup.
+The following example implements a simple `dweb://` protocol. When firefox is navigated to `dweb://hello/world`, for example, it will invoke your registered handler and pass it a `request` object containing request URL as `request.url` string property. Your handler is expected to return a repsonse with a `content` that is [async iterator][] of [`ArrayBuffer`][]s. In our example we use a `respond` [async generator][] function to respond with some HTML markup.
 
 ```js
 browser.protocol.registerProtocol("dweb", request => {
@@ -56,7 +56,7 @@ async function* respond(text) {
 }
 ```
 
-Given that `response.content` is [async iterator][] it is also possible to stream response content as next example illustrates.
+Given that `response.content` is an [async iterator][] it is also possible to stream response content as this next example illustrates.
 
 ```js
 browser.protocol.registerProtocol("dweb", request => {
@@ -87,7 +87,7 @@ async function* streamRespond(request) {
 }
 ```
 
-You can see the demo of the example above in [Firefox Nightly][] by running following command. Try navigating to [dweb://hello/world](dweb://hello/world) or [dweb://stream/](dweb://stream/)
+You can see the demo of the example above in [Firefox Nightly][] by running following command, and then navigating to [dweb://hello/world](dweb://hello/world) or [dweb://stream/](dweb://stream/)
 
 ```
 npm run demo:protocol
