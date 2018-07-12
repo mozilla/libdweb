@@ -8,14 +8,11 @@ This repositiory hosts community effort of implementing [experimental APIs][webe
 
 ## Participation
 
-You can help this effort in several ways:
+You can help this effort in following ways:
 
-- If there is a missing API to enable certain dweb protocol please submit an issue with clear description of:
-
-  1.  What protocol implementation requires it.
-  2.  What is this API would protocol implementation allow / prevent.
-
-- Contribute code. Make sure to reach out first, then hack.
+1.  Use this APIs to make something illustrating it's value to help build up the case for further investment.
+2.  Get involved in driving this effort. Help with an implementation, maintenance, etc...
+3.  Help build [API adapters][] to enable seamless integration with existing libraries.
 
 ## Status: In active development
 
@@ -32,12 +29,67 @@ You can help this effort in several ways:
 - 🐥 : Try it out
 - 🐓 : Usable
 
-You can try this out by cloning the repo and running `npm install` to get all
-the toolchain. Assuming you do have [Firefox Nightly][] installed you can run following demos:
+## API overview
+
+**Note:** You can try all the examples after you've cloned the repo and got the toolchain setup by running `npm install`. You will also need [Firefox Nightly][] to run the demos.
 
 ### Protocol API
 
-Following command will launch [Firefox Nightly][] with protocol API demo addon
+Protocol API allows you to provide custom protocol implementation to a firefox such that firefox. This is different from existing [WebExtensions protocol handler API][webextensions protocol_handlers] in that it does not register a website for handling corresponding URLs but rather allows WebExtension to implement a handler instead.
+
+#### Example
+
+Following example implements a simple `dweb://` protocol. When firefox is navigated to say `dweb://hello/world` it will invoke registered handler and pass it a `request` object containing request URL as `request.url` string property. Handler is expected to return a repsonse with a `content` that is [async iterator][] of [`ArrayBuffer`][]s. In our example we use `repsond` [async generator][] function to respond with some HTML markup.
+
+```js
+browser.protocol.registerProtocol("dweb", request => {
+  return {
+    contentType: "text/html",
+    content: respond(request.url)
+  }
+})
+
+async function* respond(text) {
+  const encoder = new TextEncoder("utf-8")
+  yield encoder.encode("<h1>Hi there!</h1>\n").buffer
+  yield encoder.encode(
+    `<p>You've succesfully loaded <strong>${request.url}</strong><p>`
+  ).buffer
+}
+```
+
+Given that `response.content` is [async iterator][] it is also possible to stream response content as next example illustrates.
+
+```js
+browser.protocol.registerProtocol("dweb", request => {
+  switch (request.url) {
+    case "dweb://stream/": {
+      return {
+        contentType: "text/html",
+        content: streamRespond(request)
+      }
+    }
+    default: {
+      return {
+        contentType: "text/html",
+        content: respond(request.url)
+      }
+    }
+  }
+})
+
+async function* streamRespond(request) {
+  const encoder = new TextEncoder("utf-8")
+  yield encoder.encode("<h1>Say Hi to endless stream!</h1>\n").buffer
+  let n = 0
+  while (true) {
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    yield encoder.encode(`<p>Chunk #${++n}<p>`).buffer
+  }
+}
+```
+
+You can see a dom of this API in [Firefox Nightly][] by running following command
 
 ```
 npm run demo:protocol
@@ -108,3 +160,8 @@ npm run demo
 [file system]: https://github.com/mozilla/libdweb/issues/8
 [web-ext]: https://www.npmjs.com/package/web-ext
 [firefox nightly]: https://blog.nightly.mozilla.org/
+[api-adapters]: https://github.com/libdweb
+[webextensions protocol_handlers]: https://developer.mozilla.org/en-US/Add-ons/WebExtensions/manifest.json/protocol_handlers
+[async iterator]: https://github.com/tc39/proposal-async-iteration#async-iterators-and-async-iterables
+[`arraybuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
+[async generator]: https://github.com/tc39/proposal-async-iteration#async-generator-functions
