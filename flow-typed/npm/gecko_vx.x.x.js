@@ -57,6 +57,8 @@ declare module "gecko" {
   declare export type uint64 = number
   declare export type int32_t = number
   declare export type uint32_t = number
+  declare export type int64_t = number
+  declare export type uint64_t = number
 
   declare export type PRTime = number
   declare export type DOMHighResTimeStamp = number
@@ -2609,6 +2611,104 @@ declare module "gecko" {
     +rawData: Uint8Array;
   }
 
+  declare export interface nsIDNSServiceInfo {
+    host: AUTF8String;
+    address: AUTF8String;
+    port: short;
+    serviceName: AUTF8String;
+    serviceType: AUTF8String;
+    domainName: AUTF8String;
+    attributes: nsIPropertyBag2;
+  }
+
+  declare export interface nsIDNSServiceDiscoveryListener {
+    onDiscoveryStarted(serviceType: AUTF8String): void;
+    onDiscoveryStopped(serviceType: AUTF8String): void;
+    onServiceFound(serviceInfo: nsIDNSServiceInfo): void;
+    onServiceLost(serviceInfo: nsIDNSServiceInfo): void;
+    onStartDiscoveryFailed(serviceType: AUTF8String, errorCode: long): void;
+    onStopDiscoveryFailed(serviceType: AUTF8String, errorCode: long): void;
+  }
+
+  declare export interface nsIDNSRegistrationListenerConstants {
+    ERROR_SERVICE_NOT_RUNNING: -65563;
+  }
+  declare export interface nsIDNSRegistrationListener {
+    onServiceRegistered(serviceInfo: nsIDNSServiceInfo): void;
+    onServiceUnregistered(serviceInfo: nsIDNSServiceInfo): void;
+    onRegistrationFailed(serviceInfo: nsIDNSServiceInfo, errorCode: long): void;
+    onUnregistrationFailed(
+      serviceInfo: nsIDNSServiceInfo,
+      errorCode: long
+    ): void;
+  }
+
+  declare export interface nsIDNSServiceResolveListener {
+    onServiceResolved(serviceInfo: nsIDNSServiceInfo): void;
+    onResolveFailed(serviceInfo: nsIDNSServiceInfo, errorCode: long): void;
+  }
+
+  declare export interface nsIDNSServiceDiscovery {
+    startDiscovery(
+      serviceType: AUTF8String,
+      listener: nsIDNSServiceDiscoveryListener
+    ): nsICancelable;
+    registerService(
+      serviceInfo: nsIDNSServiceInfo,
+      listener: nsIDNSRegistrationListener
+    ): nsICancelable;
+    resolveService(
+      serviceInfo: nsIDNSServiceInfo,
+      listener: nsIDNSServiceResolveListener
+    ): void;
+  }
+
+  declare export interface nsICancelable {}
+
+  declare export interface nsIVariant {}
+
+  declare export interface nsIProperty {
+    name: AString;
+    value: nsIVariant;
+  }
+  declare export interface nsIPropertyBag {
+    getProperty(AString): nsIVariant;
+    enumerator: nsISimpleEnumerator<nsIProperty>;
+  }
+
+  declare export interface nsIPropertyBag2 extends nsIPropertyBag {
+    getPropertyAsInt32(AString): int32_t;
+    getPropertyAsUint32(AString): uint32_t;
+    getPropertyAsInt64(AString): int64_t;
+    getPropertyAsUint64(AString): uint64_t;
+    getPropertyAsDouble(AString): double;
+    getPropertyAsAString(AString): AString;
+    getPropertyAsACString(AString): ACString;
+    getPropertyAsAUTF8String(AString): AUTF8String;
+    getPropertyAsBool(AString): boolean;
+
+    getPropertyAsInterface<nsQIResult>(
+      AString,
+      nsIIDRef<nsQIResult>
+    ): nsQIResult;
+
+    get(AString): nsIVariant;
+
+    hasKey(AString): boolean;
+  }
+  declare export interface nsIWritablePropertyBag2 extends nsIPropertyBag2 {
+    setPropertyAsInt32(AString, int32_t): void;
+    setPropertyAsUint32(AString, uint32_t): void;
+    setPropertyAsInt64(AString, int64_t): void;
+    setPropertyAsUint64(AString, uint64_t): void;
+    setPropertyAsDouble(AString, double): void;
+    setPropertyAsAString(AString, AString): void;
+    setPropertyAsACString(AString, ACString): void;
+    setPropertyAsAUTF8String(AString, AUTF8String): void;
+    setPropertyAsBool(AString, boolean): void;
+    setPropertyAsInterface<a>(AString, nsISupports<a>): void;
+  }
+
   // -------------------------
   declare export type JSM<url: string, jsm> = (url, {}) => jsm
 
@@ -2910,7 +3010,12 @@ declare module "gecko" {
       nsIUDPMessage: nsIJSCID<nsIUDPMessage>,
 
       nsINSSErrorsService: nsIJSCID<nsINSSErrorsService> &
-        nsINSSErrorsServiceConstants
+        nsINSSErrorsServiceConstants,
+
+      nsIDNSServiceDiscovery: nsIJSCID<nsIDNSServiceDiscovery>,
+      nsIDNSServiceInfo: nsIJSCID<nsIDNSServiceInfo>,
+      nsIDNSRegistrationListener: nsIJSCID<nsIDNSRegistrationListener> &
+        nsIDNSRegistrationListenerConstants
     },
     classes: {
       "@mozilla.org/nss_errors_service;1": nsIJSCID<nsINSSErrorsService>,
@@ -2968,6 +3073,12 @@ declare module "gecko" {
       "@mozilla.org/network/server-socket;1": nsIJSCID<nsIServerSocket>,
       "@mozilla.org/network/socket-transport-service;1": nsIJSCID<
         nsISocketTransportService
+      >,
+      "@mozilla.org/toolkit/components/mdnsresponder/dns-sd;1": nsIJSCID<
+        nsIDNSServiceDiscovery
+      >,
+      "@mozilla.org/toolkit/components/mdnsresponder/dns-info;1": nsIJSCID<
+        nsIDNSServiceInfo
       >
     },
     utils: {
