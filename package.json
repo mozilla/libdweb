@@ -20,6 +20,8 @@
     "babel-preset-flow-node": "^2.0.1",
     "babel-register": "^6.26.0",
     "blue-tape": "^1.0.0",
+    "bonjour": "3.5.0",
+    "cross-env": "^5.2.0",
     "documentation": "^8.0.0",
     "flow-bin": "^0.74.0",
     "flow-copy-source": "^2.0.0",
@@ -29,8 +31,7 @@
     "rollup": "0.60.1",
     "rollup.config.flow": "1.1.0",
     "source-map-support": "0.5.6",
-    "web-ext": "2.7.0",
-    "cross-env": "^5.2.0"
+    "web-ext": "2.7.0"
   },
   "scripts": {
     "//test": "npm run test:flow && npm run test:tape",
@@ -47,7 +48,7 @@
     "precommit": "lint-staged",
     "//start": "flow-copy-source --watch --verbose src lib & babel --watch --out-dir lib src",
     "demo": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging",
-    "demo:mdns": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/mdns",
+    "demo:discovery": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/discovery",
     "demo:protocol": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/protocol",
     "demo:fs": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/fs",
     "demo:dgram": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/dgram",

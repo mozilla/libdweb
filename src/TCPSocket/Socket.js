@@ -277,9 +277,9 @@ global.TCPSocket = class extends ExtensionAPI /*::<Host>*/ {
       AsAsyncIterator(
         class TCPConnections {
           /*::
-        @@asyncIterator: () => self
+          @@asyncIterator: () => self
           // server:Server
-        */
+          */
           constructor() {
             throw TypeError("Illegal constructor")
           }
