@@ -1,0 +1,79 @@
+[
+  {
+    "namespace": "ServiceDiscovery",
+    "description": "DNS ServiceDiscovery API",
+    "types": [],
+    "functions": [
+      {
+        "name": "discover",
+        "type": "function",
+        "description": "Discover announced services.",
+        "async": false,
+        "returns": "any",
+        "parameters": [
+          {
+            "name": "query",
+            "type": "object",
+            "properties": {
+              "protocol": {
+                "type": "string",
+                "description":
+                  "The protocol used by the service. Must be either `tcp` or `udp`."
+              },
+              "type": {
+                "type": "string",
+                "description": "Type of the service, e.g. `http`."
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "announce",
+        "type": "function",
+        "description": "Announce service for discovery.",
+        "async": true,
+        "parameters": [
+          {
+            "name": "serviceInfo",
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The name of the service, e.g. `Apple TV`."
+              },
+              "type": {
+                "type": "string",
+                "description": "Type of the service, e.g. `http`."
+              },
+              "protocol": {
+                "type": "string",
+                "description":
+                  "The protocol used by the service. Must be either `tcp` or `udp`."
+              },
+              "port": {
+                "type": "number",
+                "optional": true,
+                "description":
+                  "The port on which the service listens, e.g. 5000."
+              },
+              "host": {
+                "type": "string",
+                "optional": true,
+                "description":
+                  "The hostname or ip address where the service resides."
+              },
+              "attributes": {
+                "type": "any",
+                "optional": true,
+                "description": "The attributes of the service."
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "properties": {},
+    "events": []
+  }
+]
