@@ -57,8 +57,6 @@ declare module "gecko" {
   declare export type uint64 = number
   declare export type int32_t = number
   declare export type uint32_t = number
-  declare export type int64_t = number
-  declare export type uint64_t = number
 
   declare export type PRTime = number
   declare export type DOMHighResTimeStamp = number
@@ -2611,190 +2609,6 @@ declare module "gecko" {
     +rawData: Uint8Array;
   }
 
-  declare export interface nsIDNSServiceInfo {
-    serviceType: AUTF8String;
-    serviceName: AUTF8String;
-    domainName: AUTF8String;
-    attributes: nsIPropertyBag2;
-    host: AUTF8String;
-    address: AUTF8String;
-    port: short;
-  }
-
-  declare export interface nsIDNSServiceDiscoveryListener {
-    onDiscoveryStarted(serviceType: AUTF8String): void;
-    onDiscoveryStopped(serviceType: AUTF8String): void;
-    onServiceFound({
-      serviceName: string,
-      serviceType: string,
-      domainName: string,
-      attributes:?nsIPropertyBag2
-    }): void;
-    onServiceLost({
-      serviceName: string,
-      serviceType: string,
-      domainName: string,
-      attributes:?nsIPropertyBag2
-    }): void;
-    onStartDiscoveryFailed(serviceType: AUTF8String, errorCode: long): void;
-    onStopDiscoveryFailed(serviceType: AUTF8String, errorCode: long): void;
-  }
-
-  declare export interface nsIDNSRegistrationListenerConstants {
-    ERROR_SERVICE_NOT_RUNNING: -65563;
-  }
-  declare export interface nsIDNSRegistrationListener {
-    onServiceRegistered({
-      serviceType: string,
-      serviceName: string,
-      domainName: string,
-      host?: string,
-      address?: string,
-      port: number,
-      attributes?: nsIPropertyBag2
-    }): void;
-    onServiceUnregistered({
-      serviceType: string,
-      serviceName: string,
-      domainName: string,
-      host?: string,
-      address?: string,
-      port?: number,
-      attributes?: nsIPropertyBag2
-    }): void;
-    onRegistrationFailed(
-      {
-        serviceType: string,
-        serviceName: string,
-        domainName: string,
-        host?: string,
-        address?: string,
-        port?: number,
-        attributes?: nsIPropertyBag2
-      },
-      errorCode: long
-    ): void;
-    onUnregistrationFailed(
-      {
-        serviceType: string,
-        serviceName: string,
-        domainName: string,
-        host?: string,
-        address?: string,
-        port?: number,
-        attributes?: nsIPropertyBag2
-      },
-      errorCode: long
-    ): void;
-  }
-
-  declare export interface nsIDNSServiceResolveListener {
-    onServiceResolved(nsIDNSServiceInfo): void;
-    onResolveFailed(
-      {
-        serviceType: string,
-        serviceName: string,
-        domainName: string,
-        host?: string,
-        address?: string,
-        port?: number,
-        attributes: nsIPropertyBag2
-      },
-      errorCode: long
-    ): void;
-  }
-
-  declare export interface nsIDNSServiceDiscovery {
-    startDiscovery(
-      serviceType: AUTF8String,
-      listener: nsIDNSServiceDiscoveryListener
-    ): nsICancelable;
-    registerService(
-      serviceInfo: {
-        serviceType: string,
-        serviceName?: ?string,
-        domainName?: ?string,
-        host?: ?string,
-        address?: ?string,
-        port?: ?number,
-        attributes: nsIPropertyBag2
-      },
-      listener: nsIDNSRegistrationListener
-    ): nsICancelable;
-    resolveService(
-      {
-        serviceType: string,
-        serviceName: string,
-        domainName: string,
-        attributes: nsIPropertyBag2
-      },
-      listener: nsIDNSServiceResolveListener
-    ): void;
-  }
-
-  declare export interface nsICancelable {
-    cancel(nsresult): void;
-  }
-
-  declare export interface nsIVariant {}
-
-  declare export interface nsIProperty {
-    name: AString;
-    value: nsIVariant;
-  }
-  declare export interface nsIPropertyBag {
-    getProperty(AString): nsIVariant;
-    enumerator: nsISimpleEnumerator<nsIProperty>;
-  }
-
-  declare export interface nsIPropertyBag2 extends nsIPropertyBag {
-    getPropertyAsInt32(AString): int32_t;
-    getPropertyAsUint32(AString): uint32_t;
-    getPropertyAsInt64(AString): int64_t;
-    getPropertyAsUint64(AString): uint64_t;
-    getPropertyAsDouble(AString): double;
-    getPropertyAsAString(AString): AString;
-    getPropertyAsACString(AString): ACString;
-    getPropertyAsAUTF8String(AString): AUTF8String;
-    getPropertyAsBool(AString): boolean;
-
-    getPropertyAsInterface<nsQIResult>(
-      AString,
-      nsIIDRef<nsQIResult>
-    ): nsQIResult;
-
-    get(AString): nsIVariant;
-
-    hasKey(AString): boolean;
-  }
-  declare export interface nsIWritablePropertyBag2 extends nsIPropertyBag2 {
-    setPropertyAsInt32(AString, int32_t): void;
-    setPropertyAsUint32(AString, uint32_t): void;
-    setPropertyAsInt64(AString, int64_t): void;
-    setPropertyAsUint64(AString, uint64_t): void;
-    setPropertyAsDouble(AString, double): void;
-    setPropertyAsAString(AString, AString): void;
-    setPropertyAsACString(AString, ACString): void;
-    setPropertyAsAUTF8String(AString, AUTF8String): void;
-    setPropertyAsBool(AString, boolean): void;
-    setPropertyAsInterface<a>(AString, nsISupports<a>): void;
-  }
-
-  declare export interface nsINetworkInfoService {
-    getHostname(nsIGetHostnameListener): void;
-    listNetworkAddresses(nsIListNetworkAddressesListener): void;
-  }
-
-  declare export interface nsIGetHostnameListener {
-    onGotHostname(hostname: AUTF8String): void;
-    onGetHostnameFailed(): void;
-  }
-
-  declare export interface nsIListNetworkAddressesListener {
-    onListedNetworkAddresses(string[]): void;
-    onListNetworkAddressesFailed(): void;
-  }
-
   // -------------------------
   declare export type JSM<url: string, jsm> = (url, {}) => jsm
 
@@ -3096,18 +2910,7 @@ declare module "gecko" {
       nsIUDPMessage: nsIJSCID<nsIUDPMessage>,
 
       nsINSSErrorsService: nsIJSCID<nsINSSErrorsService> &
-        nsINSSErrorsServiceConstants,
-
-      nsIDNSServiceDiscovery: nsIJSCID<nsIDNSServiceDiscovery>,
-      nsIDNSServiceInfo: nsIJSCID<nsIDNSServiceInfo>,
-      nsIDNSRegistrationListener: nsIJSCID<nsIDNSRegistrationListener> &
-        nsIDNSRegistrationListenerConstants,
-      nsIWritablePropertyBag2: nsIJSCID<nsIWritablePropertyBag2>,
-      nsIPropertyBag2: nsIJSCID<nsIPropertyBag2>,
-      nsIProperty: nsIJSCID<nsIProperty>,
-      nsINetworkInfoService: nsIJSCID<nsINetworkInfoService>,
-      nsIGetHostnameListener: nsIJSCID<nsIGetHostnameListener>,
-      nsIListNetworkAddressesListener: nsIJSCID<nsIListNetworkAddressesListener>
+        nsINSSErrorsServiceConstants
     },
     classes: {
       "@mozilla.org/nss_errors_service;1": nsIJSCID<nsINSSErrorsService>,
@@ -3165,15 +2968,7 @@ declare module "gecko" {
       "@mozilla.org/network/server-socket;1": nsIJSCID<nsIServerSocket>,
       "@mozilla.org/network/socket-transport-service;1": nsIJSCID<
         nsISocketTransportService
-      >,
-      "@mozilla.org/toolkit/components/mdnsresponder/dns-sd;1": nsIJSCID<
-        nsIDNSServiceDiscovery
-      >,
-      "@mozilla.org/toolkit/components/mdnsresponder/dns-info;1": nsIJSCID<
-        nsIDNSServiceInfo
-      >,
-      "@mozilla.org/hash-property-bag;1": nsIJSCID<nsIWritablePropertyBag2>,
-      "@mozilla.org/network-info-service;1": nsIJSCID<nsINetworkInfoService>
+      >
     },
     utils: {
       Sandbox(
@@ -3478,7 +3273,7 @@ declare module "gecko" {
   }
 
   declare export interface ExtensionUtils {
-    getUniqueId():number;
+    getConsole(): typeof console;
     ExtensionError: typeof ExtensionError;
   }
 
