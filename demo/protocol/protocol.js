@@ -14,6 +14,23 @@ browser.protocol.registerProtocol("dweb", request => {
         })()
       }
     }
+    case "dweb://text/": {
+      return {
+        content: (async function*() {
+          const encoder = new TextEncoder("utf-8")
+          yield encoder.encode("Just a plain text").buffer
+        })()
+      }
+    }
+    case "dweb://html/": {
+      return {
+        content: (async function*() {
+          const encoder = new TextEncoder("utf-8")
+          yield encoder.encode("<h1>HTML</h1>").buffer
+          yield encoder.encode("<p>ContentType was inferred as HTML").buffer
+        })()
+      }
+    }
     default: {
       return {
         contentType: "text/html",

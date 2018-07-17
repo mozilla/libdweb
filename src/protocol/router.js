@@ -228,7 +228,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     this.originalURI = uri
     this.contentCharset = "utf-8"
     this.contentLength = -1
-    this.contentType = null
+    this.contentType = "application/x-unknown-content-type"
     this.contentDispositionFilename = ""
     this.contentDispositionHeader = ""
     this.byteOffset = 0
@@ -373,12 +373,15 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
           contentCharset
         })}`
       )
+
     if (contentType) {
       this.contentType = contentType
     }
+
     if (contentLength) {
       this.contentLength = contentLength
     }
+
     if (contentCharset) {
       this.contentCharset = contentCharset
     }
