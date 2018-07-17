@@ -25,7 +25,7 @@
     "scripts": ["protocol.js"]
   },
   "icons": {
-    "48": "../mdns/logo-flyweb-grey.svg",
-    "96": "../mdns/logo-flyweb-grey.svg"
+    "48": "../discovery/logo-flyweb-grey.svg",
+    "96": "../discovery/logo-flyweb-grey.svg"
   }
 }

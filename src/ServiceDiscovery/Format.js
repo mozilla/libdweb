@@ -15,7 +15,7 @@ export interface ServiceID {
 export interface RegisteredService extends ServiceID {
   name: string;
   type: string;
-  protocol: string;
+  protocol: Protocol;
   domain: string;
   port: number;
   attributes: ?{ [string]: string };

@@ -78,7 +78,8 @@ global.ServiceDiscovery = class extends ExtensionAPI /*::<Host>*/ {
         async startService(serviceInfo) {
           const id = `Service:${++nextID}`
           const service = new Service(id, serviceInfo)
-          const info = await service.start()
+          service.start()
+          const info = await service.started
           services.set(id, service)
           return info
         },
@@ -100,8 +101,8 @@ global.ServiceDiscovery = class extends ExtensionAPI /*::<Host>*/ {
             info
           )
           const discovery = new Discovery(context, discoveryID, info)
-          discovery.start()
           discoveries.set(discoveryID, discovery)
+          discovery.start()
         },
         stopDiscovery({ discoveryID }) {
           console.log(`ServiceDiscoveryHost.stopDiscovery ${discoveryID}`)
@@ -146,20 +147,19 @@ class Service /*::implements nsIDNSRegistrationListener*/ {
     this.serviceType = parseServiceType(info)
     this.domainName = null
     this.attributes = PropertyBag.encode(info.attributes)
+    this.started = new Promise((resolve, reject) => {
+      this.onstart = resolve
+      this.onstarterror = reject
+    })
   }
   start() {
-    console.log(`ServiceDiscoveryHost.registerService`, this)
-    this.started = new Promise((resolve, reject) => {
-      try {
-        this.onstart = resolve
-        this.onstarterror = reject
-        this.registration = mDNS.registerService(this, this)
-      } catch (error) {
-        console.error(`ServiceDiscoveryHost.registerService`, error)
-        reject(error)
-      }
-    })
-    return this.started
+    try {
+      console.log(`ServiceDiscoveryHost.registerService`, this)
+      this.registration = mDNS.registerService(this, this)
+    } catch (error) {
+      console.error(`ServiceDiscoveryHost.registerService`, error)
+      this.onstarterror(error)
+    }
   }
   stop() {
     this.stopped = new Promise((resolve, reject) => {
@@ -215,7 +215,8 @@ class Service /*::implements nsIDNSRegistrationListener*/ {
 
     // Last 3 chars because serviceType will end with "tcp" or "udp" and both
     // contain 3 chars.
-    const protocol = serviceType.substring(end - 3, end)
+    const protocol =
+      serviceType.substring(end - 3, end) === "tcp" ? "tcp" : "udp"
     // From start to end - 5 because it ends with "._tcp" or "._udp" and both
     // are 5 chars length.
     const type = serviceType.substring(start, end - 5)
@@ -402,8 +403,7 @@ class Discovery {
     this.active = true
     this.serviceType = parseServiceType(info)
   }
-  async start() {
-    await Promise.resolve(0)
+  start() {
     this.discovery = mDNS.startDiscovery(this.serviceType, this)
   }
   onDiscoveryStarted(serviceType /*:string*/) {}

@@ -38,7 +38,7 @@ const getAPIClasses = (context, refs) => {
     name: string;
     type: string;
     domain: string;
-    protocol: string;
+    protocol: Protocol;
     lost:boolean;
     attributes:?{[string]:string};
     */
@@ -131,7 +131,7 @@ const getServiceDiscoveryAPI = (context) /*:ServiceDiscovery*/ => {
   const subscribers = {
     Discovery: new Map()
   }
-  const host = new HostAPI(context)
+  const host = HostAPI.new(context)
   const api = getAPIClasses(context, refs)
 
   class ServiceClient {
@@ -172,7 +172,7 @@ const getServiceDiscoveryAPI = (context) /*:ServiceDiscovery*/ => {
       if (this.expired) {
         return voidPromise
       } else {
-        return context.wrapPromise(host.stopService(this.id))
+        return context.wrapPromise(host.stopService({ serviceID: this.id }))
       }
     }
   }
@@ -402,6 +402,9 @@ class HostAPI /*::implements HostService*/ {
   */
   constructor(context) {
     this.context = context
+  }
+  static new(context) /*:HostService*/ {
+    return new this(context)
   }
   startService(serviceInfo /*:ServiceInfo*/) /*:Promise<RegisteredService>*/ {
     return this.context.childManager.callParentAsyncFunction(

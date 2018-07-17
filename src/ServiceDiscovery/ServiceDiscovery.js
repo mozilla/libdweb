@@ -41,7 +41,7 @@ export interface DiscoveryResult {
   name: string;
   type: string;
   domain: string;
-  protocol: string;
+  protocol: Protocol;
   attributes: ?{ [string]: string };
 }
 

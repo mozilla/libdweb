@@ -16,13 +16,13 @@ You can help this effort in following ways:
 
 ## Status: In active development
 
-| API                  | Status |
-| -------------------- | ------ |
-| [Protocol Handler][] | 🐥     |
-| [mdns][]             | 🐣     |
-| [File System][]      | 🐣     |
-| [UDP Socket][]       | 🐣     |
-| [TCP Socket][]       | 🐣     |
+| API                   | Status |
+| --------------------- | ------ |
+| [Protocol Handler][]  | 🐥     |
+| [Service Discovery][] | 🐣     |
+| [File System][]       | 🐣     |
+| [UDP Socket][]        | 🐣     |
+| [TCP Socket][]        | 🐣     |
 
 - 🥚 : In design phase
 - 🐣 : Work in progress
@@ -95,15 +95,86 @@ npm run demo:protocol
 
 ![protocol demo](./demo/protocol/protocol.gif)
 
-### mDNS API
+### Service Discovery API
 
-Following command will launch [Firefox Nightly][] with mDNS API demo addon
+API provides DNS-Based Service Discovery API as per [rfc6763][]. Following example illustrates how this API can be used to discover available `http` services in the network.
+
+```js
+void (async () => {
+  const services = browser.ServiceDiscovery.discover({
+    type: "dweb",
+    protocol: "tcp" // Must be "tcp" or "udp"
+  })
+
+  console.log("Start discovery", services.query)
+  for await (const service of services) {
+    if (service.lost) {
+      console.log("Lost service", service)
+    } else {
+      console.log("Found service", {
+        name: service.name,
+        type: service.type,
+        protocol: service.protocol
+      })
+
+      for (const {
+        address,
+        port,
+        host,
+        attributes
+      } of await service.addresses()) {
+        console.log(
+          `Service ${service.name} available at ${host} ${address}:${port}`,
+          attributes
+        )
+      }
+    }
+  }
+  console.log("End discovery", services.query)
+})()
+```
+
+API also allows you to announce service that others on the network can discover. Following example illustrates that:
+
+```js
+void (async () => {
+  const service = await browser.ServiceDiscovery.announce({
+    name: "My dweb service",
+    type: "dweb",
+    protocol: "tcp", // must be "tcp" or "udp"
+    port: 3000, // ommting port will just assign you available one.
+    attributes: {
+      // optional txt records
+      version: "1.0."
+    }
+  })
+
+  console.log("Service annouced", {
+    name: service.name, // Note: Colud be different like "My dweb service (2)"
+    type: service.type,
+    protocol: service.protocol,
+    port: service.port,
+    attributes: service.attributes // Will be null if was omitted
+  })
+
+  // Wait for a 1 minute and expire service announcement
+  await new Promise(timeout => setTimeout(timeout, 60 * 1000))
+  await service.expire()
+  console.log(`Service expired`)
+})()
+```
+
+#### Demo
+
+You can try demo WebExtension that displays discovers and displayes `http`
+services in your local network when button in the toolbar is clicked. You can
+run it in [Firefox Nightly][] via following command
 
 ```
-npm run demo:mdns
+npm run demo:discovery
 ```
 
-![mDNS button](./demo/mdns/mDNS.gif)
+![discovery button](./demo/discovery/preview.gif)
 
 ### FileSystem API
 
@@ -292,7 +363,7 @@ void (async () => {
 [udp socket]: https://github.com/mozilla/libdweb/issues/4
 [tcp socket]: https://github.com/mozilla/libdweb/issues/5
 [µtp socket]: https://github.com/mozilla/libdweb/issues/6
-[mdns]: https://github.com/mozilla/libdweb/issues/7
+[service discovery]: https://github.com/mozilla/libdweb/issues/7
 [file system]: https://github.com/mozilla/libdweb/issues/8
 [web-ext]: https://www.npmjs.com/package/web-ext
 [firefox nightly]: https://blog.nightly.mozilla.org/
@@ -309,3 +380,4 @@ void (async () => {
 [@libdweb/dgram-adapter]: https://github.com/libdweb/dgram-adapter
 [nodejs dgram]: https://nodejs.org/api/dgram.html
 [tcp]: https://en.wikipedia.org/wiki/Transmission_Control_Protocol
+[rfc6763]: https://tools.ietf.org/html/rfc6763
