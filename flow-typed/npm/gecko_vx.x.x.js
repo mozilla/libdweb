@@ -2627,12 +2627,14 @@ declare module "gecko" {
     onServiceFound({
       serviceName: string,
       serviceType: string,
-      domainName: string
+      domainName: string,
+      attributes:?nsIPropertyBag2
     }): void;
     onServiceLost({
       serviceName: string,
       serviceType: string,
-      domainName: string
+      domainName: string,
+      attributes:?nsIPropertyBag2
     }): void;
     onStartDiscoveryFailed(serviceType: AUTF8String, errorCode: long): void;
     onStopDiscoveryFailed(serviceType: AUTF8String, errorCode: long): void;
@@ -3476,7 +3478,7 @@ declare module "gecko" {
   }
 
   declare export interface ExtensionUtils {
-    getConsole(): typeof console;
+    getUniqueId():number;
     ExtensionError: typeof ExtensionError;
   }
 

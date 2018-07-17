@@ -7,6 +7,7 @@ import type {
   nsIDNSServiceInfo,
   nsIDNSServiceDiscoveryListener,
   nsIDNSRegistrationListener,
+  nsIDNSServiceResolveListener,
   nsICancelable,
   nsIPropertyBag2,
   nsISupports
@@ -16,23 +17,24 @@ import type {
   Protocol,
   ServiceDiscovery,
   ServiceInfo,
-  ServiceQuery
+  ServiceQuery,
+  ServiceAddress
 } from "./ServiceDiscovery"
 
 import type {
-  RegisteredService
+  RegisteredService,
+  HostService,
+  Inbox,
+  DiscoveryMessage
 } from "./Format"
 
 
 interface Host {
-  +ServiceDiscovery: ServiceDiscoveryHost;
-}
-
-interface ServiceDiscoveryHost {
-  startService(ServiceInfo):Promise<RegisteredService>;
-  stopService(string):Promise<void>;
+  +ServiceDiscovery: HostService;
 }
 */
+
+const { setTimeout } = Cu.import("resource://gre/modules/Timer.jsm", {})
 
 const mDNS = Cc[
   "@mozilla.org/toolkit/components/mdnsresponder/dns-sd;1"
@@ -59,6 +61,7 @@ global.ServiceDiscovery = class extends ExtensionAPI /*::<Host>*/ {
     for (const service of services.values()) {
       service.terminate()
     }
+
     for (const discovery of discoveries.values()) {
       discovery.terminate()
     }
@@ -79,13 +82,33 @@ global.ServiceDiscovery = class extends ExtensionAPI /*::<Host>*/ {
           services.set(id, service)
           return info
         },
-        async stopService(id) {
-          const service = services.get(id)
+        async stopService({ serviceID }) {
+          const service = services.get(serviceID)
           if (service) {
             await service.stop()
             services.delete(service)
           } else {
-            throw Error(`Service not found`)
+            throw Error(`Service ${serviceID} not found`)
+          }
+        },
+        resolveService(info) {
+          return Resolver.resolve(context, info)
+        },
+        startDiscovery({ discoveryID }, info) {
+          console.log(
+            `ServiceDiscoveryHost.startDiscovery ${discoveryID}`,
+            info
+          )
+          const discovery = new Discovery(context, discoveryID, info)
+          discovery.start()
+          discoveries.set(discoveryID, discovery)
+        },
+        stopDiscovery({ discoveryID }) {
+          console.log(`ServiceDiscoveryHost.stopDiscovery ${discoveryID}`)
+          const discovery = discoveries.get(discoveryID)
+          if (discovery) {
+            discovery.stop()
+            discoveries.delete(discovery)
           }
         }
       }
@@ -120,7 +143,7 @@ class Service /*::implements nsIDNSRegistrationListener*/ {
     this.serviceName = info.name
     this.host = info.host
     this.port = info.port == null ? -1 : info.port
-    this.serviceType = `_${info.type}._${info.protocol}`
+    this.serviceType = parseServiceType(info)
     this.domainName = null
     this.attributes = PropertyBag.encode(info.attributes)
   }
@@ -158,9 +181,9 @@ class Service /*::implements nsIDNSRegistrationListener*/ {
     const { id } = this
     const attributes = Service.decodeAttributes(serviceInfo)
     const { type, protocol } = Service.decodeServiceType(serviceType)
-    const domain = domainName === "local." ? "local" : domainName
+    const domain = Service.decodeDomain(domainName)
     this.onstart({
-      id,
+      serviceID: id,
       name,
       protocol,
       type,
@@ -182,6 +205,9 @@ class Service /*::implements nsIDNSRegistrationListener*/ {
     })
   }
 
+  static decodeDomain(domainName) {
+    return domainName === "local." ? "local" : domainName
+  }
   static decodeServiceType(serviceType) {
     const { length } = serviceType
     const end = serviceType.charAt(length - 1) === "." ? length - 1 : length
@@ -258,82 +284,206 @@ class Service /*::implements nsIDNSRegistrationListener*/ {
 
 class Resolver {
   /*::
+  context:BaseContext
   id:string
+  serviceName:string
+  serviceType:string
+  domainName:string
+  attributes:nsIPropertyBag2
+  active:boolean
+
+  result:ServiceAddress[]
+
+  onResolve:(ServiceAddress[]) => void
+  onError:(number) => void
+
   */
-  static resolve(id, info, timeout = 2000) {
-    const resolver = new Resolver()
-    resolver.id = id
-    mDNS.resolveService(info, resolver)
-    setTimeout(Resolver.onTimeout, timeout, resolver)
+  constructor(
+    context /*: BaseContext*/,
+    id /*: string*/,
+    active /*:boolean*/,
+    serviceName /*: string*/,
+    serviceType /*: string*/,
+    domainName /*: string*/,
+    attributes /*: nsIPropertyBag2*/,
+    results /*:ServiceAddress[]*/,
+    onResolve /*:(ServiceAddress[]) => void*/,
+    onError /*:(number) => void*/
+  ) {
+    this.context = context
+    this.id = id
+    this.active = active
+    this.serviceName = serviceName
+    this.serviceType = serviceType
+    this.domainName = domainName
+    this.attributes = attributes
+    this.result = results
+    this.onResolve = onResolve
+    this.onError = onError
+  }
+  static decodeServiceAddress(serviceInfo) {
+    const { host, port, address } = serviceInfo
+    const attributes = Service.decodeAttributes(serviceInfo) || {}
+    return { host, port, address, attributes }
+  }
+  static resolve(context, info, timeout = 2000) {
+    const serviceType = parseServiceType(info)
+    const serviceName = info.name
+    const domain = "local"
+    const id = `${serviceName}._${serviceType}.${domain}`
+
+    return new Promise((resolve, reject) => {
+      const resolver = new Resolver(
+        context,
+        id,
+        true,
+        serviceName,
+        serviceType,
+        domain,
+        PropertyBag.empty,
+        [],
+        resolve,
+        reject
+      )
+
+      const listener /*:nsIDNSServiceResolveListener*/ = resolver
+      mDNS.resolveService(resolver, listener)
+      setTimeout(Resolver.onTimeout, timeout, resolver)
+    })
   }
   static onTimeout(resolver) {
-    this.onTimeout()
+    resolver.onTimeout()
   }
 
-  onTimeout() {}
-  onServiceResolved() {}
-  onResolveFailed() {}
+  onTimeout() {
+    console.log("ServiceDiscoveryHost.onTimout")
+    if (this.active) {
+      this.active = false
+      if (this.result.length > 0) {
+        this.onResolve(this.result)
+      } else {
+        this.onError(0)
+      }
+    }
+  }
+  onServiceResolved(serviceInfo) {
+    console.log("ServiceDiscoveryHost.onServiceResolved", serviceInfo)
+    if (this.active) {
+      const address = Resolver.decodeServiceAddress(serviceInfo)
+      this.result.push(address)
+    }
+  }
+  onResolveFailed(_, errorCode) {
+    console.log("ServiceDiscoveryHost.onResolveFailed", errorCode)
+    if (this.active) {
+      this.active = false
+      this.onError(errorCode)
+    }
+  }
 }
+
 class Discovery {
   /*::
+  id:number;
+  serviceType:string;
   discovery:nsICancelable;
+  context:BaseContext;
+  active:boolean
   */
   terminate() {
     this.discovery.cancel(Cr.NS_BINDING_ABORTED)
   }
-  //   constructor(serviceType) {
-  //     this.serviceType = serviceType
-  //     this.results = []
-  //   }
-  //   start() {
-  //     return new Promise((resolve, reject) => {
-  //       this.resolve = resolve
-  //       this.reject = reject
-  //       this.discovery = mDNS.startDiscovery(this.serviceType, this)
-  //     })
-  //   }
+  stop() {
+    return this.terminate()
+  }
+  constructor(context, discoveryID, info) {
+    this.context = context
+    this.id = discoveryID
+    this.active = true
+    this.serviceType = parseServiceType(info)
+  }
+  async start() {
+    await Promise.resolve(0)
+    this.discovery = mDNS.startDiscovery(this.serviceType, this)
+  }
   onDiscoveryStarted(serviceType /*:string*/) {}
-  onDiscoveryStopped(serviceType /*:string*/) {
-    //     this.resolve(this.results)
+  static decodeService(serviceInfo) {
+    const { serviceName: name, serviceType, domainName } = serviceInfo
+    const { type, protocol } = Service.decodeServiceType(serviceType)
+    const domain = Service.decodeDomain(domainName)
+    const attributes = Service.decodeAttributes(serviceInfo)
+    return {
+      name,
+      type,
+      protocol,
+      domain,
+      attributes
+    }
   }
-  onServiceFound(serviceInfo /*:nsIDNSServiceInfo*/) {
-    //     console.log("found", serviceInfo)
-    //     this.results.push({
-    //       type: "found",
-    //       service: {
-    //         name: serviceInfo.serviceName,
-    //         type: serviceInfo.serviceType,
-    //         domain: serviceInfo.domainName
-    //       }
-    //     })
+  send(message /*:DiscoveryMessage*/) {
+    console.log(`ServiceDiscoveryHost.send ${this.id}`, message)
+    this.context.parentMessageManager.sendAsyncMessage(
+      "/libdweb/ServiceDiscovery/Discovery",
+      message
+    )
   }
-  onServiceLost(serviceInfo /*:nsIDNSServiceInfo*/) {
-    //     console.log("lost", serviceInfo)
-    //     this.results.push({
-    //       type: "lost",
-    //       service: {
-    //         name: serviceInfo.serviceName,
-    //         type: serviceInfo.serviceType,
-    //         domain: serviceInfo.domainName
-    //       }
-    //     })
+  onServiceFound(serviceInfo) {
+    console.log(`ServiceDiscoveryHost.onServiceFound ${this.id}`, serviceInfo)
+    this.send({
+      type: "onServiceFound",
+      to: this.id,
+      found: Discovery.decodeService(serviceInfo)
+    })
+  }
+  onServiceLost(serviceInfo) {
+    console.log(`ServiceDiscoveryHost.onServiceLost ${this.id}`, serviceInfo)
+    this.send({
+      type: "onServiceLost",
+      to: this.id,
+      lost: Discovery.decodeService(serviceInfo)
+    })
   }
   onStartDiscoveryFailed(serviceType /*:string*/, errorCode /*:number*/) {
-    //     this.reject(errorCode)
+    console.log(
+      `ServiceDiscoveryHost.onStartDiscoveryFailed ${this.id}`,
+      serviceType,
+      errorCode
+    )
+
+    this.send({
+      type: "onStartDiscoveryFailed",
+      to: this.id,
+      errorCode: errorCode
+    })
+  }
+
+  onDiscoveryStopped(serviceType /*:string*/) {
+    console.log(
+      `ServiceDiscoveryHost.onStopDiscoveryStopped ${this.id}`,
+      serviceType
+    )
+
+    this.send({
+      type: "onDiscoveryStopped",
+      to: this.id
+    })
   }
   onStopDiscoveryFailed(serviceType /*:string*/, errorCode /*:number*/) {
-    //     this.reject(errorCode)
+    console.log(
+      `ServiceDiscoveryHost.onStopDiscoveryFailed ${this.id}`,
+      serviceType,
+      errorCode
+    )
+
+    this.send({
+      type: "onStopDiscoveryFailed",
+      to: this.id,
+      errorCode
+    })
   }
 }
 
-// class ResolveListener {
-//   onServiceResolved(serviceInfo) {
-//     console.log(`onServiceResolved`, Service.decode(serviceInfo))
-//   }
-//   onResolveFailed(serviceInfo) {
-//     console.log(`onResolveFailed`, Service.decode(serviceInfo))
-//   }
-// }
+const parseServiceType = ({ type, protocol }) => `_${type}._${protocol}`
 
 class PropertyBag {
   /*::

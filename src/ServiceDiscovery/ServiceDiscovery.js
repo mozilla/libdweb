@@ -37,12 +37,17 @@ export interface Discovery extends AsyncIterator<DiscoveredService> {
   query: ServiceQuery;
 }
 
-export interface DiscoveredService {
+export interface DiscoveryResult {
   name: string;
   type: string;
   domain: string;
   protocol: string;
-  addresses(): AsyncIterator<ServiceAddress>;
+  attributes: ?{ [string]: string };
+}
+
+export interface DiscoveredService extends DiscoveryResult {
+  lost: boolean;
+  addresses(): Promise<ServiceAddress[]>;
 }
 
 export interface ServiceAddress {

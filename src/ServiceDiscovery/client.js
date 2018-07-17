@@ -1,6 +1,7 @@
 // @flow
 /*::
-import { Components, Cu, Cr, Ci, Cc, ExtensionAPI } from "gecko"
+import { Components, Cu, Cr, Ci, Cc, nsIMessageListenerManager, ExtensionAPI } from "gecko"
+import type { BaseContext } from "gecko"
 import type {
   Protocol,
   ServiceDiscovery,
@@ -8,11 +9,15 @@ import type {
   ServiceQuery,
   Discovery,
   ServiceAddress,
+  DiscoveryResult,
   DiscoveredService
 } from "./ServiceDiscovery"
 
 import type {
-  RegisteredService
+  RegisteredService,
+  HostService,
+  Inbox,
+  DiscoveryMessage
 } from "./Format"
 
 interface Host {
@@ -25,249 +30,416 @@ const { ExtensionUtils } = Cu.import(
   {}
 )
 
-const { ExtensionError } = ExtensionUtils
+const { ExtensionError, getUniqueId } = ExtensionUtils
 
-global.ServiceDiscovery = class extends ExtensionAPI /*::<Host>*/ {
-  getAPI(context) {
-    const services = new WeakMap()
-    const discoveries = new WeakMap()
-
-    const ServiceAPI = exportClass(
-      context.cloneScope,
-      class ServiceAPI {
-        /*::
-        name: string;
-        type: string;
-        domain: string;
-        port: number;
-        host: ?string;
-        protocol: Protocol;
-        attributes: ?{ [string]: string };
-        */
-        constructor() {
-          throw TypeError("Illegal constructor")
-        }
-        expire() /*: Promise<void>*/ {
-          const state = services.get(this)
-          if (!state) {
-            return notFound
-          } else if (state.expired) {
-            return voidPromise
-          } else {
-            return context.wrapPromise(stopService(state.id))
-          }
-        }
-      }
-    )
-
-    const DiscoveryAPI = exportClass(
-      context.cloneScope,
-      AsAsyncIterator(
-        class Discovery {
-          /*::
-          @@asyncIterator: () => self
-          query: ServiceQuery;
-          */
-          constructor() {
-            throw TypeError("Illegal constructor")
-          }
-          next() {
-            const client = discoveries.get(this)
-            if (client) {
-              return client.next()
-            } else {
-              return notFound
-            }
-          }
-          return() {
-            const client = discoveries.get(this)
-            if (client) {
-              return client.return()
-            } else {
-              return notFound
-            }
-          }
-        }
-      )
-    )
-
-    const DiscoveredServiceAPI = exportClass(
-      context.cloneScope,
-      class DiscoveredServiceAPI {
-        /*::
-        name: string;
-        type: string;
-        domain: string;
-        protocol: string;
-        */
-        constructor() {
-          throw TypeError("Illegal constructor")
-        }
-        addresses() /*: AsyncIterator<ServiceAddress>*/ {
-          throw 1
-        }
-      }
-    )
-
-    const { cloneScope, childManager } = context
-
-    const startService = (
-      serviceInfo /*:ServiceInfo*/
-    ) /*:Promise<RegisteredService>*/ =>
-      childManager.callParentAsyncFunction("ServiceDiscovery.startService", [
-        serviceInfo
-      ])
-
-    const stopService = (id /*:string*/) /*:Promise<void>*/ =>
-      childManager.callParentAsyncFunction("ServiceDiscovery.stopService", [id])
-
-    const notFound = Promise.reject(
-      ExtensionError("Host for the object not found")
-    )
-    const voidPromise = Promise.resolve()
-
-    return {
-      ServiceDiscovery: {
-        tcp: "tcp",
-        udp: "udp",
-        announce: serviceInfo =>
-          new cloneScope.Promise(async (resolve, reject) => {
-            try {
-              const protocol = parseProtocol(serviceInfo.protocol)
-              serviceInfo.attributes = parseAttributes(serviceInfo.attributes)
-
-              const info = await startService(serviceInfo)
-
-              const { id, name, type, port, domain, attributes } = info
-              const service = exportInstance(cloneScope, ServiceAPI, {
-                name,
-                type,
-                protocol,
-                port,
-                domain,
-                attributes: Cu.cloneInto(attributes, cloneScope)
-              })
-              services.set(service, new ServiceState(id))
-
-              resolve(service)
-            } catch (error) {
-              reject(ExtensionError(error))
-            }
-          }),
-        discover(serviceQuery /*:ServiceQuery*/) {
-          const protocol = parseProtocol(serviceQuery.protocol)
-          const { type } = serviceQuery
-          const discovery = exportInstance(context.cloneScope, DiscoveryAPI)
-          const query = Cu.cloneInto(serviceQuery, context.cloneScope)
-          const unwrapped = Cu.waiveXrays(discovery)
-          Reflect.defineProperty(unwrapped, "query", { value: query })
-          const client = new DiscoveryClient(cloneScope)
-          discoveries.set(discovery, client)
-          return discovery
-        }
+const getAPIClasses = (context, refs) => {
+  class DiscoveredService {
+    /*::
+    name: string;
+    type: string;
+    domain: string;
+    protocol: string;
+    lost:boolean;
+    attributes:?{[string]:string};
+    */
+    constructor() {
+      throw TypeError("Illegal constructor")
+    }
+    addresses() /*: Promise<ServiceAddress[]>*/ {
+      const client = refs.DiscoveredService.get(this)
+      if (client) {
+        return client.addresses()
+      } else {
+        throw notFound
       }
     }
+  }
+  class Service {
+    /*::
+    name: string;
+    type: string;
+    domain: string;
+    port: number;
+    host: ?string;
+    protocol: Protocol;
+    attributes: ?{ [string]: string };
+    */
+    constructor() {
+      throw TypeError("Illegal constructor")
+    }
+    expire() /*: Promise<void>*/ {
+      const client = refs.Service.get(this)
+      if (!client) {
+        return notFoundPromise()
+      } else {
+        return client.expire()
+      }
+    }
+  }
+  class Discovery {
+    /*::
+    @@asyncIterator: () => self
+    query: ServiceQuery;
+    */
+    constructor() {
+      throw TypeError("Illegal constructor")
+    }
+    next() {
+      const client = refs.Discovery.get(this)
+      if (client) {
+        return client.next()
+      } else {
+        return notFoundPromise()
+      }
+    }
+    return() {
+      const client = refs.Discovery.get(this)
+      if (client) {
+        return client.return()
+      } else {
+        return notFoundPromise()
+      }
+    }
+  }
+
+  const notFound = new ExtensionError("Host for the object not found")
+  let notFoundPromiseCache = null
+
+  const notFoundPromise = () => {
+    if (notFoundPromiseCache) {
+      return notFoundPromiseCache
+    } else {
+      notFoundPromiseCache = context.cloneScope.Promise.reject(notFound)
+      return notFoundPromiseCache
+    }
+  }
+
+  return {
+    Service: exportClass(context.cloneScope, Service),
+    Discovery: exportAsyncIterator(context.cloneScope, Discovery),
+    DiscoveredService: exportClass(context.cloneScope, DiscoveredService)
   }
 }
 
-class DiscoveryClient {
-  /*::
-  scope:Object
-  requests:{resolve({done:false, value:DiscoveredService}|{done:true}):void, reject(Error):void}[]
-  responses:Promise<{done:false, value:DiscoveredService}>[]
-  done:null|Promise<{done:true, value:void}>
-  */
-  constructor(scope) {
-    this.scope = scope
-    this.requests = []
-    this.responses = []
+const getServiceDiscoveryAPI = (context) /*:ServiceDiscovery*/ => {
+  const { cloneScope } = context
+  const refs = {
+    Service: new WeakMap(),
+    Discovery: new WeakMap(),
+    DiscoveredService: new WeakMap()
   }
-  contiune(serviceInfo) {
-    const { requests, done, responses, scope } = this
-    if (done) {
-      throw Error("Received serviceInfo event after discovery was ended")
-    } else {
-      const request = requests.shift()
-      const nextIteration = Cu.cloneInto({ done: false, value: serviceInfo })
-      if (request) {
-        request.resolve(nextIteration)
+  const subscribers = {
+    Discovery: new Map()
+  }
+  const host = new HostAPI(context)
+  const api = getAPIClasses(context, refs)
+
+  class ServiceClient {
+    /*::
+    expired:boolean
+    id:string
+    */
+    constructor(id) {
+      this.id = id
+      this.expired = false
+    }
+    static announce(serviceInfo) {
+      return new cloneScope.Promise(async (resolve, reject) => {
+        try {
+          const protocol = parseProtocol(serviceInfo.protocol)
+          serviceInfo.attributes = parseAttributes(serviceInfo.attributes)
+
+          const info = await host.startService(serviceInfo)
+
+          const { serviceID, name, type, port, domain, attributes } = info
+          const service = exportInstance(cloneScope, api.Service, {
+            name,
+            type,
+            protocol,
+            port,
+            domain,
+            attributes: Cu.cloneInto(attributes, cloneScope)
+          })
+          refs.Service.set(service, new ServiceClient(serviceID))
+
+          resolve(service)
+        } catch (error) {
+          reject(ExtensionError(error))
+        }
+      })
+    }
+    expire() {
+      if (this.expired) {
+        return voidPromise
       } else {
-        responses.push(scope.Promise.resolve(nextIteration))
+        return context.wrapPromise(host.stopService(this.id))
       }
     }
   }
-  break() {
-    const { requests } = this
-    this.done = this.scope.Promise.resolve(doneIteration)
-    for (const request of requests) {
-      request.resolve(doneIteration)
+
+  class DiscoveryClient {
+    /*::
+    id:number
+    serviceQuery:ServiceQuery
+    scope:Object
+    requests:{resolve({done:false, value:DiscoveredService}|{done:true}):void, reject(Error):void}[]
+    responses:Promise<{done:false, value:DiscoveredService}>[]
+    done:Promise<{done:true, value:void}>
+    isDone:boolean
+    onBreak:({done:true}) => void
+    onError:(Error) => void
+    */
+    static discover(serviceQuery /*:ServiceQuery*/) {
+      const protocol = parseProtocol(serviceQuery.protocol)
+      const { type } = serviceQuery
+      const id = getUniqueId()
+      const discovery = exportInstance(context.cloneScope, api.Discovery)
+      const query = Cu.cloneInto(serviceQuery, context.cloneScope)
+      const unwrapped = Cu.waiveXrays(discovery)
+      Reflect.defineProperty(unwrapped, "query", { value: query })
+      const client = new DiscoveryClient(cloneScope, id)
+      refs.Discovery.set(discovery, client)
+      subscribers.Discovery.set(id, client)
+      client.start(serviceQuery)
+      return discovery
     }
-  }
-  throw(error) {
-    const { requests } = this
-    this.done = this.scope.Promise.reject(error)
-    for (const request of requests) {
-      request.reject(error)
+    constructor(scope, id) {
+      this.id = id
+      this.scope = scope
+      this.isDone = false
+      this.requests = []
+      this.responses = []
     }
-  }
-  next() {
-    const { responses, requests, done, scope } = this
-    if (done) {
-      return done
-    } else {
+    start(serviceQuery) {
+      this.done = new this.scope.Promise((resolve, reject) => {
+        this.onBreak = resolve
+        this.onError = reject
+
+        host.startDiscovery({ discoveryID: this.id }, serviceQuery)
+      })
+    }
+    found(serviceInfo) {
+      const service = DiscoveredServiceClient.create(serviceInfo, false)
+      this.contiune(service)
+    }
+    lost(serviceInfo) {
+      const service = DiscoveredServiceClient.create(serviceInfo, true)
+      this.contiune(service)
+    }
+    contiune(service) {
+      const { requests, isDone, responses, scope } = this
+      if (isDone) {
+        throw Error("Received serviceInfo event after discovery was ended")
+      } else {
+        const request = requests.shift()
+        const nextIteration = Cu.cloneInto(
+          { done: false /*::,value:service*/ },
+          cloneScope
+        )
+        Reflect.defineProperty(Cu.unwaiveXrays(nextIteration), "value", {
+          value: service
+        })
+
+        if (request) {
+          request.resolve(nextIteration)
+        } else {
+          responses.push(scope.Promise.resolve(nextIteration))
+        }
+      }
+    }
+    break() {
+      const { requests } = this
+      for (const request of requests) {
+        request.resolve(doneIteration)
+      }
+      subscribers.Discovery.delete(this.id)
+      this.onBreak(doneIteration)
+    }
+    throw(error) {
+      const { requests } = this
+      for (const request of requests) {
+        request.reject(error)
+      }
+      this.onError(error)
+    }
+    next() {
+      const { responses, requests, done, isDone, scope } = this
       const response = responses.shift()
       if (response) {
         return response
+      } else if (isDone) {
+        return done
       } else {
         return new scope.Promise((resolve, reject) => {
           requests.push({ resolve, reject })
         })
       }
     }
-  }
-  return() {
-    const { responses, requests, done, scope } = this
-    if (done) {
+    return() {
+      const { isDone, done, id } = this
+      if (!isDone) {
+        this.isDone = true
+        host.stopDiscovery({ discoveryID: id })
+      }
       return done
-    } else {
-      this.break()
-      return scope.Promise.resolve(doneIteration)
+    }
+    update(message) {
+      switch (message.type) {
+        case "onStopDiscoveryFailed": {
+          return this.throw(
+            new ExtensionError(`Failed to stop discovery ${message.errorCode}`)
+          )
+        }
+        case "onStartDiscoveryFailed": {
+          return this.throw(
+            new ExtensionError(`Failed to start discovery ${message.errorCode}`)
+          )
+        }
+        case "onDiscoveryStopped": {
+          return this.break()
+        }
+        case "onServiceLost": {
+          return this.lost(message.lost)
+        }
+        case "onServiceFound": {
+          return this.found(message.found)
+        }
+      }
+    }
+
+    static close() {
+      inbox.removeMessageListener(INBOX, DiscoveryClient)
+    }
+    static subscribe() {
+      context.callOnClose(DiscoveryClient)
+      inbox.addMessageListener(INBOX, DiscoveryClient.receiveMessage)
+    }
+    static receiveMessage({ data }) {
+      const client = subscribers.Discovery.get(data.to)
+      if (client) {
+        client.update(data)
+      } else {
+        throw new RangeError(
+          `Unable to receive Discovery message for ${data.to}`
+        )
+      }
     }
   }
-}
 
-class ServiceState {
-  /*::
-  expired:boolean
-  id:string
-  */
-  constructor(id) {
-    this.id = id
-    this.expired = false
-  }
-}
-
-const parseProtocol = protocol => {
-  switch (protocol) {
-    case "udp":
-    case "tcp":
-      return protocol
-    default:
-      throw new ExtensionError(
-        `Invalid protocol ${protocol} must be either "udp" or "tcp"`
+  class DiscoveredServiceClient {
+    /*::
+    id:string;
+    serviceInfo:DiscoveryResult
+    serviceAddresses:?Promise<ServiceAddress[]>;
+    lost:boolean
+    attributes:?{[string]:string}
+    */
+    static create(serviceInfo, lost) {
+      const { name, type, domain, protocol, attributes } = serviceInfo
+      const client = new DiscoveredServiceClient(serviceInfo, lost)
+      const discoveredService = exportInstance(
+        context.cloneScope,
+        api.DiscoveredService,
+        {
+          name,
+          type,
+          domain,
+          protocol,
+          attributes,
+          lost
+        }
       )
+      refs.DiscoveredService.set(discoveredService, client)
+
+      return discoveredService
+    }
+    constructor(serviceInfo, lost) {
+      this.serviceInfo = serviceInfo
+      this.lost = lost
+    }
+    createAddress(address) {
+      return Cu.cloneInto(address, cloneScope)
+    }
+    addresses() {
+      if (this.serviceAddresses) {
+        return this.serviceAddresses
+      } else {
+        const addresses = new cloneScope.Promise(async (resolve, reject) => {
+          try {
+            const addresses = await host.resolveService(this.serviceInfo)
+            resolve(Cu.cloneInto(addresses.map(this.createAddress), cloneScope))
+          } catch (error) {
+            reject(new ExtensionError(`Failed to resolve addresses ${error}`))
+          }
+        })
+        this.serviceAddresses = addresses
+        return addresses
+      }
+    }
+  }
+
+  const voidPromise = cloneScope.Promise.resolve()
+  const doneIteration = Cu.cloneInto({ done: true }, context.cloneScope)
+  Reflect.preventExtensions(Cu.waiveXrays(doneIteration))
+
+  const INBOX /*:Inbox*/ = "/libdweb/ServiceDiscovery/Discovery"
+  const inbox /*:nsIMessageListenerManager<{name:Inbox, data:DiscoveryMessage}>*/ =
+    context.childManager.messageManager
+
+  DiscoveryClient.subscribe()
+
+  return {
+    tcp: "tcp",
+    udp: "udp",
+    announce: ServiceClient.announce,
+    discover: DiscoveryClient.discover
   }
 }
 
-const parseAttributes = (attributes) /*:?{[string]:string}*/ => {
-  if (!attributes) {
-    return null
-  } else {
-    const result /*:Object*/ = Object.create(null)
-    for (const key in attributes) {
-      result[key] = String(attributes[key])
+class HostAPI /*::implements HostService*/ {
+  /*::
+  context:BaseContext
+  */
+  constructor(context) {
+    this.context = context
+  }
+  startService(serviceInfo /*:ServiceInfo*/) /*:Promise<RegisteredService>*/ {
+    return this.context.childManager.callParentAsyncFunction(
+      "ServiceDiscovery.startService",
+      [serviceInfo]
+    )
+  }
+  stopService(address) /*:Promise<void>*/ {
+    return this.context.childManager.callParentAsyncFunction(
+      "ServiceDiscovery.stopService",
+      [address]
+    )
+  }
+  resolveService(serviceInfo) /*:Promise<ServiceAddress[]>*/ {
+    return this.context.childManager.callParentAsyncFunction(
+      "ServiceDiscovery.resolveService",
+      [serviceInfo]
+    )
+  }
+  startDiscovery(discoveryID, query /*:ServiceQuery*/) {
+    return this.context.childManager.callParentFunctionNoReturn(
+      "ServiceDiscovery.startDiscovery",
+      [discoveryID, query]
+    )
+  }
+  stopDiscovery(discoveryID) {
+    this.context.childManager.callParentFunctionNoReturn(
+      "ServiceDiscovery.stopDiscovery",
+      [discoveryID]
+    )
+  }
+}
+
+global.ServiceDiscovery = class extends ExtensionAPI /*::<Host>*/ {
+  getAPI(context) {
+    return {
+      ServiceDiscovery: getServiceDiscoveryAPI(context)
     }
-    return result
   }
 }
 
@@ -320,13 +492,38 @@ const exportInstance = /*::<a:Object, b:a>*/ (
   return instance
 }
 
-const AsAsyncIterator = constructor => {
+const exportAsyncIterator = /*::<b:Object, a:Class<b>>*/ (
+  scope /*:Object*/,
+  constructor /*:a*/
+) /*:a*/ => {
   const $Symbol /*:any*/ = Symbol
   const prototype /*:Object*/ = constructor.prototype
   prototype[$Symbol.asyncIterator] = function() {
     return this
   }
-  return constructor
+  return exportClass(scope, constructor)
 }
 
-const doneIteration = Object.freeze({ done: true })
+const parseProtocol = protocol => {
+  switch (protocol) {
+    case "udp":
+    case "tcp":
+      return protocol
+    default:
+      throw new ExtensionError(
+        `Invalid protocol ${protocol} must be either "udp" or "tcp"`
+      )
+  }
+}
+
+const parseAttributes = (attributes) /*:?{[string]:string}*/ => {
+  if (!attributes) {
+    return null
+  } else {
+    const result /*:Object*/ = Object.create(null)
+    for (const key in attributes) {
+      result[key] = String(attributes[key])
+    }
+    return result
+  }
+}
