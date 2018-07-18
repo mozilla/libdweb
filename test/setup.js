@@ -19,15 +19,15 @@ const run = async name => {
   const extensionPath = path.join(process.cwd(), `./demo/${name}/`)
   const driver = await launchBrowser({ extensionPath })
   await runExtensionTest(driver, extensionPath)
-  try {
-    const log = await driver
-      .manage()
-      .logs()
-      .get(logging.Type.BROWSER)
-    console.log(log)
-  } catch (error) {
-    console.error(error)
-  }
+  // try {
+  //   const log = await driver
+  //     .manage()
+  //     .logs()
+  //     .get(logging.Type.BROWSER)
+  //   console.log(log)
+  // } catch (error) {
+  //   console.error(error)
+  // }
 }
 
 const runExtensionTest = async (driver, extensionDirName) => {
@@ -36,26 +36,32 @@ const runExtensionTest = async (driver, extensionDirName) => {
 }
 
 const launchBrowser = async ({ extensionPath }) => {
+  process.env.MOZ_DISABLE_CONTENT_SANDBOX = 1
+  const binary = await findFirefox(process.env.MOZ_BINARY || "nightly")
+
+  logging.installConsoleHandler()
+  const log = new logging.Preferences()
+  log.setLevel(logging.Type.BROWSER, logging.Level.DEBUG)
+
+  const capabilities = new Capabilities().set("marionette", true)
   const options = new firefox.Options()
-  options.setPreference("log", "{level: info}")
+    .setPreference("log", "{level: info}")
+    .setBinary(binary)
+    .setLoggingPrefs(log)
 
   if (process.env.HEADLESS === "1") {
     options.headless()
   }
 
-  process.env.MOZ_DISABLE_CONTENT_SANDBOX = 1
-  const binary = await findFirefox(process.env.MOZ_BINARY || "nightly")
-  options.setBinary(binary)
-
-  logging.installConsoleHandler()
-  const log = new logging.Preferences()
-  log.setLevel(logging.Type.BROWSER, logging.Level.DEBUG)
-  options.setLoggingPrefs(log)
+  const service = new firefox.ServiceBuilder(geckodriver.path).setStdio(
+    "inherit"
+  )
 
   const driver = await new Builder()
     .forBrowser("firefox")
     .setFirefoxOptions(options)
-    .setFirefoxService(new firefox.ServiceBuilder(geckodriver.path))
+    .setFirefoxService(service)
+    // .withCapabilities(capabilities)
     .build()
 
   const command = new Command("install addon")
