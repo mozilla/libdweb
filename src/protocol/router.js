@@ -234,9 +234,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     this.byteOffset = 0
     this.requestID = requestID
 
-    this.owner = Cc["@mozilla.org/systemprincipal;1"].createInstance(
-      Ci.nsIPrincipal
-    )
+    this.owner = null
     this.securityInfo = new TransportSecurityInfo()
     this.notificationCallbacks = null
     this.loadFlags = Ci.nsIRequest.LOAD_NORMAL
