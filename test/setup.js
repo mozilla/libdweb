@@ -15,8 +15,8 @@ const fs = require("mz/fs")
 const TEST_TIMEOUT = 5000
 const fxUtil = require("fx-runner/lib/utils")
 
-const run = async name => {
-  const extensionPath = path.join(process.cwd(), `./demo/${name}/`)
+const run = async testPath => {
+  const extensionPath = path.join(process.cwd(), testPath)
   const driver = await launchBrowser({ extensionPath })
   await runExtensionTest(driver, extensionPath)
   // try {
@@ -82,4 +82,4 @@ const findFirefox = async binaryPath => {
   }
 }
 
-run("protocol")
+run(process.argv[2])
