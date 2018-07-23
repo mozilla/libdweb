@@ -13,6 +13,6 @@
     }
   },
   "background": {
-    "scripts": ["test.js"]
+    "page": "index.html"
   }
 }
