@@ -40,7 +40,8 @@
   "scripts": {
     "//test": "npm run test:flow && npm run test:tape",
     "//test:tape": "blue-tape -r source-map-support/register -r babel-register 'test/**/*.js'",
-    "//test:flow": "flow check",
+    "test:flow": "flow check",
+    "test": "npm run test:flow",
     "//build:clear": "rm -rf lib",
     "//build:types": "flow-copy-source --verbose src lib",
     "//build:umd": "BABEL_ENV=umd rollup -c --files libdweb",
