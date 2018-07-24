@@ -17,17 +17,20 @@ const fxUtil = require("fx-runner/lib/utils")
 const { Writable } = require("stream")
 const OS = require("os")
 const { Tail } = require("tail")
+const finished = require("tap-finished")
 
 const run = async testPath => {
   const extensionPath = path.join(process.cwd(), testPath)
   const driver = await launchBrowser({ extensionPath })
-  await runExtensionTest(driver, extensionPath)
+  // await runExtensionTest(driver, extensionPath)
 }
 
 const runExtensionTest = async (driver, extensionDirName) => {
   const userAgent = await driver.executeScript(() => window.navigator.userAgent)
   console.log(`Connected to browser: ${userAgent}"`)
 }
+
+const OUTPUT_PREFIX = "console.log: WebExtensions:"
 
 const launchBrowser = async ({ extensionPath }) => {
   process.env.MOZ_DISABLE_CONTENT_SANDBOX = 1
@@ -48,9 +51,16 @@ const launchBrowser = async ({ extensionPath }) => {
   }
 
   const stdoutPath = path.join(OS.tmpdir(), "lidbweb-test-stdout")
-  console.log("stdout path", stdoutPath)
   const serviceOut = fs.createWriteStream(stdoutPath)
   const output = new Tail(stdoutPath)
+
+  const results = finished(results => {
+    if (results.ok) {
+      exit(0)
+    } else {
+      exit(1)
+    }
+  })
 
   const service = new firefox.ServiceBuilder(geckodriver.path).setStdio([
     process.stdin,
@@ -71,8 +81,23 @@ const launchBrowser = async ({ extensionPath }) => {
 
   driver.execute(command)
 
+  const exit = async code => {
+    await driver.quit()
+    process.exit(code)
+  }
+
   output.on("line", line => {
-    console.log("!!!!", line)
+    if (line === `${OUTPUT_PREFIX} ---------- FIN ----------`) {
+      results.end()
+    } else if (line.startsWith(OUTPUT_PREFIX)) {
+      const message = line.substr(OUTPUT_PREFIX.length + 1)
+      if (message != "") {
+        results.write(`${message}\n`)
+        process.stdout.write(`${message}\n`)
+      }
+    } else {
+      process.stdout.write(`${line}\n`)
+    }
   })
 
   return driver

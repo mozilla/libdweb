@@ -36,13 +36,13 @@
     "selenium-webdriver": "4.0.0-alpha.1",
     "source-map-support": "0.5.6",
     "tail": "1.2.4",
+    "tap-finished": "0.0.1",
     "web-ext": "2.7.0"
   },
   "scripts": {
-    "//test": "npm run test:flow && npm run test:tape",
-    "//test:tape": "blue-tape -r source-map-support/register -r babel-register 'test/**/*.js'",
+    "test": "npm run test:flow && npm run test:tape",
+    "test:tape": "HEADLESS=1 node test/setup.js test/tape",
     "test:flow": "flow check",
-    "test": "npm run test:flow",
     "//build:clear": "rm -rf lib",
     "//build:types": "flow-copy-source --verbose src lib",
     "//build:umd": "BABEL_ENV=umd rollup -c --files libdweb",
