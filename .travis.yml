@@ -2,6 +2,8 @@ language: node_js
 sudo: false
 node_js:
 - 'stable'
+addons:
+  firefox: "latest-nightly"
 deploy:
   provider: npm
   email: rfobic@gmail.com
