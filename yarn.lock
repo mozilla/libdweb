@@ -7515,6 +7515,10 @@ table@^3.7.8:
     slice-ansi "0.0.4"
     string-width "^2.0.0"
 
+tail@1.2.4:
+  version "1.2.4"
+  resolved "https://registry.yarnpkg.com/tail/-/tail-1.2.4.tgz#0877f3123258fd6e65320c0b27097a1343c2add1"
+
 "tape@>=2.0.0 <5.0.0":
   version "4.9.0"
   resolved "https://registry.yarnpkg.com/tape/-/tape-4.9.0.tgz#855c08360395133709d34d3fbf9ef341eb73ca6a"

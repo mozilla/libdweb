@@ -105,6 +105,7 @@ global.test = class Tape extends ExtensionAPI /*::<*>*/ {
           delete self.test
         }
         self.tests = null
+        self.log("---------- FIN ----------")
       }
       define(name, fn) {
         const test = new Unit(name, fn)

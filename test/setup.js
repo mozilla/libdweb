@@ -14,20 +14,14 @@ const { Command } = require("selenium-webdriver/lib/command")
 const fs = require("mz/fs")
 const TEST_TIMEOUT = 5000
 const fxUtil = require("fx-runner/lib/utils")
+const { Writable } = require("stream")
+const OS = require("os")
+const { Tail } = require("tail")
 
 const run = async testPath => {
   const extensionPath = path.join(process.cwd(), testPath)
   const driver = await launchBrowser({ extensionPath })
   await runExtensionTest(driver, extensionPath)
-  // try {
-  //   const log = await driver
-  //     .manage()
-  //     .logs()
-  //     .get(logging.Type.BROWSER)
-  //   console.log(log)
-  // } catch (error) {
-  //   console.error(error)
-  // }
 }
 
 const runExtensionTest = async (driver, extensionDirName) => {
@@ -53,9 +47,16 @@ const launchBrowser = async ({ extensionPath }) => {
     options.headless()
   }
 
-  const service = new firefox.ServiceBuilder(geckodriver.path).setStdio(
-    "inherit"
-  )
+  const stdoutPath = path.join(OS.tmpdir(), "lidbweb-test-stdout")
+  console.log("stdout path", stdoutPath)
+  const serviceOut = fs.createWriteStream(stdoutPath)
+  const output = new Tail(stdoutPath)
+
+  const service = new firefox.ServiceBuilder(geckodriver.path).setStdio([
+    process.stdin,
+    serviceOut,
+    process.stderr
+  ])
 
   const driver = await new Builder()
     .forBrowser("firefox")
@@ -68,7 +69,11 @@ const launchBrowser = async ({ extensionPath }) => {
     .setParameter("path", extensionPath)
     .setParameter("temporary", true)
 
-  await driver.execute(command)
+  driver.execute(command)
+
+  output.on("line", line => {
+    console.log("!!!!", line)
+  })
 
   return driver
 }
