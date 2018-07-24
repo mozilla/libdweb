@@ -4,6 +4,8 @@ node_js:
 - 'stable'
 addons:
   firefox: "latest-nightly"
+env:
+  - MOZ_BINARY=firefox
 deploy:
   provider: npm
   email: rfobic@gmail.com
