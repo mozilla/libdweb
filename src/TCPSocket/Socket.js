@@ -97,7 +97,7 @@ class Server {
 
   closeImmediately() {
     debug && console.log("terminate server")
-    this.socket.close()
+    this.close()
     this.delete()
   }
   delete() {
@@ -121,9 +121,9 @@ class Server {
 
       socket.onconnect = event => connections.connect(event.socket)
       server.closed = new Promise((resolve, reject) => {
+        server.onclosed = () => resolve()
         socket.onerror = ({ name, message }) =>
           reject(new Error(`${name}: ${message}`))
-        // self.onclose = () => resolve()
       })
 
       return server
@@ -141,7 +141,8 @@ class Server {
     this.onerrored(error)
   }
   close() {
-    return this.socket.close()
+    this.socket.close()
+    this.onclose(Cr.NS_OK)
   }
 }
 
@@ -507,7 +508,6 @@ class TCPServerSocketAdapter /*::implements TCPServerSocketAPI*/ {
     this.serverSocket = null
     switch (status) {
       case Cr.NS_BINDING_ABORTED: {
-        // return void this.onclose(status)
         break
       }
       default: {
