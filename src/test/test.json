@@ -1,0 +1,28 @@
+[
+  {
+    "namespace": "test",
+    "description": "test runner",
+    "types": [],
+    "functions": [
+      {
+        "name": "test",
+        "type": "function",
+        "description": "declare test",
+        "async": false,
+        "returns": "any",
+        "parameters": [
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "unit",
+            "type": "any"
+          }
+        ]
+      }
+    ],
+    "properties": {},
+    "events": []
+  }
+]
