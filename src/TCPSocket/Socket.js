@@ -16,6 +16,7 @@ import type {
   nsIAsyncInputStream,
   nsIInputStreamPump,
   nsIRequestObserver,
+  nsIEventTarget,
 
   TCPServerSocketAPI,
   TCPSocketAPI,
@@ -244,7 +245,7 @@ Cu.importGlobalProperties(["URL"])
               return new context.cloneScope.Promise((resolve, reject) => {
                 socket.ondrain = () => resolve()
                 socket.onerror = ({ name, message }) =>
-                  reject(IOError(`${name}: ${message}`))
+                  reject(new IOError(`${name}: ${message}`))
               })
             }
           }
@@ -355,7 +356,7 @@ Cu.importGlobalProperties(["URL"])
           new Promise((resolve, reject) => {
             socket.onclose = () => resolve()
             socket.onerror = event =>
-              reject(IOError(`${event.name}: ${event.message}`))
+              reject(new IOError(`${event.name}: ${event.message}`))
           })
         )
 
@@ -878,7 +879,8 @@ Cu.importGlobalProperties(["URL"])
         "@mozilla.org/io/multiplex-input-stream;1"
       ].createInstance(Ci.nsIMultiplexInputStream)
 
-      const stream = multiplexStream.QueryInterface(Ci.nsIInputStream)
+      const multiplex$inputStream /*:nsISupports<nsIInputStream>*/ = multiplexStream
+      const stream = multiplex$inputStream.QueryInterface(Ci.nsIInputStream)
 
       while (self.pendingData.length > 0) {
         const stream = self.pendingData.shift()
@@ -892,7 +894,8 @@ Cu.importGlobalProperties(["URL"])
         "@mozilla.org/network/socket-transport-service;1"
       ].getService(Ci.nsISocketTransportService)
 
-      const target = socketTransportService.QueryInterface(Ci.nsIEventTarget)
+      const $target /*:nsISupports<nsIEventTarget>*/ = socketTransportService
+      const target = $target.QueryInterface(Ci.nsIEventTarget)
 
       console.log(
         `TCPSocketAdapter.ensureCopying copy ${stream.available()} bytes`

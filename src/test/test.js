@@ -201,7 +201,7 @@ type Report =
       const deref = key => {
         const value = refs.get(key)
         if (value == null) {
-          throw ExtensionError("Unable to find corresponding reference")
+          throw new ExtensionError("Unable to find corresponding reference")
         } else {
           return value
         }
@@ -324,16 +324,7 @@ type Report =
               return void this
             }
             case "finish": {
-              console.log(" ")
               console.log(`1..${this.count}`)
-              console.log(`# tests ${this.count}`)
-              console.log(`# pass  ${this.pass}`)
-              if (this.fail > 0) {
-                console.log(`# fail  ${this.fail}`)
-              } else {
-                console.log(`# ok`)
-              }
-              console.log(" ")
               return console.log("---------- FIN ----------")
             }
             case "comment": {

@@ -165,7 +165,7 @@ interface Host {
 
             resolve(service)
           } catch (error) {
-            reject(ExtensionError(error))
+            reject(new ExtensionError(error))
           }
         })
       }

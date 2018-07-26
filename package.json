@@ -7,53 +7,25 @@
     "typed",
     "flow"
   ],
-  "main": "lib/libdweb",
-  "module": "src/libdweb",
-  "unpkg": "dist/libdweb",
-  "author": "Irakli Gozalishvili <rfobic@gmail.com> (http://jeditoolkit.com)",
-  "repository": "https://github.com/Gozala/libdweb",
+  "author": "Mozilla",
+  "repository": "https://github.com/mozilla/libdweb",
   "license": "MIT",
   "devDependencies": {
-    "alias-quokka-plugin": "^0.1.0",
-    "babel-cli": "^6.26.0",
-    "babel-preset-env": "1.7.0",
-    "babel-preset-flow-node": "^2.0.1",
-    "babel-register": "^6.26.0",
-    "blue-tape": "^1.0.0",
-    "bonjour": "3.5.0",
     "cross-env": "^5.2.0",
-    "documentation": "^8.0.0",
-    "flow-bin": "^0.74.0",
-    "flow-copy-source": "^2.0.0",
-    "fx-runner": "1.0.9",
-    "geckodriver": "1.11.0",
+    "flow-bin": "^0.77.0",
     "husky": "^0.14.0",
     "lint-staged": "^7.1.3",
-    "mz": "2.7.0",
     "prettier": "^1.13.5",
-    "rollup": "0.60.1",
-    "rollup.config.flow": "1.1.0",
-    "selenium-webdriver": "4.0.0-alpha.1",
-    "source-map-support": "0.5.6",
-    "tap-finished": "0.0.1",
+    "tape-ext": "0.3.0",
     "web-ext": "2.7.0"
   },
   "scripts": {
-    "test": "npm run test:flow && npm run test:api && npm run test:tcp",
-    "test:tape": "HEADLESS=1 node test/setup.js test/tape",
+    "test": "npm run test:flow && npm run test:tape",
+    "test:tape": "tape-ext 'test/*/manifest.json'",
     "test:flow": "flow check",
-    "test:tcp": "HEADLESS=1 node test/setup.js test/TCPSocket",
-    "test:api": "HEADLESS=1 node test/setup.js test/API",
-    "//build:clear": "rm -rf lib",
-    "//build:types": "flow-copy-source --verbose src lib",
-    "//build:umd": "BABEL_ENV=umd rollup -c --files libdweb",
-    "//build:node": "babel --out-dir lib src",
-    "//build:api": "documentation readme --section=API src/libdweb.js",
-    "//build:docs": "documentation build --document-exported src/** -f html --o docs",
-    "//build": "npm run build:node && npm run build:types",
-    "//prepublishOnly": "npm run build && npm run build:umd && npm test",
+    "test:tcp": "tape-ext test/TCPSocket",
+    "test:api": "tape-ext test/API",
     "precommit": "lint-staged",
-    "//start": "flow-copy-source --watch --verbose src lib & babel --watch --out-dir lib src",
     "demo": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging",
     "demo:discovery": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/discovery",
     "demo:protocol": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/protocol",
@@ -65,16 +37,6 @@
     "*.js": [
       "prettier --no-semi --write",
       "git add"
-    ]
-  },
-  "quokka": {
-    "alias": {
-      "libdweb": "src/libdweb"
-    },
-    "pro": true,
-    "babel": true,
-    "plugins": [
-      "alias-quokka-plugin"
     ]
   }
 }
