@@ -55,12 +55,15 @@ Cu.importGlobalProperties(["URL"])
   }
   class Socket /*::implements UDPSocket*/ {
     /*::
-  id: string;
-  address: SocketAddress;
-  */
+    id: string;
+    address: SocketAddress;
+    */
     constructor(id, address) {
       this.id = id
       this.address = address
+    }
+    static new(id, address) /*:UDPSocket*/ {
+      return new Socket(id, address)
     }
   }
 
@@ -244,7 +247,7 @@ Cu.importGlobalProperties(["URL"])
 
         const id = `UDPSocket@${++this.nextSocketID}`
         this.sockets[id] = socket
-        return new Socket(id, Address.from(socket.localAddr))
+        return Socket.new(id, Address.from(socket.localAddr))
       } catch (error) {
         return IOError.throw(error)
       }
