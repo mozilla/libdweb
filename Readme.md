@@ -383,7 +383,7 @@ This is a good demo to learn more about the UDP and Multicasting API.
 [file system]: https://github.com/mozilla/libdweb/issues/8
 [web-ext]: https://www.npmjs.com/package/web-ext
 [firefox nightly]: https://blog.nightly.mozilla.org/
-[api-adapters]: https://github.com/libdweb
+[api adapters]: https://github.com/libdweb
 [webextensions protocol_handlers]: https://developer.mozilla.org/en-US/Add-ons/WebExtensions/manifest.json/protocol_handlers
 [async iterator]: https://github.com/tc39/proposal-async-iteration#async-iterators-and-async-iterables
 [`arraybuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
