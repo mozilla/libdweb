@@ -286,7 +286,24 @@ void (async () => {
 
 > **Note**: UDPSocket API unlike one in nodejs is not going to resolve hostnames like `"localhost"`. You need to use WebExtensions [dns][webextensions dns] API to resolve hostnames.
 
+
 #### Demo
+
+
+##### P2P Chat Demo
+
+You can try demo WebExtension that uses UDP multicasting to do peer-to-peer chat in a firefox sidebar. You can run in [Firefox Nightly][] via following command
+
+> **Note**: This is a demo illustrates UDP and Multicasting API.
+
+```
+npm run demo:p2p-chat
+```
+
+![p2p-chat](./demo/p2p-chat/chat_demo.png)
+
+##### REPL Demo
+
 
 You can try demo WebExtension that provides a [REPL][] in the sidebar exposing all of the UDPSocket API, which you can run in [Firefox Nightly][] via following command
 
@@ -348,20 +365,6 @@ void (async () => {
   console.log("Received response:", decoder.decode(response))
 })()
 ```
-
-## P2P Chat Demo
-
-This is an example that uses UDP multicasting to do peer-to-peer chat on a firefox sidebar. To run it use:
-
-```
-npm run demo:p2p-chat
-```
-
-This is a good demo to learn more about the UDP and Multicasting API.
-
-
-![p2p-chat](./demo/p2p-chat/chat_demo.png)
-
 
 
 [travis.icon]: https://travis-ci.org/mozilla/libdweb.svg?branch=master
