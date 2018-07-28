@@ -1,0 +1,35 @@
+{
+  "manifest_version": 2,
+  "version": "0.1",
+  "name": "p2p-chat@libdweb",
+  "description": "Sample P2P Chat",
+  "permissions": [],
+  "experiment_apis": {
+    "UDPSocket": {
+      "schema": "../../src/UDPSocket/UDPSocket.json",
+      "child": {
+        "scopes": [
+          "addon_child"
+        ],
+        "paths": [
+          [
+            "UDPSocket"
+          ]
+        ],
+        "script": "../../src/UDPSocket/Socket.js"
+      }
+    }
+  },
+  "icons": {
+    "48": "../discovery/logo-flyweb-grey.svg",
+    "96": "../discovery/logo-flyweb-grey.svg"
+  },
+  "sidebar_action": {
+    "default_icon": {
+      "16": "../discovery/logo-flyweb-grey.svg",
+      "32": "../discovery/logo-flyweb-grey.svg"
+    },
+    "default_title": "P2P Chat",
+    "default_panel": "chat.html"
+  }
+}

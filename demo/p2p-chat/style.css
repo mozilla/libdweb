@@ -1,0 +1,13 @@
+body {
+  display: flex;
+  flex-direction: column;
+  align-content: space-between;
+  padding: 10px;
+  height: 100vh;
+  max-height: 100vh;
+}
+
+.chat-messages {
+  flex: 1 1 auto;
+  overflow-y: scroll;
+}
