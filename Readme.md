@@ -12,7 +12,7 @@ You can help this effort in following ways:
 
 1. Use these APIs to make something illustrating its value, to build the case for adoption in the core WebExtension API set.
 2. Get involved in driving this effort: Help with an API implementation, maintenance, testing, code samples, etc.
-3. Help build [API adapters][api-adapters] to enable seamless integration with existing libraries.
+3. Help build [API adapters][] to enable seamless integration with existing libraries.
 4. Join our IRC channel: #dweb on irc.mozilla.org
 
 ## Status: In active development
@@ -349,8 +349,23 @@ void (async () => {
 })()
 ```
 
-[travis.icon]: https://travis-ci.com/mozilla/libdweb.svg?branch=master
-[travis.url]: https://travis-ci.com/mozilla/libdweb
+## P2P Chat Demo
+
+This is an example that uses UDP multicasting to do peer-to-peer chat on a firefox sidebar. To run it use:
+
+```
+npm run demo:p2p-chat
+```
+
+This is a good demo to learn more about the UDP and Multicasting API.
+
+
+![p2p-chat](./demo/p2p-chat/chat_demo.png)
+
+
+
+[travis.icon]: https://travis-ci.org/mozilla/libdweb.svg?branch=master
+[travis.url]: https://travis-ci.org/mozilla/libdweb
 [version.icon]: https://img.shields.io/npm/v/libdweb.svg
 [downloads.icon]: https://img.shields.io/npm/dm/libdweb.svg
 [package.url]: https://npmjs.org/package/libdweb
