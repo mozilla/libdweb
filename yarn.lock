@@ -1620,6 +1620,10 @@ event-to-promise@0.8.0:
   version "0.8.0"
   resolved "https://registry.yarnpkg.com/event-to-promise/-/event-to-promise-0.8.0.tgz#4b84f11772b6f25f7752fc74d971531ac6f5b626"
 
+events-to-array@^1.0.1:
+  version "1.1.2"
+  resolved "https://registry.yarnpkg.com/events-to-array/-/events-to-array-1.1.2.tgz#2d41f563e1fe400ed4962fe1a4d5c6a7539df7f6"
+
 execa@^0.7.0:
   version "0.7.0"
   resolved "https://registry.yarnpkg.com/execa/-/execa-0.7.0.tgz#944becd34cc41ee32a63a9faf27ad5a65fc59777"
@@ -2185,6 +2189,12 @@ hawk@~6.0.2:
     hoek "4.x.x"
     sntp "2.x.x"
 
+highland@^2.5.1:
+  version "2.13.0"
+  resolved "https://registry.yarnpkg.com/highland/-/highland-2.13.0.tgz#a4394d8dcb970cd071a79a20f0762b906258dc19"
+  dependencies:
+    util-deprecate "^1.0.2"
+
 hoek@4.x.x:
   version "4.2.1"
   resolved "https://registry.yarnpkg.com/hoek/-/hoek-4.2.1.tgz#9634502aa12c445dd5a7c5734b572bb8738aacbb"
@@ -2690,6 +2700,13 @@ js-tokens@^3.0.0, js-tokens@^3.0.2:
   version "3.0.2"
   resolved "https://registry.yarnpkg.com/js-tokens/-/js-tokens-3.0.2.tgz#9866df395102130e38f7f996bceb65443209c25b"
 
+js-yaml@^3.2.7:
+  version "3.12.0"
+  resolved "https://registry.yarnpkg.com/js-yaml/-/js-yaml-3.12.0.tgz#eaed656ec8344f10f527c6bfa1b6e2244de167d1"
+  dependencies:
+    argparse "^1.0.7"
+    esprima "^4.0.0"
+
 js-yaml@^3.5.1, js-yaml@^3.5.3, js-yaml@^3.9.0, js-yaml@^3.9.1:
   version "3.11.0"
   resolved "https://registry.yarnpkg.com/js-yaml/-/js-yaml-3.11.0.tgz#597c1a8bd57152f26d622ce4117851a51f5ebaef"
@@ -3151,6 +3168,13 @@ minimist@0.0.8:
 minimist@^1.1.1, minimist@^1.2.0, minimist@~1.2.0:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/minimist/-/minimist-1.2.0.tgz#a35008b20f41383eec1fb914f4cd5df79a264284"
+
+minipass@^2.2.0:
+  version "2.3.3"
+  resolved "https://registry.yarnpkg.com/minipass/-/minipass-2.3.3.tgz#a7dcc8b7b833f5d368759cce544dccb55f50f233"
+  dependencies:
+    safe-buffer "^5.1.2"
+    yallist "^3.0.0"
 
 minipass@^2.2.1, minipass@^2.2.4:
   version "2.3.0"
@@ -3749,9 +3773,9 @@ prepend-http@^1.0.1:
   version "1.0.4"
   resolved "https://registry.yarnpkg.com/prepend-http/-/prepend-http-1.0.4.tgz#d4f4562b0ce3696e41ac52d0e002e57a635dc6dc"
 
-prettier@^1.13.5:
-  version "1.13.7"
-  resolved "https://registry.yarnpkg.com/prettier/-/prettier-1.13.7.tgz#850f3b8af784a49a6ea2d2eaa7ed1428a34b7281"
+prettier@^1.14.0:
+  version "1.14.0"
+  resolved "https://registry.yarnpkg.com/prettier/-/prettier-1.14.0.tgz#847c235522035fd988100f1f43cf20a7d24f9372"
 
 pretty-format@^23.0.1:
   version "23.0.1"
@@ -4665,12 +4689,6 @@ split2@^2.2.0:
   dependencies:
     through2 "^2.0.2"
 
-split@~0.1.2:
-  version "0.1.2"
-  resolved "https://registry.yarnpkg.com/split/-/split-0.1.2.tgz#f0710744c453d551fc7143ead983da6014e336cc"
-  dependencies:
-    through "1"
-
 split@~0.3.3:
   version "0.3.3"
   resolved "https://registry.yarnpkg.com/split/-/split-0.3.3.tgz#cd0eea5e63a211dfff7eb0f091c4133e2d0dd28f"
@@ -4873,22 +4891,23 @@ table@^3.7.8:
     slice-ansi "0.0.4"
     string-width "^2.0.0"
 
-tap-finished@0.0.1:
-  version "0.0.1"
-  resolved "https://registry.yarnpkg.com/tap-finished/-/tap-finished-0.0.1.tgz#08b5b543fdc04830290c6c561279552e71c4bd67"
+tap-merge@0.3.1:
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/tap-merge/-/tap-merge-0.3.1.tgz#1fbbda1b09e02dbd7ddd8cd4edf8b9bad1184a91"
   dependencies:
-    tap-parser "~0.2.0"
-    through "~2.3.4"
+    highland "^2.5.1"
 
-tap-parser@~0.2.0:
-  version "0.2.1"
-  resolved "https://registry.yarnpkg.com/tap-parser/-/tap-parser-0.2.1.tgz#8e1e823f2114ee21d032e2f31e4fb642a296f50b"
+tap-parser@7.0.0:
+  version "7.0.0"
+  resolved "https://registry.yarnpkg.com/tap-parser/-/tap-parser-7.0.0.tgz#54db35302fda2c2ccc21954ad3be22b2cba42721"
   dependencies:
-    split "~0.1.2"
+    events-to-array "^1.0.1"
+    js-yaml "^3.2.7"
+    minipass "^2.2.0"
 
-tape-ext@0.3.0:
-  version "0.3.0"
-  resolved "https://registry.yarnpkg.com/tape-ext/-/tape-ext-0.3.0.tgz#5883cfbc390680f114aff822ef04c12065704d94"
+tape-ext@0.4.0:
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/tape-ext/-/tape-ext-0.4.0.tgz#a636026f3e44c3070f645e242fe9cd15fe56bc22"
   dependencies:
     esm "3.0.72"
     fx-runner "1.0.9"
@@ -4896,7 +4915,8 @@ tape-ext@0.3.0:
     glob "7.1.2"
     mz "2.7.0"
     selenium-webdriver "4.0.0-alpha.1"
-    tap-finished "0.0.1"
+    tap-merge "0.3.1"
+    tap-parser "7.0.0"
 
 tar-stream@^1.5.0:
   version "1.6.1"
@@ -4978,11 +4998,7 @@ through2@^2.0.2:
     readable-stream "^2.1.5"
     xtend "~4.0.1"
 
-through@1:
-  version "1.1.2"
-  resolved "https://registry.yarnpkg.com/through/-/through-1.1.2.tgz#344a5425a3773314ca7e0eb6512fbafaf76c0bfe"
-
-through@2, through@^2.3.6, through@~2.3.4:
+through@2, through@^2.3.6:
   version "2.3.8"
   resolved "https://registry.yarnpkg.com/through/-/through-2.3.8.tgz#0dd4c9ffaabc357960b1b724115d7e0e86a2e1f5"
 
@@ -5248,7 +5264,7 @@ user-home@^2.0.0:
   dependencies:
     os-homedir "^1.0.0"
 
-util-deprecate@~1.0.1:
+util-deprecate@^1.0.2, util-deprecate@~1.0.1:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/util-deprecate/-/util-deprecate-1.0.2.tgz#450d4dc9fa70de732762fbd2d4a28981419a0ccf"
 
