@@ -55,62 +55,83 @@ test("discovery", async test => {
         protocol,
         "service.protocol matches announcement"
       )
-      test.equal(
-        typeof service.addresses,
-        "function",
-        "has service.addressses()"
-      )
 
-      return await service.addresses()
+      test.equal(
+        typeof service.host,
+        "string",
+        `service.host is string ${service.host}`
+      )
+      test.equal(
+        service.port,
+        port,
+        `service.port matches announcement ${service.port}`
+      )
+      test.deepEqual(service.attributes, {}, "service.attributes is empty")
+      test.ok(Array.isArray(service.addresses), "service.addresses is an array")
+      test.ok(service.addresses.length > 0, "service.addresses isn't empty")
+
+      for (const address of service.addresses) {
+        test.equal(typeof address, "string", `address is string ${address}`)
+      }
+
+      break
     }
   }
 
   const announce = async () => {
-    return await browser.ServiceDiscovery.announce({
+    const service = await browser.ServiceDiscovery.announce({
       name,
       type,
       protocol,
       port
     })
+
+    test.equal(service.name, name, "service.name matches announcement")
+    test.equal(service.type, type, "service.type matches announcement")
+    test.equal(service.domain, "local", "service.domain is local")
+    test.equal(
+      service.protocol,
+      protocol,
+      "service.protocol matches announcement"
+    )
+    test.deepEqual(
+      service.attributes,
+      {},
+      "service.attributes matches announcement"
+    )
+
+    test.equal(
+      typeof service.host,
+      "string",
+      `service.host is string ${service.host}`
+    )
+    test.equal(service.port, port, "service.port matches announcement")
+    test.deepEqual(service.attributes, {}, "address.attributes is empty")
+    test.ok(Array.isArray(service.addresses), "servic.addresses is array")
+    test.ok(service.addresses.length > 0, "servic.addresses isn't empty")
+
+    for (const address of service.addresses) {
+      test.equal(typeof address, "string", `address is string ${address}`)
+    }
   }
 
   const discovery = discover()
   const announcement = announce()
 
-  const service = await announcement
-  test.equal(service.name, name, "service.name matches announcement")
-  test.equal(service.type, type, "service.type matches announcement")
-  test.equal(service.domain, "local", "service.domain is local")
-  test.equal(service.port, port, "service.port matches announcement")
-  test.equal(
-    service.protocol,
-    protocol,
-    "service.protocol matches announcement"
-  )
-  test.deepEqual(
-    service.attributes,
-    {},
-    "service.attributes matches announcement"
-  )
-
-  const addresses = await discovery
-  test.ok(Array.isArray(addresses), "resolves to array")
-  test.ok(addresses.length > 0, "addresses isn't empty")
-
-  for (const address of addresses) {
-    test.equal(typeof address.host, "string", "has address.host")
-    test.equal(typeof address.address, "string", "has address.address")
-    test.equal(address.port, port, "address.port matches announcement")
-    test.deepEqual(address.attributes, {}, "address.attributes is empty")
-  }
+  await announcement
+  await discovery
 })
 
 test("discovery with attributes", async test => {
-  const [type, protocol, name] = [
+  const [type, protocol, name, attributes] = [
     `dweb2`,
     `udp`,
-    `name ${Date.now().toString(32)}`
+    `name ${Date.now().toString(32)}`,
+    {
+      version: "1.0"
+    }
   ]
+
   const services = browser.ServiceDiscovery.discover({
     type,
     protocol
@@ -137,61 +158,74 @@ test("discovery with attributes", async test => {
         "service.protocol matches announcement"
       )
       test.equal(
-        typeof service.addresses,
-        "function",
-        "has service.addressses()"
+        typeof service.host,
+        "string",
+        `service.host is string ${service.host}`
       )
+      test.equal(
+        typeof service.port,
+        "number",
+        `service.port is number ${service.port}`
+      )
+      test.deepEqual(
+        service.attributes,
+        attributes,
+        "service.attributes matches announcement"
+      )
+      test.ok(Array.isArray(service.addresses), "service.addresses is array")
+      test.ok(service.addresses.length > 0, "service.addresses isn't empty")
 
-      return await service.addresses()
+      for (const address of service.addresses) {
+        test.equal(typeof address, "string", `address is string ${address}`)
+      }
+
+      break
     }
   }
 
   const announce = async () => {
-    return await browser.ServiceDiscovery.announce({
+    const service = await browser.ServiceDiscovery.announce({
       name,
       type,
       protocol,
-      attributes: {
-        version: "1.0"
-      }
+      attributes
     })
+
+    test.equal(service.name, name, "service.name matches announcement")
+    test.equal(service.type, type, "service.type matches announcement")
+    test.equal(service.domain, "local", "service.domain is local")
+    test.equal(
+      service.protocol,
+      protocol,
+      "service.protocol matches announcement"
+    )
+    test.equal(
+      typeof service.host,
+      "string",
+      `service.host is string ${service.host}`
+    )
+    test.equal(
+      typeof service.port,
+      "number",
+      `service.port is number ${service.port}`
+    )
+    test.deepEqual(
+      service.attributes,
+      attributes,
+      "service.attributes matches announcement"
+    )
+
+    test.ok(Array.isArray(service.addresses), "service.addresses is array")
+    test.ok(service.addresses.length > 0, "service.addresses isn't empty")
+
+    for (const address of service.addresses) {
+      test.equal(typeof address, "string", `address is string ${address}`)
+    }
   }
 
   const discovery = discover()
   const announcement = announce()
 
-  const service = await announcement
-  test.equal(service.name, name, "service.name matches announcement")
-  test.equal(service.type, type, "service.type matches announcement")
-  test.equal(service.domain, "local", "service.domain is local")
-  test.equal(typeof service.port, "number", "service.port was assigned")
-  test.equal(
-    service.protocol,
-    protocol,
-    "service.protocol matches announcement"
-  )
-  test.deepEqual(
-    service.attributes,
-    { version: "1.0" },
-    "service.attributes matches announcement"
-  )
-
-  const addresses = await discovery
-  test.ok(Array.isArray(addresses), "resolves to array")
-  test.ok(addresses.length > 0, "addresses isn't empty")
-
-  for (const address of addresses) {
-    test.equal(typeof address.host, "string", "has address.host")
-    test.equal(typeof address.address, "string", "has address.address")
-    test.equal(
-      typeof address.port,
-      "number",
-      "address.port matches announcement"
-    )
-    test.deepEqual(
-      address.attributes,
-      { version: "1.0" },
-      "address.attributes is empty"
-    )
-  }
+  await announcement
+  await discovery
 })
