@@ -177,11 +177,11 @@ class Service /*::implements nsIDNSRegistrationListener*/ {
       "ServiceDiscoveryHost.onServiceRegistered",
       Service.decode(serviceInfo)
     )
-    const { serviceName: name, serviceType, domainName, port } = serviceInfo
+    const { serviceName: name, serviceType, port } = serviceInfo
     const { id } = this
     const attributes = Service.decodeAttributes(serviceInfo)
     const { type, protocol } = Service.decodeServiceType(serviceType)
-    const domain = Service.decodeDomain(domainName)
+    const domain = Service.decodeDomain(serviceInfo)
     this.onstart({
       serviceID: id,
       name,
@@ -205,8 +205,13 @@ class Service /*::implements nsIDNSRegistrationListener*/ {
     })
   }
 
-  static decodeDomain(domainName) {
-    return domainName === "local." ? "local" : domainName
+  static decodeDomain(serviceInfo) {
+    try {
+      const { domainName } = serviceInfo
+      return domainName === "local." ? "local" : domainName
+    } catch (error) {
+      return "local"
+    }
   }
   static decodeServiceType(serviceType) {
     const { length } = serviceType
@@ -231,11 +236,11 @@ class Service /*::implements nsIDNSRegistrationListener*/ {
     }
   }
   static decode(serviceInfo) {
-    const { serviceName, serviceType, domainName } = serviceInfo
+    const { serviceName, serviceType } = serviceInfo
     return {
       serviceName,
       serviceType,
-      domainName,
+      domain: this.decodeDomain(serviceInfo),
       address: this.decodeField(serviceInfo, "address"),
       host: this.decodeField(serviceInfo, "host"),
       port: this.decodeField(serviceInfo, "port"),
@@ -408,9 +413,9 @@ class Discovery {
   }
   onDiscoveryStarted(serviceType /*:string*/) {}
   static decodeService(serviceInfo) {
-    const { serviceName: name, serviceType, domainName } = serviceInfo
+    const { serviceName: name, serviceType } = serviceInfo
     const { type, protocol } = Service.decodeServiceType(serviceType)
-    const domain = Service.decodeDomain(domainName)
+    const domain = Service.decodeDomain(serviceInfo)
     const attributes = Service.decodeAttributes(serviceInfo)
     return {
       name,
