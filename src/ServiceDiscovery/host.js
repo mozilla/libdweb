@@ -48,6 +48,27 @@ const networkInfo = Cc["@mozilla.org/network-info-service;1"].createInstance(
   Ci.nsINetworkInfoService
 )
 
+const networkInfoService = Cc[
+  "@mozilla.org/network-info-service;1"
+].createInstance(Ci.nsINetworkInfoService)
+
+const listNetworkAddresses = () =>
+  new Promise((resolve, reject) =>
+    networkInfoService.listNetworkAddresses({
+      onListedNetworkAddresses: resolve,
+      onListNetworkAddressesFailed: reject
+    })
+  )
+
+const getLocalAddresseses = async () => {
+  const addresses = await listNetworkAddresses()
+  return addresses.filter(address => {
+    return (
+      !address.includes("%p2p") && address != "127.0.0.1" // No WiFi Direct interfaces
+    )
+  })
+}
+
 const debug = env.get("MOZ_ENV") === "DEBUG"
 
 // API boilerplate and hook up exports
@@ -122,7 +143,7 @@ global.ServiceDiscovery = class extends ExtensionAPI /*::<Host>*/ {
   }
 }
 
-const timeout = (self, method) => method.call(self)
+let localAddresses = null
 
 class Info {
   static decodeResolved(
@@ -297,6 +318,16 @@ class Service /*::implements nsIDNSRegistrationListener*/ {
     try {
       const info = await Resolver.resolve(serviceInfo)
       this.info = info
+
+      if (info.addresses.length === 0) {
+        if (localAddresses == null) {
+          localAddresses = await getLocalAddresseses()
+          info.addresses = localAddresses
+        } else {
+          info.addresses = localAddresses
+        }
+      }
+
       this.onstart(info)
     } catch (error) {
       this.terminate()
