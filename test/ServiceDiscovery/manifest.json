@@ -1,0 +1,33 @@
+{
+  "manifest_version": 2,
+  "version": "0.1",
+  "name": "libdweb API tests",
+  "description": "test libdweb APIs",
+
+  "experiment_apis": {
+    "test": {
+      "schema": "../../src/test/test.json",
+      "child": {
+        "scopes": ["addon_child"],
+        "paths": [["test"]],
+        "script": "../../src/test/test.js"
+      }
+    },
+    "ServiceDiscovery": {
+      "schema": "../../src/ServiceDiscovery/ServiceDiscovery.json",
+      "child": {
+        "scopes": ["addon_child"],
+        "paths": [["ServiceDiscovery"]],
+        "script": "../../src/ServiceDiscovery/client.js"
+      },
+      "parent": {
+        "scopes": ["addon_parent"],
+        "paths": [["ServiceDiscovery"]],
+        "script": "../../src/ServiceDiscovery/host.js"
+      }
+    }
+  },
+  "background": {
+    "scripts": ["test.js"]
+  }
+}

@@ -227,7 +227,7 @@ class Service /*::implements nsIDNSRegistrationListener*/ {
     try {
       return PropertyBag.decode(serviceInfo.attributes)
     } catch (_) {
-      return null
+      return {}
     }
   }
   static decode(serviceInfo) {
@@ -498,7 +498,10 @@ class PropertyBag {
           .getNext()
           .QueryInterface(Ci.nsIProperty)
         try {
-          attributes[name] = value.toString()
+          const attribute = value.toString()
+          if (name !== "" || attribute !== "") {
+            attributes[name] = attribute
+          }
         } catch (_) {
           attributes[name] = null
         }

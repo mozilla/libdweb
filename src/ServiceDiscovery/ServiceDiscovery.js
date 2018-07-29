@@ -13,7 +13,7 @@ export interface ServiceInfo {
   protocol: Protocol;
   host?: string;
   port?: number;
-  attributes?: ?{ [string]: string };
+  attributes?: { [string]: string };
 }
 
 export interface Service {
@@ -23,7 +23,7 @@ export interface Service {
   port: number;
   host: ?string;
   protocol: Protocol;
-  attributes?: { [string]: string };
+  attributes: { [string]: string };
 
   expire(): Promise<void>;
 }
@@ -42,7 +42,7 @@ export interface DiscoveryResult {
   type: string;
   domain: string;
   protocol: Protocol;
-  attributes: ?{ [string]: string };
+  attributes: { [string]: string };
 }
 
 export interface DiscoveredService extends DiscoveryResult {

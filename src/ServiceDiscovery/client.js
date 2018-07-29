@@ -36,13 +36,13 @@ interface Host {
   const getAPIClasses = (context, refs) => {
     class DiscoveredService {
       /*::
-    name: string;
-    type: string;
-    domain: string;
-    protocol: Protocol;
-    lost:boolean;
-    attributes:?{[string]:string};
-    */
+      name: string;
+      type: string;
+      domain: string;
+      protocol: Protocol;
+      lost:boolean;
+      attributes:{[string]:string};
+      */
       constructor() {
         throw TypeError("Illegal constructor")
       }
@@ -57,14 +57,14 @@ interface Host {
     }
     class Service {
       /*::
-    name: string;
-    type: string;
-    domain: string;
-    port: number;
-    host: ?string;
-    protocol: Protocol;
-    attributes: ?{ [string]: string };
-    */
+      name: string;
+      type: string;
+      domain: string;
+      port: number;
+      host: ?string;
+      protocol: Protocol;
+      attributes: { [string]: string };
+      */
       constructor() {
         throw TypeError("Illegal constructor")
       }
@@ -79,9 +79,9 @@ interface Host {
     }
     class Discovery {
       /*::
-    @@asyncIterator: () => self
-    query: ServiceQuery;
-    */
+      @@asyncIterator: () => self
+      query: ServiceQuery;
+      */
       constructor() {
         throw TypeError("Illegal constructor")
       }
@@ -137,9 +137,9 @@ interface Host {
 
     class ServiceClient {
       /*::
-    expired:boolean
-    id:string
-    */
+      expired:boolean
+      id:string
+      */
       constructor(id) {
         this.id = id
         this.expired = false
@@ -180,16 +180,16 @@ interface Host {
 
     class DiscoveryClient {
       /*::
-    id:number
-    serviceQuery:ServiceQuery
-    scope:Object
-    requests:{resolve({done:false, value:DiscoveredService}|{done:true}):void, reject(Error):void}[]
-    responses:Promise<{done:false, value:DiscoveredService}>[]
-    done:Promise<{done:true, value:void}>
-    isDone:boolean
-    onBreak:({done:true}) => void
-    onError:(Error) => void
-    */
+      id:number
+      serviceQuery:ServiceQuery
+      scope:Object
+      requests:{resolve({done:false, value:DiscoveredService}|{done:true}):void, reject(Error):void}[]
+      responses:Promise<{done:false, value:DiscoveredService}>[]
+      done:Promise<{done:true, value:void}>
+      isDone:boolean
+      onBreak:({done:true}) => void
+      onError:(Error) => void
+      */
       static discover(serviceQuery /*:ServiceQuery*/) {
         const protocol = parseProtocol(serviceQuery.protocol)
         const { type } = serviceQuery
@@ -333,12 +333,12 @@ interface Host {
 
     class DiscoveredServiceClient {
       /*::
-    id:string;
-    serviceInfo:DiscoveryResult
-    serviceAddresses:?Promise<ServiceAddress[]>;
-    lost:boolean
-    attributes:?{[string]:string}
-    */
+      id:string;
+      serviceInfo:DiscoveryResult
+      serviceAddresses:?Promise<ServiceAddress[]>;
+      lost:boolean
+      attributes:?{[string]:string}
+      */
       static create(serviceInfo, lost) {
         const { name, type, domain, protocol, attributes } = serviceInfo
         const client = new DiscoveredServiceClient(serviceInfo, lost)
@@ -405,8 +405,8 @@ interface Host {
 
   class HostAPI /*::implements HostService*/ {
     /*::
-  context:BaseContext
-  */
+    context:BaseContext
+    */
     constructor(context) {
       this.context = context
     }
@@ -526,9 +526,9 @@ interface Host {
     }
   }
 
-  const parseAttributes = (attributes) /*:?{[string]:string}*/ => {
+  const parseAttributes = (attributes) /*:{[string]:string}*/ => {
     if (!attributes) {
-      return null
+      return {}
     } else {
       const result /*:Object*/ = Object.create(null)
       for (const key in attributes) {
