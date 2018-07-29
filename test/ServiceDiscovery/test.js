@@ -86,6 +86,8 @@ test("discovery", async test => {
       port
     })
 
+    test.pass(`Service.announced`)
+
     test.equal(service.name, name, "service.name matches announcement")
     test.equal(service.type, type, "service.type matches announcement")
     test.equal(service.domain, "local", "service.domain is local")
@@ -107,8 +109,8 @@ test("discovery", async test => {
     )
     test.equal(service.port, port, "service.port matches announcement")
     test.deepEqual(service.attributes, {}, "address.attributes is empty")
-    test.ok(Array.isArray(service.addresses), "servic.addresses is array")
-    test.ok(service.addresses.length > 0, "servic.addresses isn't empty")
+    test.ok(Array.isArray(service.addresses), "service.addresses is array")
+    test.ok(service.addresses.length > 0, "service.addresses isn't empty")
 
     for (const address of service.addresses) {
       test.equal(typeof address, "string", `address is string ${address}`)
@@ -128,7 +130,7 @@ test("discovery with attributes", async test => {
     `udp`,
     `name ${Date.now().toString(32)}`,
     {
-      version: "1.0"
+      version: "1"
     }
   ]
 
@@ -148,6 +150,7 @@ test("discovery with attributes", async test => {
 
   const discover = async () => {
     for await (const service of services) {
+      test.pass(`Service discovered`)
       test.equal(service.lost, false, "found service")
       test.equal(service.name, name, "service.name matches announcement")
       test.equal(service.type, type, "service.type matches announcement")
