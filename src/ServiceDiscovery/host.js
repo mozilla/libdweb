@@ -329,7 +329,8 @@ class Resolver {
   }
   static decodeServiceAddress(serviceInfo) {
     const { host, port, address } = serviceInfo
-    const attributes = Service.decodeAttributes(serviceInfo) || {}
+    const attributes = Service.decodeAttributes(serviceInfo)
+    console.log("ResolvedAddress", host, port, address)
     return { host, port, address, attributes }
   }
   static resolve(context, info, timeout = 2000) {
