@@ -2615,27 +2615,17 @@ declare module "gecko" {
     serviceType: AUTF8String;
     serviceName: AUTF8String;
     domainName: AUTF8String;
-    attributes: nsIPropertyBag2;
-    host: AUTF8String;
-    address: AUTF8String;
-    port: short;
+    attributes?: nsIPropertyBag2;
+    host?: AUTF8String;
+    address?: AUTF8String;
+    port?: short;
   }
 
   declare export interface nsIDNSServiceDiscoveryListener {
     onDiscoveryStarted(serviceType: AUTF8String): void;
     onDiscoveryStopped(serviceType: AUTF8String): void;
-    onServiceFound({
-      serviceName: string,
-      serviceType: string,
-      domainName: string,
-      attributes: ?nsIPropertyBag2
-    }): void;
-    onServiceLost({
-      serviceName: string,
-      serviceType: string,
-      domainName: string,
-      attributes: ?nsIPropertyBag2
-    }): void;
+    onServiceFound(nsIDNSServiceInfo): void;
+    onServiceLost(nsIDNSServiceInfo): void;
     onStartDiscoveryFailed(serviceType: AUTF8String, errorCode: long): void;
     onStopDiscoveryFailed(serviceType: AUTF8String, errorCode: long): void;
   }
@@ -2644,64 +2634,15 @@ declare module "gecko" {
     ERROR_SERVICE_NOT_RUNNING: -65563;
   }
   declare export interface nsIDNSRegistrationListener {
-    onServiceRegistered({
-      serviceType: string,
-      serviceName: string,
-      domainName: string,
-      host?: string,
-      address?: string,
-      port: number,
-      attributes?: nsIPropertyBag2
-    }): void;
-    onServiceUnregistered({
-      serviceType: string,
-      serviceName: string,
-      domainName: string,
-      host?: string,
-      address?: string,
-      port?: number,
-      attributes?: nsIPropertyBag2
-    }): void;
-    onRegistrationFailed(
-      {
-        serviceType: string,
-        serviceName: string,
-        domainName: string,
-        host?: string,
-        address?: string,
-        port?: number,
-        attributes?: nsIPropertyBag2
-      },
-      errorCode: long
-    ): void;
-    onUnregistrationFailed(
-      {
-        serviceType: string,
-        serviceName: string,
-        domainName: string,
-        host?: string,
-        address?: string,
-        port?: number,
-        attributes?: nsIPropertyBag2
-      },
-      errorCode: long
-    ): void;
+    onServiceRegistered(nsIDNSServiceInfo): void;
+    onServiceUnregistered(nsIDNSServiceInfo): void;
+    onRegistrationFailed(nsIDNSServiceInfo, errorCode: long): void;
+    onUnregistrationFailed(nsIDNSServiceInfo, errorCode: long): void;
   }
 
   declare export interface nsIDNSServiceResolveListener {
     onServiceResolved(nsIDNSServiceInfo): void;
-    onResolveFailed(
-      {
-        serviceType: string,
-        serviceName: string,
-        domainName: string,
-        host?: string,
-        address?: string,
-        port?: number,
-        attributes: nsIPropertyBag2
-      },
-      errorCode: long
-    ): void;
+    onResolveFailed(nsIDNSServiceInfo, errorCode: long): void;
   }
 
   declare export interface nsIDNSServiceDiscovery {
@@ -2722,12 +2663,7 @@ declare module "gecko" {
       listener: nsIDNSRegistrationListener
     ): nsICancelable;
     resolveService(
-      {
-        serviceType: string,
-        serviceName: string,
-        domainName: string,
-        attributes: nsIPropertyBag2
-      },
+      nsIDNSServiceInfo,
       listener: nsIDNSServiceResolveListener
     ): void;
   }
@@ -2793,6 +2729,12 @@ declare module "gecko" {
   declare export interface nsIListNetworkAddressesListener {
     onListedNetworkAddresses(string[]): void;
     onListNetworkAddressesFailed(): void;
+  }
+
+  declare export interface nsIEnvironment {
+    set(name: AString, value: AString): void;
+    get(name: AString): AString;
+    exists(name: AString): boolean;
   }
 
   // -------------------------
@@ -3107,7 +3049,10 @@ declare module "gecko" {
       nsIProperty: nsIJSCID<nsIProperty>,
       nsINetworkInfoService: nsIJSCID<nsINetworkInfoService>,
       nsIGetHostnameListener: nsIJSCID<nsIGetHostnameListener>,
-      nsIListNetworkAddressesListener: nsIJSCID<nsIListNetworkAddressesListener>
+      nsIListNetworkAddressesListener: nsIJSCID<
+        nsIListNetworkAddressesListener
+      >,
+      nsIEnvironment: nsIJSCID<nsIEnvironment>
     },
     classes: {
       "@mozilla.org/nss_errors_service;1": nsIJSCID<nsINSSErrorsService>,
@@ -3173,7 +3118,8 @@ declare module "gecko" {
         nsIDNSServiceInfo
       >,
       "@mozilla.org/hash-property-bag;1": nsIJSCID<nsIWritablePropertyBag2>,
-      "@mozilla.org/network-info-service;1": nsIJSCID<nsINetworkInfoService>
+      "@mozilla.org/network-info-service;1": nsIJSCID<nsINetworkInfoService>,
+      "@mozilla.org/process/environment;1": nsIJSCID<nsIEnvironment>
     },
     utils: {
       Sandbox(

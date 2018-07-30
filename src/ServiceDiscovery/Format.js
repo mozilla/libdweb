@@ -2,23 +2,18 @@
 
 import type {
   Protocol,
+  ServiceOptions,
   ServiceInfo,
-  ServiceQuery,
-  DiscoveryResult,
-  ServiceAddress
+  ServiceQuery
 } from "./ServiceDiscovery"
 
 export interface ServiceID {
   serviceID: string;
 }
 
-export interface RegisteredService extends ServiceID {
-  name: string;
-  type: string;
-  protocol: Protocol;
-  domain: string;
-  port: number;
-  attributes: ?{ [string]: string };
+export interface RegisteredService {
+  serviceID: ServiceID;
+  info: ServiceInfo;
 }
 export interface DiscoveryID {
   discoveryID: number;
@@ -30,13 +25,12 @@ export type DiscoveryMessage =
   | { type: "onStartDiscoveryFailed", to: number, errorCode: number }
   | { type: "onStopDiscoveryFailed", to: number, errorCode: number }
   | { type: "onDiscoveryStopped", to: number }
-  | { type: "onServiceLost", to: number, lost: DiscoveryResult }
-  | { type: "onServiceFound", to: number, found: DiscoveryResult }
+  | { type: "onServiceLost", to: number, lost: ServiceInfo }
+  | { type: "onServiceFound", to: number, found: ServiceInfo }
 
 export interface HostService {
-  startService(ServiceInfo): Promise<RegisteredService>;
+  startService(ServiceOptions): Promise<RegisteredService>;
   stopService(ServiceID): Promise<void>;
-  resolveService(ServiceInfo): Promise<ServiceAddress[]>;
   startDiscovery(DiscoveryID, ServiceQuery): void;
   stopDiscovery(DiscoveryID): void;
 }

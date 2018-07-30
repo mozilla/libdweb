@@ -5,11 +5,10 @@ import type { BaseContext } from "gecko"
 import type {
   Protocol,
   ServiceDiscovery,
+  ServiceOptions,
   ServiceInfo,
   ServiceQuery,
   Discovery,
-  ServiceAddress,
-  DiscoveryResult,
   DiscoveredService
 } from "./ServiceDiscovery"
 
@@ -17,7 +16,8 @@ import type {
   RegisteredService,
   HostService,
   Inbox,
-  DiscoveryMessage
+  DiscoveryMessage,
+  ServiceID
 } from "./Format"
 
 interface Host {
@@ -36,35 +36,28 @@ interface Host {
   const getAPIClasses = (context, refs) => {
     class DiscoveredService {
       /*::
-    name: string;
-    type: string;
-    domain: string;
-    protocol: Protocol;
-    lost:boolean;
-    attributes:?{[string]:string};
-    */
+      name: string;
+      type: string;
+      domain: string;
+      protocol: Protocol;
+      lost:boolean;
+      addresses:string[];
+      attributes:{[string]:string};
+      */
       constructor() {
         throw TypeError("Illegal constructor")
-      }
-      addresses() /*: Promise<ServiceAddress[]>*/ {
-        const client = refs.DiscoveredService.get(this)
-        if (client) {
-          return client.addresses()
-        } else {
-          throw notFound
-        }
       }
     }
     class Service {
       /*::
-    name: string;
-    type: string;
-    domain: string;
-    port: number;
-    host: ?string;
-    protocol: Protocol;
-    attributes: ?{ [string]: string };
-    */
+      name: string;
+      type: string;
+      domain: string;
+      port: number;
+      host: ?string;
+      protocol: Protocol;
+      attributes: { [string]: string };
+      */
       constructor() {
         throw TypeError("Illegal constructor")
       }
@@ -79,9 +72,9 @@ interface Host {
     }
     class Discovery {
       /*::
-    @@asyncIterator: () => self
-    query: ServiceQuery;
-    */
+      @@asyncIterator: () => self
+      query: ServiceQuery;
+      */
       constructor() {
         throw TypeError("Illegal constructor")
       }
@@ -137,29 +130,30 @@ interface Host {
 
     class ServiceClient {
       /*::
-    expired:boolean
-    id:string
-    */
-      constructor(id) {
-        this.id = id
+      expired:boolean
+      serviceID:ServiceID
+      */
+      constructor(serviceID) {
+        this.serviceID = this.serviceID
         this.expired = false
       }
-      static announce(serviceInfo) {
+      static announce(options) {
         return new cloneScope.Promise(async (resolve, reject) => {
           try {
-            const protocol = parseProtocol(serviceInfo.protocol)
-            serviceInfo.attributes = parseAttributes(serviceInfo.attributes)
+            const protocol = parseProtocol(options.protocol)
+            options.attributes = parseAttributes(options.attributes)
 
-            const info = await host.startService(serviceInfo)
+            const { serviceID, info } = await host.startService(options)
 
-            const { serviceID, name, type, port, domain, attributes } = info
             const service = exportInstance(cloneScope, api.Service, {
-              name,
-              type,
-              protocol,
-              port,
-              domain,
-              attributes: Cu.cloneInto(attributes, cloneScope)
+              name: info.name,
+              type: info.type,
+              protocol: info.protocol,
+              port: info.port,
+              domain: info.domain,
+              host: info.host,
+              addresses: Cu.cloneInto(info.addresses, cloneScope),
+              attributes: Cu.cloneInto(info.attributes, cloneScope)
             })
             refs.Service.set(service, new ServiceClient(serviceID))
 
@@ -173,23 +167,23 @@ interface Host {
         if (this.expired) {
           return voidPromise
         } else {
-          return context.wrapPromise(host.stopService({ serviceID: this.id }))
+          return context.wrapPromise(host.stopService(this.serviceID))
         }
       }
     }
 
     class DiscoveryClient {
       /*::
-    id:number
-    serviceQuery:ServiceQuery
-    scope:Object
-    requests:{resolve({done:false, value:DiscoveredService}|{done:true}):void, reject(Error):void}[]
-    responses:Promise<{done:false, value:DiscoveredService}>[]
-    done:Promise<{done:true, value:void}>
-    isDone:boolean
-    onBreak:({done:true}) => void
-    onError:(Error) => void
-    */
+      id:number
+      serviceQuery:ServiceQuery
+      scope:Object
+      requests:{resolve({done:false, value:DiscoveredService}|{done:true}):void, reject(Error):void}[]
+      responses:Promise<{done:false, value:DiscoveredService}>[]
+      done:Promise<{done:true, value:void}>
+      isDone:boolean
+      onBreak:({done:true}) => void
+      onError:(Error) => void
+      */
       static discover(serviceQuery /*:ServiceQuery*/) {
         const protocol = parseProtocol(serviceQuery.protocol)
         const { type } = serviceQuery
@@ -220,12 +214,10 @@ interface Host {
         })
       }
       found(serviceInfo) {
-        const service = DiscoveredServiceClient.create(serviceInfo, false)
-        this.contiune(service)
+        this.contiune(decodeDiscoveredService(serviceInfo, false))
       }
       lost(serviceInfo) {
-        const service = DiscoveredServiceClient.create(serviceInfo, true)
-        this.contiune(service)
+        this.contiune(decodeDiscoveredService(serviceInfo, true))
       }
       contiune(service) {
         const { requests, isDone, responses, scope } = this
@@ -331,59 +323,21 @@ interface Host {
       }
     }
 
-    class DiscoveredServiceClient {
-      /*::
-    id:string;
-    serviceInfo:DiscoveryResult
-    serviceAddresses:?Promise<ServiceAddress[]>;
-    lost:boolean
-    attributes:?{[string]:string}
-    */
-      static create(serviceInfo, lost) {
-        const { name, type, domain, protocol, attributes } = serviceInfo
-        const client = new DiscoveredServiceClient(serviceInfo, lost)
-        const discoveredService = exportInstance(
-          context.cloneScope,
-          api.DiscoveredService,
-          {
-            name,
-            type,
-            domain,
-            protocol,
-            attributes,
-            lost
-          }
-        )
-        refs.DiscoveredService.set(discoveredService, client)
-
-        return discoveredService
-      }
-      constructor(serviceInfo, lost) {
-        this.serviceInfo = serviceInfo
-        this.lost = lost
-      }
-      createAddress(address) {
-        return Cu.cloneInto(address, cloneScope)
-      }
-      addresses() {
-        if (this.serviceAddresses) {
-          return this.serviceAddresses
-        } else {
-          const addresses = new cloneScope.Promise(async (resolve, reject) => {
-            try {
-              const addresses = await host.resolveService(this.serviceInfo)
-              resolve(
-                Cu.cloneInto(addresses.map(this.createAddress), cloneScope)
-              )
-            } catch (error) {
-              reject(new ExtensionError(`Failed to resolve addresses ${error}`))
-            }
-          })
-          this.serviceAddresses = addresses
-          return addresses
-        }
-      }
-    }
+    const decodeDiscoveredService = (info, lost) =>
+      Cu.cloneInto(
+        {
+          lost,
+          name: info.name,
+          type: info.type,
+          domain: info.domain,
+          protocol: info.protocol,
+          host: info.host,
+          port: info.port,
+          addresses: Cu.cloneInto(info.addresses, context.cloneScope),
+          attributes: Cu.cloneInto(info.attributes, context.cloneScope)
+        },
+        context.cloneScope
+      )
 
     const voidPromise = cloneScope.Promise.resolve()
     const doneIteration = Cu.cloneInto({ done: true }, context.cloneScope)
@@ -405,15 +359,17 @@ interface Host {
 
   class HostAPI /*::implements HostService*/ {
     /*::
-  context:BaseContext
-  */
+    context:BaseContext
+    */
     constructor(context) {
       this.context = context
     }
     static new(context) /*:HostService*/ {
       return new this(context)
     }
-    startService(serviceInfo /*:ServiceInfo*/) /*:Promise<RegisteredService>*/ {
+    startService(
+      serviceInfo /*:ServiceOptions*/
+    ) /*:Promise<RegisteredService>*/ {
       return this.context.childManager.callParentAsyncFunction(
         "ServiceDiscovery.startService",
         [serviceInfo]
@@ -423,12 +379,6 @@ interface Host {
       return this.context.childManager.callParentAsyncFunction(
         "ServiceDiscovery.stopService",
         [address]
-      )
-    }
-    resolveService(serviceInfo) /*:Promise<ServiceAddress[]>*/ {
-      return this.context.childManager.callParentAsyncFunction(
-        "ServiceDiscovery.resolveService",
-        [serviceInfo]
       )
     }
     startDiscovery(discoveryID, query /*:ServiceQuery*/) {
@@ -526,9 +476,9 @@ interface Host {
     }
   }
 
-  const parseAttributes = (attributes) /*:?{[string]:string}*/ => {
+  const parseAttributes = (attributes) /*:{[string]:string}*/ => {
     if (!attributes) {
-      return null
+      return {}
     } else {
       const result /*:Object*/ = Object.create(null)
       for (const key in attributes) {

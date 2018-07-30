@@ -1,30 +1,32 @@
 // @flow
 
 export interface ServiceDiscovery {
-  announce(ServiceInfo): Promise<Service>;
+  announce(ServiceOptions): Promise<Service>;
   discover(ServiceQuery): Discovery;
 }
 
 export type Protocol = "udp" | "tcp"
 
+export interface ServiceOptions {
+  name: string;
+  type: string;
+  protocol: Protocol;
+  port?: number;
+  attributes?: { [string]: string };
+}
+
 export interface ServiceInfo {
   name: string;
   type: string;
+  domain: string;
   protocol: Protocol;
-  host?: string;
-  port?: number;
-  attributes?: ?{ [string]: string };
+  host: string;
+  port: number;
+  addresses: string[];
+  attributes: { [string]: string };
 }
 
-export interface Service {
-  name: string;
-  type: string;
-  domain: string;
-  port: number;
-  host: ?string;
-  protocol: Protocol;
-  attributes?: { [string]: string };
-
+export interface Service extends ServiceInfo {
   expire(): Promise<void>;
 }
 
@@ -37,22 +39,6 @@ export interface Discovery extends AsyncIterator<DiscoveredService> {
   query: ServiceQuery;
 }
 
-export interface DiscoveryResult {
-  name: string;
-  type: string;
-  domain: string;
-  protocol: Protocol;
-  attributes: ?{ [string]: string };
-}
-
-export interface DiscoveredService extends DiscoveryResult {
+export interface DiscoveredService extends ServiceInfo {
   lost: boolean;
-  addresses(): Promise<ServiceAddress[]>;
-}
-
-export interface ServiceAddress {
-  host: string;
-  address: string;
-  port: number;
-  attributes: { [string]: string };
 }

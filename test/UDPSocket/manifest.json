@@ -1,0 +1,29 @@
+{
+  "manifest_version": 2,
+  "version": "0.1",
+  "name": "test-udp@libdweb",
+  "description": "UDPSocket API tests",
+  "permissions": [],
+
+  "experiment_apis": {
+    "test": {
+      "schema": "../../src/test/test.json",
+      "child": {
+        "scopes": ["addon_child"],
+        "paths": [["test"]],
+        "script": "../../src/test/test.js"
+      }
+    },
+    "UDPSocket": {
+      "schema": "../../src/UDPSocket/UDPSocket.json",
+      "child": {
+        "scopes": ["addon_child"],
+        "paths": [["UDPSocket"]],
+        "script": "../../src/UDPSocket/Socket.js"
+      }
+    }
+  },
+  "background": {
+    "scripts": ["test.js"]
+  }
+}

@@ -442,7 +442,7 @@ type Report =
         ok(value, message = "should be truthy") {
           this.assert({
             type: "ok",
-            isOk: value != null,
+            isOk: !!value,
             value,
             message
           })
