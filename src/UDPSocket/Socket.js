@@ -46,16 +46,20 @@ Cu.importGlobalProperties(["URL"])
       /*::
       address:SocketAddress
       */
-      async close() {
+      constructor() {
+        throw TypeError("Illegal constructor")
+      }
+      close() {
         const socket = refs.sockets.get(this)
         if (socket) {
           sockets.delete(socket)
           socket.close()
+          return voidPromise
         } else {
-          throw notFound
+          throw notFoundPromise()
         }
       }
-      async send(
+      send(
         host /*: string*/,
         port /*: number*/,
         data /*: ArrayBuffer*/,
@@ -63,14 +67,15 @@ Cu.importGlobalProperties(["URL"])
       ) /*: Promise<number>*/ {
         const socket = refs.sockets.get(this)
         if (socket) {
-          return socket.send(
+          const n = socket.send(
             host,
             port,
             new Uint8Array(data),
             size || data.byteLength
           )
+          return context.cloneScope.Promise.resolve(n)
         } else {
-          throw notFound
+          return notFoundPromise()
         }
       }
       messages() {
@@ -82,47 +87,51 @@ Cu.importGlobalProperties(["URL"])
           socket.asyncListen(host)
           return client
         } else {
-          throw notFound
+          return notFoundPromise()
         }
       }
-      async setMulticastLoopback(flag /*:boolean*/) /*: Promise<void>*/ {
+      setMulticastLoopback(flag /*:boolean*/) /*: Promise<void>*/ {
         const socket = refs.sockets.get(this)
         if (socket) {
           socket.multicastLoopback = flag
+          return voidPromise
         } else {
-          throw notFound
+          return notFoundPromise()
         }
       }
-      async setMulticastInterface(
+      setMulticastInterface(
         multicastInterface /*:string*/
       ) /*: Promise<void>*/ {
         const socket = refs.sockets.get(this)
         if (socket) {
           socket.multicastInterface = multicastInterface
+          return voidPromise
         } else {
-          throw notFound
+          return notFoundPromise()
         }
       }
-      async joinMulticast(
+      joinMulticast(
         address /*: string*/,
         multicastInterface /*::?: string*/
       ) /*: Promise<void>*/ {
         const socket = refs.sockets.get(this)
         if (socket) {
           socket.joinMulticast(address, multicastInterface)
+          return voidPromise
         } else {
-          throw notFound
+          return notFoundPromise()
         }
       }
-      async leaveMulticast(
+      leaveMulticast(
         address /*: string*/,
         multicastInterface /*::?: string*/
       ) /*: Promise<void>*/ {
         const socket = refs.sockets.get(this)
         if (socket) {
           socket.leaveMulticast(address, multicastInterface)
+          return voidPromise
         } else {
-          throw notFound
+          return notFoundPromise()
         }
       }
     }
@@ -246,10 +255,11 @@ Cu.importGlobalProperties(["URL"])
           this.isDone = true
           this.socket.close()
         }
-        return done
+        return doneIteration
       }
     }
 
+    const voidPromise /*:Promise<void>*/ = context.cloneScope.Promise.resolve()
     const doneIteration = Cu.cloneInto({ done: true }, context.cloneScope)
     const notFound = new ExtensionError("Host for the object not found")
     let notFoundPromiseCache = null
@@ -318,7 +328,7 @@ Cu.importGlobalProperties(["URL"])
             refs.sockets.set(client, socket)
             resolve(client)
           } catch (error) {
-            reject(ExtensionError(error))
+            reject(new ExtensionError(error))
           }
         })
     }

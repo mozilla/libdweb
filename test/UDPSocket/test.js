@@ -52,7 +52,7 @@ test("message exchange", async test => {
       "string",
       `server.address.address is ${address.address}`
     )
-    test.ok(family.has(address.family)`address.family is ${address.family}`)
+    test.ok(family.has(address.family), `address.family is ${address.family}`)
 
     const decoder = new TextDecoder()
     for await (const [data, from] of server.messages()) {
@@ -79,17 +79,19 @@ test("message exchange", async test => {
 
     const { address } = socket
     test.equal(typeof address, "object", `socket address is ${address}`)
-    test.equal(socket.port, port, `socket port is ${port}`)
+    test.equal(typeof address.port, "number", `socket port is ${address.port}`)
     test.equal(
       typeof address.address,
       "string",
       `socket address is ${address.address}`
     )
-    test.ok(family.has(address.family)`socket family is ${address.family}`)
+    test.ok(family.has(address.family), `socket family is ${address.family}`)
+
+    console.log("TextEncoder")
 
     const encoder = new TextEncoder()
     const data = encoder.encode(message).buffer
-    await socket.send(client, host, port, message)
+    await socket.send(host, port, data)
     test.pass("socket send a message")
     return socket
   }
