@@ -20,9 +20,6 @@
       }
     }
   },
-  "background": {
-    "scripts": ["example.js"]
-  },
   "browser_action": {
     "default_title": "Service Discovery",
     "default_popup": "./popup.html",

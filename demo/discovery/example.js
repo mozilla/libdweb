@@ -36,7 +36,7 @@ void (async () => {
     name: "My dweb service",
     type: "dweb",
     protocol: "tcp", // must be "tcp" or "udp"
-    port: 3000, // ommting port will just assign you available one.
+    port: 3000, // omitting port will just assign you available one.
     attributes: {
       // optional txt records
       version: "1.0."
