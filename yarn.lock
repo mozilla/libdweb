@@ -4905,9 +4905,9 @@ tap-parser@7.0.0:
     js-yaml "^3.2.7"
     minipass "^2.2.0"
 
-tape-ext@0.4.0:
-  version "0.4.0"
-  resolved "https://registry.yarnpkg.com/tape-ext/-/tape-ext-0.4.0.tgz#a636026f3e44c3070f645e242fe9cd15fe56bc22"
+tape-ext@0.5.0:
+  version "0.5.0"
+  resolved "https://registry.yarnpkg.com/tape-ext/-/tape-ext-0.5.0.tgz#0b0c8fd843ad46a70b7b3881d32a02bece4e5475"
   dependencies:
     esm "3.0.72"
     fx-runner "1.0.9"
