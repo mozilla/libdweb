@@ -15,6 +15,7 @@ void (async () => {
         protocol: service.protocol
       })
 
+      /*
       for (const {
         address,
         port,
@@ -26,6 +27,7 @@ void (async () => {
           attributes
         )
       }
+      */
     }
   }
   console.log("End discovery")

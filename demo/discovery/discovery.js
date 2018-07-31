@@ -17,11 +17,13 @@ const main = async () => {
 
       render(state)
 
+      /*
       const addresses = await service.addresses()
       for (const { address, port, host, attributes } of addresses) {
         record.addresses[address] = { address, host, port, attributes }
       }
       render(state)
+      */
     }
   }
 }
