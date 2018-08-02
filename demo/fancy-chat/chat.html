@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Fancy Chat</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="header">
+    <label for="nick">Nickname:</label>
+    <input type="text" name="nickname">
+    <button id="set-nickname">Set Nickname</button>
+    <input type="color" id="nickname-color" value="#f6b73c">
+    <button id="new-channel">New Channel</button>
+  </div>
+
+  <div class="chat-messages">
+    <div class="channel-list">
+      <strong class="column-name">Channels
+      </strong>
+      <ul class="channels"></ul>
+    </div>
+    <div class="channel-content"></div>
+
+    <div class="peer-list">
+      <strong class="column-name">Peers
+      </strong>
+      <ul class="peers"></ul>
+    </div>
+  </div>
+  <div class="chat-controls">
+    <input type="text" name="msg">
+    <button id="send">Send</button>
+  </div>
+  <script src="chat.js"></script>
+</body>
+
+</html>
