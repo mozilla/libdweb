@@ -367,8 +367,8 @@ void (async () => {
 ```
 
 
-[travis.icon]: https://travis-ci.org/mozilla/libdweb.svg?branch=master
-[travis.url]: https://travis-ci.org/mozilla/libdweb
+[travis.icon]: https://travis-ci.com/mozilla/libdweb.svg?branch=master
+[travis.url]: https://travis-ci.com/mozilla/libdweb
 [version.icon]: https://img.shields.io/npm/v/libdweb.svg
 [downloads.icon]: https://img.shields.io/npm/dm/libdweb.svg
 [package.url]: https://npmjs.org/package/libdweb
