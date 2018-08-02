@@ -22,7 +22,7 @@
   },
   "scripts": {
     "test": "npm run test:flow && npm run test:tape",
-    "test:tape": "tape-ext 'test/*/manifest.json'",
+    "test:tape": "tape-ext \"test/*/manifest.json\"",
     "test:flow": "flow check",
     "test:tcp": "tape-ext test/TCPSocket",
     "test:api": "tape-ext test/API",
