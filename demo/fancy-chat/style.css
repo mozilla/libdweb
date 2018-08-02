@@ -1,0 +1,75 @@
+body {
+  font-family: sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-content: space-between;
+  padding: 10px;
+  height: 100vh;
+  max-height: 100vh;
+  padding: 0;
+  margin: 0;
+}
+
+.chat-messages {
+  flex: 1 1 auto;
+  overflow-y: scroll;
+  display: flex;
+  flex-direction: row;
+}
+
+.channel-list {
+  width: 180px;
+  height: 100vh;
+  background-color: #e2edff;
+}
+
+.peer-list {
+  width: 180px;
+  height: 100vh;
+  background-color: #e2edff;
+}
+
+.channels li {
+  cursor: pointer;
+  padding: 5px;
+  font-weight: normal;
+}
+
+.channels li.active-channel {
+  font-weight: bold;
+}
+
+.channel-content {
+  flex: 1 1 auto;
+  padding-left: 10px;
+  padding-right: 10px;
+  overflow-wrap: break-word;
+}
+
+.header {
+  height: 20px;
+  border-bottom: solid 2px #b9cfff;
+  padding: 10px;
+}
+
+.channel-name {
+  padding-left: 20px;
+}
+
+.column-name {
+  text-align: center;
+  padding: 3px;
+  display: block;
+}
+
+.chat-controls {
+  display: flex;
+  flex-direction: row;
+  border-top: solid 1px lightgrey;
+  padding-top: 5px;
+}
+
+.chat-controls input {
+  flex: 1 1 auto;
+  border: none;
+}
