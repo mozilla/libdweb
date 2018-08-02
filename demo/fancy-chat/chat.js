@@ -37,9 +37,6 @@ async function main() {
     if (typeof channelMessages[channel] == "undefined") {
       channelMessages[channel] = []
     }
-
-    console.log(channelMessages)
-
     activeChannel = channel
     channelContent.innerHTML = ""
     channelMessages[channel].forEach(msg => {
@@ -82,6 +79,8 @@ async function main() {
     }
     updateChannelsColumn()
 
+    // You might be receiving a chat message from an unknown peer...
+    // it is an opportunity to add them to the list...
     var peer = {
       host: from.host,
       nickname: data.nickname
@@ -97,21 +96,10 @@ async function main() {
     var el = document.createDocumentFragment()
     var p = document.createElement("p")
     p.innerText = `${data.nickname}: ${data.content}`
-    p.style.color = colorForName(data.nickname)
-    console.log("payload", data)
-    console.log("color", colorForName(data.nickname))
+    p.style.color = data.color
     el.appendChild(p)
     channelContent.appendChild(el)
     channelContent.scrollTop = channelContent.scrollHeight
-  }
-
-  var colorForName = name => {
-    var colours = ["#E37B40", "#46B29D", "#DE5B49", "#324D5C", "F0C94D"]
-    var sum = 0
-    for (var i = 0; i < name.length; i++) {
-      sum += name.charCodeAt(i)
-    }
-    return colours[sum % colours.length]
   }
 
   var announcePeer = async ev => {
@@ -123,12 +111,14 @@ async function main() {
   var sendChat = async ev => {
     var content = textToSend.value || "no content"
     var nickname = nicknameElement.value || "nameless being"
+    var color = document.getElementById("nickname-color").value || "#f6b73c"
     var kind = "chat"
     var payload = {
       kind,
       nickname,
       content,
-      channel: activeChannel
+      channel: activeChannel,
+      color
     }
     textToSend.value = ""
     localStorage.setItem("nickname", nickname)
