@@ -315,3 +315,14 @@
     height: auto;
     max-height: 100%;
   }
+
+.center {
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   height: 100%;
+}
+
+pre.code {
+  margin-top: 3rem;
+}
