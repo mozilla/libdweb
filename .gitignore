@@ -5,3 +5,4 @@ dist
 !test/**/*.js
 !test/**/*.flow
 **/node_modules/**
+package-lock.json
