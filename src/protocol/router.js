@@ -195,7 +195,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
   loadInfo: null | nsILoadInfo
   contentCharset: ?string
   contentLength: number
-  contentType: ?string
+  mimeType: ?string
   byteOffset: number
   requestID: string
   owner: nsISupports<*> | null
@@ -228,7 +228,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     this.originalURI = uri
     this.contentCharset = "utf-8"
     this.contentLength = -1
-    this.contentType = UNKNOWN_CONTENT_TYPE
+    this.mimeType = null
     this.contentDispositionFilename = ""
     this.contentDispositionHeader = ""
     this.byteOffset = 0
@@ -255,6 +255,15 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
       throw Cr.NS_ERROR_NO_INTERFACE
     }
   }
+  get contentType() {
+    const { mimeType } = this
+    if (mimeType != null) {
+      return mimeType
+    } else {
+      return UNKNOWN_CONTENT_TYPE
+    }
+  }
+  set contentType(_) {}
   toJSON() {
     return {
       scheme: this.URI.scheme,
@@ -384,7 +393,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
       )
 
     if (contentType) {
-      this.contentType = contentType
+      this.mimeType = contentType
     }
 
     if (contentLength) {
@@ -397,13 +406,17 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
 
     this.status = Cr.NS_OK
     this.readyState = ACTIVE
-
-    const { listener, context } = this
     this.byteOffset = 0
-    try {
-      listener && listener.onStartRequest(this, context)
-    } catch (_) {
-      console.error(_)
+
+    // If contentType is known start request, otherwise defer until it
+    // can be inferred on first data chunk.
+    if (this.mimeType != null) {
+      const { listener, context } = this
+      try {
+        listener && listener.onStartRequest(this, context)
+      } catch (_) {
+        console.error(_)
+      }
     }
   }
   body({ content }) {
@@ -413,12 +426,19 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     const { byteLength } = content
     stream.setData(content, 0, byteLength)
 
-    if (this.contentType === UNKNOWN_CONTENT_TYPE) {
-      this.contentType = contentSniffer.getMIMETypeFromContent(
+    const { listener, context } = this
+
+    // If mimeType is not set then we need detect it from the arrived content
+    // and start request. We know start was deffered so that we would could
+    // detect contentType.
+    if (this.mimeType == null) {
+      this.mimeType = contentSniffer.getMIMETypeFromContent(
         this,
         new Uint8Array(content),
         byteLength
       )
+
+      listener && listener.onStartRequest(this, context)
     }
 
     debug &&
@@ -428,7 +448,6 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
         )} ${stream.available()} ${byteLength} ${content.toString()} `
       )
 
-    const { listener, context } = this
     listener && listener.onDataAvailable(this, context, stream, 0, byteLength)
     this.byteOffset += byteLength
   }
