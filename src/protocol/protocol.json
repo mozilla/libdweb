@@ -37,7 +37,7 @@
         "id": "ProtocolHandler",
         "type": "function",
         "description": "Protocol handler",
-        "async": false,
+        "async": true,
         "parameters": [
           {
             "name": "request",

@@ -414,8 +414,9 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     this.byteOffset += byteLength
   }
 
-  end(_) {
+  end({ status }) {
     this.readyState = CLOSED
+    this.status = status
     this.contentLength = this.byteOffset
     debug && console.log(`end${pid} ${JSON.stringify(this)}`)
     this.close()
@@ -624,6 +625,7 @@ export type Body = {
 
 export type End = {
   type: "end",
+  status:nsresult,
   requestID: string
 }
 

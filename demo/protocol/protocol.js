@@ -14,6 +14,20 @@ browser.protocol.registerProtocol("dweb", request => {
         })()
       }
     }
+    case "dweb://async/": {
+      return new Promise((resolve, reject) => {
+        setTimeout(resolve, 100, {
+          contentType: "text/plain",
+          content: (async function*() {
+            const encoder = new TextEncoder("utf-8")
+            yield encoder.encode("Async response yo!").buffer
+          })()
+        })
+      })
+    }
+    case "dweb://crash/": {
+      throw Error("Boom!")
+    }
     case "dweb://text/": {
       return {
         content: (async function*() {

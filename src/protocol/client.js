@@ -21,7 +21,7 @@ interface Response extends Head, Body {
 }
 
 interface Handler {
-  ({ url: string }):Response
+  ({ url: string }):Response|Promise<Response>
 }
 
 type Status =
@@ -52,11 +52,11 @@ interface Client {
 
   class Connection {
     /*::
-  requestID:string
-  port:Out<HandlerOutbox>
-  content:AsyncIterator<ArrayBuffer>
-  status:Status
-  */
+    requestID:string
+    port:Out<HandlerOutbox>
+    content:AsyncIterator<ArrayBuffer>
+    status:Status
+    */
     constructor(
       requestID /*:string*/,
       port /*:Out<HandlerOutbox>*/,
@@ -83,10 +83,11 @@ interface Client {
         content
       })
     }
-    end() {
+    end(status = 0) {
       this.port.sendAsyncMessage(OUTBOX, {
         type: "end",
-        requestID: this.requestID
+        requestID: this.requestID,
+        status
       })
     }
     suspend(manager /*:ConnectionManager*/) {
@@ -112,7 +113,7 @@ interface Client {
     close(manager) {
       manager.disconnect(this.requestID)
       this.status = CLOSED
-      this.end()
+      this.end(0)
       delete this.port
     }
     abort(manager /*:ConnectionManager*/) {
@@ -124,12 +125,12 @@ interface Client {
 
   class Protocol /*::implements ConnectionManager*/ {
     /*::
-  context: BaseContext
-  handlers: { [string]: Handler }
-  outbox: Out<HandlerOutbox>
-  inbox: Inn<HandlerInbox>
-  connections: {[string]: Connection}
-  */
+    context: BaseContext
+    handlers: { [string]: Handler }
+    outbox: Out<HandlerOutbox>
+    inbox: Inn<HandlerInbox>
+    connections: {[string]: Connection}
+    */
     constructor(context /*: BaseContext */) {
       this.context = context
       this.handlers = {}
@@ -156,14 +157,26 @@ interface Client {
         scheme
       })
     }
-    request(request, target /*: Out<HandlerOutbox> */) {
+    async request(request, target /*: Out<HandlerOutbox> */) {
       const { requestID, scheme, url } = request
       const handler = this.handlers[request.scheme]
-      const response = Cu.waiveXrays(handler(Cu.cloneInto(request, handler)))
-      const connection = new Connection(requestID, target, response.content)
-      this.connect(connection)
-      connection.head(response)
-      connection.resume(this)
+      try {
+        delete request.requestID
+        const promise = Reflect.apply(handler, null, [
+          Cu.cloneInto(request, handler)
+        ])
+        const response = Cu.waiveXrays(await promise)
+        const connection = new Connection(requestID, target, response.content)
+        this.connect(connection)
+        connection.head(response)
+        connection.resume(this)
+      } catch (error) {
+        target.sendAsyncMessage(OUTBOX, {
+          type: "end",
+          requestID,
+          status: Cr.NS_ERROR_XPC_JAVASCRIPT_ERROR
+        })
+      }
     }
     connect(connection /*:Connection*/) {
       this.connections[connection.requestID] = connection
