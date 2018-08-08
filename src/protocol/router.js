@@ -54,6 +54,10 @@ const contentSecManager = Cc[
   "@mozilla.org/contentsecuritymanager;1"
 ].getService(Ci.nsIContentSecurityManager)
 
+const contentSniffer = Cc[
+  "@mozilla.org/network/content-sniffer;1"
+].createInstance(Ci.nsIContentSniffer)
+
 const isParent = appinfo.processType === appinfo.PROCESS_TYPE_DEFAULT
 const { ID } = Components
 
@@ -110,10 +114,6 @@ const registerProtocol = ({ scheme, uuid }, handler) => {
     )
 }
 
-const Channel$QueryInterface = XPCOMUtils.generateQI([
-  Ci.nsIChannel,
-  Ci.nsIRequest
-])
 const LOAD_NORMAL = 0
 
 const IDLE = 0
@@ -184,6 +184,7 @@ class TransportSecurityInfo /*::implements nsITransportSecurityInfo*/ {
 }
 
 const MAX_UNKNOWN = 0xffffffffffffffff
+const UNKNOWN_CONTENT_TYPE = "application/x-unknown-content-type"
 
 class Channel /*::implements nsIChannel, nsIRequest*/ {
   /*::
@@ -204,7 +205,6 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
   name: string
   status: nsresult
   readyState: ReadyState
-  QueryInterface: typeof Channel$QueryInterface
   contentDisposition: number
   contentDispositionFilename: string
   contentDispositionHeader: string
@@ -228,7 +228,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     this.originalURI = uri
     this.contentCharset = "utf-8"
     this.contentLength = -1
-    this.contentType = "application/x-unknown-content-type"
+    this.contentType = UNKNOWN_CONTENT_TYPE
     this.contentDispositionFilename = ""
     this.contentDispositionHeader = ""
     this.byteOffset = 0
@@ -241,8 +241,19 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     this.name = uri.spec
     this.status = Cr.NS_ERROR_NOT_INITIALIZED
     this.readyState = IDLE
-    this.QueryInterface = Channel$QueryInterface
     this.handler = handler
+  }
+  QueryInterface(iid) {
+    const isSupported =
+      false ||
+      iid.equals(Ci.nsISupports) ||
+      iid.equals(Ci.nsIChannel) ||
+      iid.equals(Ci.nsIRequest)
+    if (isSupported) {
+      return this
+    } else {
+      throw Cr.NS_ERROR_NO_INTERFACE
+    }
   }
   toJSON() {
     return {
@@ -401,6 +412,14 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     ].createInstance(Ci.nsIArrayBufferInputStream)
     const { byteLength } = content
     stream.setData(content, 0, byteLength)
+
+    if (this.contentType === UNKNOWN_CONTENT_TYPE) {
+      this.contentType = contentSniffer.getMIMETypeFromContent(
+        this,
+        new Uint8Array(content),
+        byteLength
+      )
+    }
 
     debug &&
       console.log(

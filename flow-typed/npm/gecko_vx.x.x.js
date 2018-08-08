@@ -2737,6 +2737,15 @@ declare module "gecko" {
     exists(name: AString): boolean;
   }
 
+  // https://github.com/mozilla/gecko-dev/blob/86897859913403b68829dbf9a154f5a87c4b0638/netwerk/base/nsIContentSniffer.idl
+  declare export interface nsIContentSniffer {
+    getMIMETypeFromContent(
+      nsIRequest,
+      Uint8Array | ArrayBuffer,
+      number
+    ): ACString;
+  }
+
   // -------------------------
   declare export type JSM<url: string, jsm> = (url, {}) => jsm
 
@@ -3052,7 +3061,8 @@ declare module "gecko" {
       nsIListNetworkAddressesListener: nsIJSCID<
         nsIListNetworkAddressesListener
       >,
-      nsIEnvironment: nsIJSCID<nsIEnvironment>
+      nsIEnvironment: nsIJSCID<nsIEnvironment>,
+      nsIContentSniffer: nsIJSCID<nsIContentSniffer>
     },
     classes: {
       "@mozilla.org/nss_errors_service;1": nsIJSCID<nsINSSErrorsService>,
@@ -3119,7 +3129,8 @@ declare module "gecko" {
       >,
       "@mozilla.org/hash-property-bag;1": nsIJSCID<nsIWritablePropertyBag2>,
       "@mozilla.org/network-info-service;1": nsIJSCID<nsINetworkInfoService>,
-      "@mozilla.org/process/environment;1": nsIJSCID<nsIEnvironment>
+      "@mozilla.org/process/environment;1": nsIJSCID<nsIEnvironment>,
+      "@mozilla.org/network/content-sniffer;1": nsIJSCID<nsIContentSniffer>
     },
     utils: {
       Sandbox(
