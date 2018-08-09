@@ -51,27 +51,9 @@ void (async () => {
     port: service.port,
     attributes: service.attributes // Will be null if was omitted
   })
-
-  /*
-  // Wait for a 1 minute and expire service announcement
-  await new Promise(timeout => setTimeout(timeout, 60 * 1000))
-  await service.expire()
-  console.log(`Service expired`)
-  */
 })()
 
 // listen for notification clicks
 browser.notifications.onClicked.addListener(async function(url) {
   await browser.tabs.create({ url: url })
-  /*
-  let all = await browser.notifications.getAll();
-  console.log('notifications', all)
-  for (let id in all) {
-    console.log('id', id)
-    if (id == notificationId) {
-      console.log('YES')
-      tabs.create({ url: all[id].content});
-    }
-  }
-  */
 })
