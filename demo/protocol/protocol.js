@@ -1,4 +1,5 @@
 browser.protocol.registerProtocol("dweb", request => {
+  examples = ["stream", "async", "crash", "text", "html"]
   switch (request.url) {
     case "dweb://stream/": {
       return {
@@ -13,6 +14,20 @@ browser.protocol.registerProtocol("dweb", request => {
           }
         })()
       }
+    }
+    case "dweb://async/": {
+      return new Promise((resolve, reject) => {
+        setTimeout(resolve, 100, {
+          contentType: "text/plain",
+          content: (async function*() {
+            const encoder = new TextEncoder("utf-8")
+            yield encoder.encode("Async response yo!").buffer
+          })()
+        })
+      })
+    }
+    case "dweb://crash/": {
+      throw Error("Boom!")
     }
     case "dweb://text/": {
       return {
@@ -38,7 +53,10 @@ browser.protocol.registerProtocol("dweb", request => {
           const encoder = new TextEncoder("utf-8")
           yield encoder.encode("<h1>Hi there!</h1>\n").buffer
           yield encoder.encode(
-            `<p>You've succesfully loaded <strong>${request.url}</strong><p>`
+            `<p>You've succesfully loaded <strong>${request.url}</strong><p>
+            ${examples
+              .map(ex => `<a href=\"dweb://${ex}/\" >${ex}</a>`)
+              .join("<br>")}`
           ).buffer
         })()
       }

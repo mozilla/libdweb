@@ -96,7 +96,9 @@ interface Host {
       }
     }
 
-    const notFound = new ExtensionError("Host for the object not found")
+    const notFound = new context.cloneScope.RangeError(
+      "Host for the object not found"
+    )
     let notFoundPromiseCache = null
 
     const notFoundPromise = () => {
@@ -159,7 +161,7 @@ interface Host {
 
             resolve(service)
           } catch (error) {
-            reject(new ExtensionError(error))
+            reject(new cloneScope.Error(error.message))
           }
         })
       }
@@ -280,14 +282,14 @@ interface Host {
         switch (message.type) {
           case "onStopDiscoveryFailed": {
             return this.throw(
-              new ExtensionError(
+              new context.cloneScope.Error(
                 `Failed to stop discovery ${message.errorCode}`
               )
             )
           }
           case "onStartDiscoveryFailed": {
             return this.throw(
-              new ExtensionError(
+              new context.cloneScope.Error(
                 `Failed to start discovery ${message.errorCode}`
               )
             )

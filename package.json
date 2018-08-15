@@ -11,27 +11,32 @@
   "repository": "https://github.com/mozilla/libdweb",
   "license": "MIT",
   "devDependencies": {
+    "colors": "^1.3.1",
     "cross-env": "^5.2.0",
-    "flow-bin": "^0.77.0",
+    "flow-bin": "^0.78.0",
     "husky": "^0.14.0",
     "lint-staged": "^7.1.3",
     "prettier": "^1.14.0",
-    "tape-ext": "0.5.0",
-    "web-ext": "2.7.0"
+    "tape-ext": "0.5.1",
+    "web-ext": "2.8.0"
   },
   "scripts": {
     "test": "npm run test:flow && npm run test:tape",
-    "test:tape": "tape-ext 'test/*/manifest.json'",
+    "test:tape": "tape-ext \"test/*/manifest.json\"",
     "test:flow": "flow check",
     "test:tcp": "tape-ext test/TCPSocket",
     "test:api": "tape-ext test/API",
+    "test:dns-sd": "tape-ext test/ServiceDiscovery",
     "precommit": "lint-staged",
     "demo": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging",
     "demo:discovery": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/discovery",
+    "demo:dnotify": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/dnotify",
     "demo:protocol": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/protocol",
     "demo:fs": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/fs",
     "demo:dgram": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/dgram",
-    "demo:tcp": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/tcp"
+    "demo:tcp": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/tcp",
+    "demo:p2p-chat": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/p2p-chat",
+    "demo:fancy-chat": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/fancy-chat"
   },
   "lint-staged": {
     "*.js": [

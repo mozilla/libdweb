@@ -54,6 +54,10 @@ const contentSecManager = Cc[
   "@mozilla.org/contentsecuritymanager;1"
 ].getService(Ci.nsIContentSecurityManager)
 
+const contentSniffer = Cc[
+  "@mozilla.org/network/content-sniffer;1"
+].createInstance(Ci.nsIContentSniffer)
+
 const isParent = appinfo.processType === appinfo.PROCESS_TYPE_DEFAULT
 const { ID } = Components
 
@@ -110,10 +114,6 @@ const registerProtocol = ({ scheme, uuid }, handler) => {
     )
 }
 
-const Channel$QueryInterface = XPCOMUtils.generateQI([
-  Ci.nsIChannel,
-  Ci.nsIRequest
-])
 const LOAD_NORMAL = 0
 
 const IDLE = 0
@@ -184,6 +184,7 @@ class TransportSecurityInfo /*::implements nsITransportSecurityInfo*/ {
 }
 
 const MAX_UNKNOWN = 0xffffffffffffffff
+const UNKNOWN_CONTENT_TYPE = "application/x-unknown-content-type"
 
 class Channel /*::implements nsIChannel, nsIRequest*/ {
   /*::
@@ -194,7 +195,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
   loadInfo: null | nsILoadInfo
   contentCharset: ?string
   contentLength: number
-  contentType: ?string
+  mimeType: ?string
   byteOffset: number
   requestID: string
   owner: nsISupports<*> | null
@@ -204,7 +205,6 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
   name: string
   status: nsresult
   readyState: ReadyState
-  QueryInterface: typeof Channel$QueryInterface
   contentDisposition: number
   contentDispositionFilename: string
   contentDispositionHeader: string
@@ -228,7 +228,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     this.originalURI = uri
     this.contentCharset = "utf-8"
     this.contentLength = -1
-    this.contentType = "application/x-unknown-content-type"
+    this.mimeType = null
     this.contentDispositionFilename = ""
     this.contentDispositionHeader = ""
     this.byteOffset = 0
@@ -241,9 +241,29 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     this.name = uri.spec
     this.status = Cr.NS_ERROR_NOT_INITIALIZED
     this.readyState = IDLE
-    this.QueryInterface = Channel$QueryInterface
     this.handler = handler
   }
+  QueryInterface(iid) {
+    const isSupported =
+      false ||
+      iid.equals(Ci.nsISupports) ||
+      iid.equals(Ci.nsIChannel) ||
+      iid.equals(Ci.nsIRequest)
+    if (isSupported) {
+      return this
+    } else {
+      throw Cr.NS_ERROR_NO_INTERFACE
+    }
+  }
+  get contentType() {
+    const { mimeType } = this
+    if (mimeType != null) {
+      return mimeType
+    } else {
+      return UNKNOWN_CONTENT_TYPE
+    }
+  }
+  set contentType(_) {}
   toJSON() {
     return {
       scheme: this.URI.scheme,
@@ -373,7 +393,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
       )
 
     if (contentType) {
-      this.contentType = contentType
+      this.mimeType = contentType
     }
 
     if (contentLength) {
@@ -386,13 +406,17 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
 
     this.status = Cr.NS_OK
     this.readyState = ACTIVE
-
-    const { listener, context } = this
     this.byteOffset = 0
-    try {
-      listener && listener.onStartRequest(this, context)
-    } catch (_) {
-      console.error(_)
+
+    // If contentType is known start request, otherwise defer until it
+    // can be inferred on first data chunk.
+    if (this.mimeType != null) {
+      const { listener, context } = this
+      try {
+        listener && listener.onStartRequest(this, context)
+      } catch (_) {
+        console.error(_)
+      }
     }
   }
   body({ content }) {
@@ -402,6 +426,21 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     const { byteLength } = content
     stream.setData(content, 0, byteLength)
 
+    const { listener, context } = this
+
+    // If mimeType is not set then we need detect it from the arrived content
+    // and start request. We know start was deffered so that we would could
+    // detect contentType.
+    if (this.mimeType == null) {
+      this.mimeType = contentSniffer.getMIMETypeFromContent(
+        this,
+        new Uint8Array(content),
+        byteLength
+      )
+
+      listener && listener.onStartRequest(this, context)
+    }
+
     debug &&
       console.log(
         `body${pid} ${JSON.stringify(
@@ -409,13 +448,13 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
         )} ${stream.available()} ${byteLength} ${content.toString()} `
       )
 
-    const { listener, context } = this
     listener && listener.onDataAvailable(this, context, stream, 0, byteLength)
     this.byteOffset += byteLength
   }
 
-  end(_) {
+  end({ status }) {
     this.readyState = CLOSED
+    this.status = status
     this.contentLength = this.byteOffset
     debug && console.log(`end${pid} ${JSON.stringify(this)}`)
     this.close()
@@ -455,7 +494,7 @@ class ProtocolHandler /*::implements nsIProtocolHandler*/ {
     this.handler = handler
     this.protocolFlags =
       Ci.nsIProtocolHandler.URI_STD |
-      Ci.nsIProtocolHandler.URI_LOADABLE_BY_SUBSUMERS |
+      Ci.nsIProtocolHandler.URI_IS_UI_RESOURCE |
       Ci.nsIProtocolHandler.URI_IS_POTENTIALLY_TRUSTWORTHY
   }
   toJSON() {
@@ -624,6 +663,7 @@ export type Body = {
 
 export type End = {
   type: "end",
+  status:nsresult,
   requestID: string
 }
 

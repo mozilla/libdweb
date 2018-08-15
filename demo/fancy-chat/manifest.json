@@ -1,0 +1,40 @@
+{
+  "manifest_version": 2,
+  "version": "0.1",
+  "name": "fancy-chat@libdweb",
+  "description": "Sample P2P Chat",
+  "permissions": [
+    "tabs",
+    "activeTab"
+  ],
+  "experiment_apis": {
+    "UDPSocket": {
+      "schema": "../../src/UDPSocket/UDPSocket.json",
+      "child": {
+        "scopes": [
+          "addon_child"
+        ],
+        "paths": [
+          [
+            "UDPSocket"
+          ]
+        ],
+        "script": "../../src/UDPSocket/Socket.js"
+      }
+    }
+  },
+  "icons": {
+    "48": "./message-circle.svg",
+    "96": "./message-circle.svg"
+  },
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+  "browser_action": {
+    "browser_style": true,
+    "default_icon": "icon.png",
+    "default_title": "Fancy Chat"
+  }
+}

@@ -1,6 +1,7 @@
+// listen for services
 void (async () => {
   const services = browser.ServiceDiscovery.discover({
-    type: "dweb",
+    type: "http",
     protocol: "tcp"
   })
 
@@ -15,33 +16,31 @@ void (async () => {
         protocol: service.protocol
       })
 
-      /*
-      for (const {
-        address,
-        port,
-        host,
-        attributes
-      } of await service.addresses()) {
-        console.log(
-          `Service ${service.name} available at ${host} ${address}:${port}`,
-          attributes
-        )
+      if (service.attributes["url"]) {
+        console.log("service attrs", service.attributes["url"])
+        browser.notifications.create(service.attributes["url"], {
+          type: "basic",
+          iconUrl: browser.extension.getURL("icons/link-48.png"),
+          title: service.name,
+          message: service.attributes["url"]
+        })
       }
-      */
     }
   }
   console.log("End discovery")
 })()
 
+// publish service
 void (async () => {
   const service = await browser.ServiceDiscovery.announce({
-    name: "My dweb service",
-    type: "dweb",
+    name: "test service!",
+    type: "http",
     protocol: "tcp", // must be "tcp" or "udp"
     port: 3000, // omitting port will just assign you available one.
     attributes: {
       // optional txt records
-      version: "1.0."
+      version: "1.0.",
+      url: "http://10.30.65.170/dnotify"
     }
   })
 
@@ -52,9 +51,9 @@ void (async () => {
     port: service.port,
     attributes: service.attributes // Will be null if was omitted
   })
-
-  // Wait for a 1 minute and expire service announcement
-  await new Promise(timeout => setTimeout(timeout, 60 * 1000))
-  await service.expire()
-  console.log(`Service expired`)
 })()
+
+// listen for notification clicks
+browser.notifications.onClicked.addListener(async function(url) {
+  await browser.tabs.create({ url: url })
+})

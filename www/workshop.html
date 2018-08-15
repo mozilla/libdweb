@@ -1,0 +1,241 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Browser Superpowers - Building the Distributed Web with Extensions</title>
+  <meta name="description" content="Browser Superpowers - Building the Distributed Web with Extensions">
+  <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1, maximum-scale=1">
+
+    <!-- for web -->
+    <link rel="shortcut icon" href="https://secure.gravatar.com/avatar/16de8554bd4d2ec03c1c009935ea61c9?size=16" />
+
+    <!-- for apple -->
+    <link rel="shortcut icon" href="https://secure.gravatar.com/avatar/16de8554bd4d2ec03c1c009935ea61c9" />
+    <link rel="apple-touch-icon" href="https://secure.gravatar.com/avatar/16de8554bd4d2ec03c1c009935ea61c9" />
+
+    <!-- Schema.org for Google -->
+    <meta itemprop="name" content="Browser Superpowers - Building the Distributed Web with Extensions">
+    <meta itemprop="description" content="Browser Superpowers - Building the Distributed Web with Extensions">
+    <meta itemprop="image" content="https://secure.gravatar.com/avatar/16de8554bd4d2ec03c1c009935ea61c9">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@dietrich">
+    <meta name="twitter:title" content="Browser Superpowers - Building the Distributed Web with Extensions">
+    <meta name="twitter:description" content="Browser Superpowers - Building the Distributed Web with Extensions">
+    <meta name="twitter:creator" content="@dietrich">
+    <meta name="twitter:image" content="https://metafluff.com/octo.jpg">
+    <meta name="twitter:image:alt" content="Browser Superpowers - Building the Distributed Web with Extensions">
+
+    <!-- Open Graph for Facebook, Pinterest -->
+    <meta property="og:title" content="Browser Superpowers - Building the Distributed Web with Extensions" />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://mozilla.github.io/libdweb/workshop.html" />
+    <meta property="og:image" content="https://metafluff.com/octo.jpg" />
+    <meta property="og:description" content="Browser Superpowers - Building the Distributed Web with Extensions" />
+    <meta property="og:site_name" content="Dietrich Ayala" />
+
+  <link rel="stylesheet" href="workshop.css">
+</head>
+<body>
+<main>
+
+  <section id="title" class="intro">
+    <h1>Browser Superpowers</h1>
+    <h2>Building the Distributed Web with Extensions</h2>
+    <h3>Decentralized Web Summit, Thursday August 2, 2018</h3>
+    <h3>
+      Dietrich Ayala
+      / <a href="https://twitter.com/dietrich">@dietrich</a>
+    </h3>
+    <h3>
+      Andre Garzia 
+      / <a href="https://twitter.com/soapdog">@soapdog</a>
+    </h3>
+    <h3>
+      Irakli Gozalishvili 
+      / <a href="https://twitter.com/gozala">@gozala</a>
+    </h3>
+  </section>
+
+  <section class="mozilla splash background-image" style="background-image: url(imgs/mozilla-org.png);">
+    <pre hidden>
+      * most know us by firefox
+      * but firefox is a tool we use to guide the direction of web tech
+    </pre>
+  </section>
+
+  <section class="center splash">
+    <h1>Pre-requisites
+    <h1>Extensions 101
+    <h1>Libdweb
+    <pre hidden>
+    </pre>
+  </section>
+
+  <section class="center splash">
+    <h1>node.js + npm
+    <h1>Firefox Nightly (or DE)
+    <pre hidden>
+    </pre>
+  </section>
+
+  <section class="splash">
+    <h2>git clone https://github.com/mozilla/libdweb
+		<h2>cd libdweb
+		<h2>npm install
+    <pre hidden>
+    </pre>
+  </section>
+
+  <section class="center splash">
+    <h1>npm install --global web-ext
+    <pre hidden>
+    </pre>
+  </section>
+
+  <section class="center">
+		<h1>Extensions 101</h1>
+    <pre hidden>
+    </pre>
+  </section>
+
+  <section class="webextanatomy splash background-image-contain" style="background-image: url(imgs/webextension-anatomy.png);">
+    <pre hidden>
+    </pre>
+  </section>
+
+  <section class="center splash">
+    <h1>manifest.json</h1>
+    <pre class="code">
+{
+  "manifest_version": 2,
+  "name": "Cat Gifs!",
+  "version": "1.0",
+  "browser_action": {
+    "default_title": "Cat Gifs!"
+  }
+}
+    </pre>
+    <pre hidden>
+    </pre>
+  </section>
+
+  <section class="center">
+    <p style="text-align: center; word-spacing: 0.3rem; line-height: 2.3rem;">
+    alarms
+    bookmarks
+    browserAction
+    browserSettings
+    browsingData
+    clipboard
+    commands
+    contentScripts
+    contextualIdentities
+    cookies
+    devtools.inspectedWindow
+    devtools.network
+    devtools.panels
+    dns
+    downloads
+    events
+    extension
+    extensionTypes
+    find
+    history
+    i18n
+    identity
+    idle
+    management
+    menus
+    notifications
+    omnibox
+    pageAction
+    permissions
+    pkcs11
+    privacy
+    proxy
+    runtime
+    search
+    sessions
+    sidebarAction
+    storage
+    tabs
+    theme
+    topSites
+    types
+    webNavigation
+    webRequest
+    windows
+    </p>
+    <pre hidden>
+    </pre>
+  </section>
+
+  <section class="center splash">
+		<h1>web-ext CLI</h1>
+    <h2>$ web-ext run
+    <h2>$ web-ext build
+    <h2>$ web-ext help
+    <pre hidden>
+    </pre>
+  </section>
+
+  <section class="center splash">
+		<h1>User Interface APIs</h1>
+    <h2>sidebars, popups
+    <h2>toolbar buttons
+    <h2>context menus, notifications
+    <h2>options pages
+    <pre hidden>
+    </pre>
+  </section>
+
+  <section class="center">
+		<h1>Content Scripts</h1>
+    <pre hidden>
+    </pre>
+  </section>
+
+  <!--
+  <section class="center">
+		<h1>Native Messaging</h1>
+    <pre hidden>
+    </pre>
+  </section>
+
+  <section class="center">
+		<h1>Your First Extension</h1>
+    <pre hidden>
+    </pre>
+  </section>
+
+  <section class="center">
+		<h1>code / repo / etc</h1>
+    <pre hidden>
+    </pre>
+  </section>
+  -->
+
+  <section class="center splash">
+		<h1>Libdweb</h1>
+    <h2>mozilla/libdweb</h2>
+    <pre hidden>
+    </pre>
+  </section>
+
+
+  <!--
+  <section id="next" class="splash megabig">
+    <center>
+			<h1>Thx</h1>
+    </center>
+    <pre hidden>
+    </pre>
+  </section>
+  -->
+
+</main>
+  <script src="workshop.js" defer></script>
+</body>
+</html>

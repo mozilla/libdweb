@@ -4,7 +4,7 @@
 [![package][version.icon] ![downloads][downloads.icon]][package.url]
 [![styled with prettier][prettier.icon]][prettier.url]
 
-This repositiory hosts a community effort to implement [experimental APIs][webextension experiments] for Firefox WebExtensions with a goal of enabling dweb protocols in Firefox through browser add-ons. The long term goal of this project is to integrate these APIs into the [WebExtensions][new apis] ecosystem.
+This repository hosts a community effort to implement [experimental APIs][webextension experiments] for Firefox WebExtensions with a goal of enabling dweb protocols in Firefox through browser add-ons. The long term goal of this project is to integrate these APIs into the [WebExtensions][new apis] ecosystem.
 
 ## Participation
 
@@ -12,7 +12,7 @@ You can help this effort in following ways:
 
 1. Use these APIs to make something illustrating its value, to build the case for adoption in the core WebExtension API set.
 2. Get involved in driving this effort: Help with an API implementation, maintenance, testing, code samples, etc.
-3. Help build [API adapters][api-adapters] to enable seamless integration with existing libraries.
+3. Help build [API adapters][] to enable seamless integration with existing libraries.
 4. Join our IRC channel: #dweb on irc.mozilla.org
 
 ## Status: In active development
@@ -167,9 +167,9 @@ void (async () => {
 
 #### Demo
 
-You can try demo WebExtension that displays discovers and displayes `http`
+You can try demo WebExtension that discovers and displays `http`
 services in your local network when button in the toolbar is clicked. You can
-run it in [Firefox Nightly][] via following command
+run it in [Firefox Nightly][] via the following command
 
 ```
 npm run demo:discovery
@@ -198,7 +198,7 @@ void (async () => {
 })()
 ```
 
-Call to `FileSystem.mount` will notify user that corresponding WebExtension is requesting `read / write` access to the file system, which user can deny or grant by choosing a directory. If user denies to access then promise returned by `mount` will be rejected, if user chooses to grant access to a speicific directory promise will resolve to an object like.
+Call to `FileSystem.mount` will notify user that corresponding WebExtension is requesting `read / write` access to the file system, which user can deny or grant by choosing a directory. If user denies to access then promise returned by `mount` will be rejected, if user chooses to grant access to a specific directory the promise will resolve to an object like:
 
 ```js
 {
@@ -208,11 +208,11 @@ Call to `FileSystem.mount` will notify user that corresponding WebExtension is r
 }
 ```
 
-The rest of the example that writes content into a file should be pretty stright forward.
+The rest of the example that writes content into a file should be pretty straight forward.
 
-> **Note:** Granted access is be preserved across sessions, and WebExtension could mount same directory without prompting a user again.
+> **Note:** Granted access will be preserved across sessions, and WebExtension could mount same directory without prompting a user again.
 
-Following is more complete example that will either mount directory that user has already granted access to or request access to new directory otherwise.
+Following is a more complete example that will either mount directory that user has already granted access to or request access to new directory otherwise.
 
 ```js
 void (async () => {
@@ -230,9 +230,9 @@ void (async () => {
 })()
 ```
 
-> **Note:** Attempt to mount a URL that user has not previously granted access to will fail without even prompting a user.
+> **Note:** Attempting to mount a URL that user has not previously granted access to will fail without even prompting a user.
 
-FileSystem API has many other functions available you can follow the links for detailed API interface definitions of [`browser.FileSystem`][] and [`browser.File`][]
+FileSystem API has many other functions available. You can follow the links for detailed API interface definitions of [`browser.FileSystem`][] and [`browser.File`][]
 
 You can try demo WebExtension that provides a [REPL][] in the sidebar exposing all of the FileSystem API, which you can run in [Firefox Nightly][] via following command
 
@@ -286,7 +286,24 @@ void (async () => {
 
 > **Note**: UDPSocket API unlike one in nodejs is not going to resolve hostnames like `"localhost"`. You need to use WebExtensions [dns][webextensions dns] API to resolve hostnames.
 
+
 #### Demo
+
+
+##### P2P Chat Demo
+
+You can try demo WebExtension that uses UDP multicasting to do peer-to-peer chat in a firefox sidebar. You can run in [Firefox Nightly][] via following command
+
+> **Note**: This is a demo illustrates UDP and Multicasting API.
+
+```
+npm run demo:p2p-chat
+```
+
+![p2p-chat](./demo/p2p-chat/chat_demo.png)
+
+##### REPL Demo
+
 
 You can try demo WebExtension that provides a [REPL][] in the sidebar exposing all of the UDPSocket API, which you can run in [Firefox Nightly][] via following command
 
@@ -349,6 +366,7 @@ void (async () => {
 })()
 ```
 
+
 [travis.icon]: https://travis-ci.com/mozilla/libdweb.svg?branch=master
 [travis.url]: https://travis-ci.com/mozilla/libdweb
 [version.icon]: https://img.shields.io/npm/v/libdweb.svg
@@ -368,7 +386,7 @@ void (async () => {
 [file system]: https://github.com/mozilla/libdweb/issues/8
 [web-ext]: https://www.npmjs.com/package/web-ext
 [firefox nightly]: https://blog.nightly.mozilla.org/
-[api-adapters]: https://github.com/libdweb
+[api adapters]: https://github.com/libdweb
 [webextensions protocol_handlers]: https://developer.mozilla.org/en-US/Add-ons/WebExtensions/manifest.json/protocol_handlers
 [async iterator]: https://github.com/tc39/proposal-async-iteration#async-iterators-and-async-iterables
 [`arraybuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
