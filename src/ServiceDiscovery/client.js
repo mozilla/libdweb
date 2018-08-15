@@ -352,8 +352,8 @@ interface Host {
     DiscoveryClient.subscribe()
 
     return {
-      tcp: "tcp",
-      udp: "udp",
+      TCP: "tcp",
+      UDP: "udp",
       announce: ServiceClient.announce,
       discover: DiscoveryClient.discover
     }
