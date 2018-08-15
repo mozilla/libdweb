@@ -232,3 +232,19 @@ test("discovery with attributes", async test => {
   await announcement
   await discovery
 })
+
+test("unwrappable exceptions #67", async test => {
+  try {
+    const service = await browser.ServiceDiscovery.announce({
+      name: "error",
+      type: "boom",
+      protocol: "crash"
+    })
+    test.fail(`Exception was expected on wrong protocol`)
+  } catch (error) {
+    test.ok(
+      error.message.includes(`must be either "udp" or "tcp"`),
+      "error is unwrappable"
+    )
+  }
+})
