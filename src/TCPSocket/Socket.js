@@ -50,6 +50,9 @@ Cu.importGlobalProperties(["URL"])
     "resource://gre/modules/ExtensionUtils.jsm",
     {}
   )
+  const env = Cc["@mozilla.org/process/environment;1"].getService(
+    Ci.nsIEnvironment
+  )
 
   // const url = Components.stack.filename.split("->").pop()
   // const { TCPSocketAdapter, TCPServerSocketAdapter } = Cu.import(
@@ -80,14 +83,14 @@ Cu.importGlobalProperties(["URL"])
 
   class Server {
     /*::
-  socket:TCPServerSocketAPI
-  closed:Promise<void>
-  onerrored:(Error) => void
-  onclosed:() => void
-  context:BaseContext
-  connections:Connections
-  localPort:number
-  */
+    socket:TCPServerSocketAPI
+    closed:Promise<void>
+    onerrored:(Error) => void
+    onclosed:() => void
+    context:BaseContext
+    connections:Connections
+    localPort:number
+    */
     constructor(
       socket /*:TCPServerSocketAPI*/,
       localPort /*:number*/,
@@ -109,16 +112,17 @@ Cu.importGlobalProperties(["URL"])
     }
     static async new(options /*:ServerOptions*/) /*: Promise<Server>*/ {
       try {
-        console.log(
-          `TCPServerSocket.serve ${options.port} ${String(options.backlog)}`
-        )
+        debug &&
+          console.log(
+            `TCPServerSocket.serve ${options.port} ${String(options.backlog)}`
+          )
         const socket = new TCPServerSocketAdapter(
           options.port,
           { binaryType: "arraybuffer" },
           options.backlog || undefined
         )
 
-        console.log(`new TCPServerSocket1 ${socket.localPort}`)
+        debug && console.log(`new TCPServerSocket ${socket.localPort}`)
         const connections = new Connections()
         const server = new Server(socket, socket.localPort, connections)
 
@@ -151,8 +155,8 @@ Cu.importGlobalProperties(["URL"])
 
   class Connections {
     /*::
-  requests:{resolve(?TCPSocketAPI):void, reject(Error):void}[]
-  */
+    requests:{resolve(?TCPSocketAPI):void, reject(Error):void}[]
+    */
     constructor() {
       this.requests = []
     }
@@ -189,7 +193,7 @@ Cu.importGlobalProperties(["URL"])
 
       context.callOnClose({
         close() {
-          console.log(`!!!! Unload ${sockets.size}`)
+          debug && console.log(`TCPSocket API unload ${sockets.size}`)
           for (const socket of sockets) {
             socket.closeImmediately()
           }
@@ -216,9 +220,9 @@ Cu.importGlobalProperties(["URL"])
         context.cloneScope,
         class TCPClient {
           /*::
-        opened:Promise<void>
-        closed:Promise<void>
-        */
+          opened:Promise<void>
+          closed:Promise<void>
+          */
           constructor() {
             throw TypeError("Illegal constructor")
           }
@@ -281,9 +285,9 @@ Cu.importGlobalProperties(["URL"])
         AsAsyncIterator(
           class TCPConnections {
             /*::
-          @@asyncIterator: () => self
-          // server:Server
-          */
+            @@asyncIterator: () => self
+            // server:Server
+            */
             constructor() {
               throw TypeError("Illegal constructor")
             }
@@ -301,6 +305,7 @@ Cu.importGlobalProperties(["URL"])
             }
             return() {
               derefConnections(this).close()
+              return done
             }
           }
         )
@@ -310,8 +315,8 @@ Cu.importGlobalProperties(["URL"])
         context.cloneScope,
         class TCPServer {
           /*::
-        connections:AsyncIterator<ClientSocket>
-        */
+          connections:AsyncIterator<ClientSocket>
+          */
           constructor() {
             throw TypeError("Illegal constructor")
           }
@@ -557,31 +562,31 @@ Cu.importGlobalProperties(["URL"])
 
   class TCPSocketAdapter /*::implements TCPSocketAPI*/ {
     /*::
-  host:string;
-  port:number;
-  binaryType: TCPSocketBinaryType;
-  bufferedAmount:number;
-  transport:nsISocketTransport;
-  readyState:TCPReadyState;
-  ssl:boolean;
-  socketInputStream:?nsIInputStream
-  socketOutputStream:?nsIOutputStream
-  binaryInputStream:nsIBinaryInputStream
-  inputStreamPump:?nsIInputStreamPump
-  suspendCount:number
-  asyncCopierActive:boolean
-  waitingForDrain:boolean
-  waitingForStartTLS:boolean
-  pendingData:nsIInputStream[]
-  pendingDataAfterStartTLS:nsIInputStream[]
-  copyObserver:nsIRequestObserver
+    host:string;
+    port:number;
+    binaryType: TCPSocketBinaryType;
+    bufferedAmount:number;
+    transport:nsISocketTransport;
+    readyState:TCPReadyState;
+    ssl:boolean;
+    socketInputStream:?nsIInputStream
+    socketOutputStream:?nsIOutputStream
+    binaryInputStream:nsIBinaryInputStream
+    inputStreamPump:?nsIInputStreamPump
+    suspendCount:number
+    asyncCopierActive:boolean
+    waitingForDrain:boolean
+    waitingForStartTLS:boolean
+    pendingData:nsIInputStream[]
+    pendingDataAfterStartTLS:nsIInputStream[]
+    copyObserver:nsIRequestObserver
 
-  onopen:?({type:"open"}) => mixed
-  onclose:?({type:"close"}) => mixed
-  ondrain:?({type:"drain"}) => mixed
-  ondata:?({type:"data", data:ArrayBuffer}) => mixed
-  onerror:?(ErrorEventAPI) => mixed
-  */
+    onopen:?({type:"open"}) => mixed
+    onclose:?({type:"close"}) => mixed
+    ondrain:?({type:"drain"}) => mixed
+    ondata:?({type:"data", data:ArrayBuffer}) => mixed
+    onerror:?(ErrorEventAPI) => mixed
+    */
     constructor(
       host /*:string*/,
       port /*:number*/,
@@ -852,7 +857,7 @@ Cu.importGlobalProperties(["URL"])
       }
     }
     static send(self, stream, byteLength) {
-      console.log(`TCPSocketAdapter.send ${stream.available()}`)
+      debug && console.log(`TCPSocketAdapter.send ${stream.available()}`)
       self.bufferedAmount += byteLength
       const isBufferFull = self.bufferedAmount > BUFFER_SIZE
       if (isBufferFull) {
@@ -897,9 +902,10 @@ Cu.importGlobalProperties(["URL"])
       const $target /*:nsISupports<nsIEventTarget>*/ = socketTransportService
       const target = $target.QueryInterface(Ci.nsIEventTarget)
 
-      console.log(
-        `TCPSocketAdapter.ensureCopying copy ${stream.available()} bytes`
-      )
+      debug &&
+        console.log(
+          `TCPSocketAdapter.ensureCopying copy ${stream.available()} bytes`
+        )
 
       copier.init(
         stream,
@@ -915,7 +921,7 @@ Cu.importGlobalProperties(["URL"])
       copier.asyncCopy(self.copyObserver, null)
     }
     static notifyCopyComplete(self, status) {
-      console.log(`TCPSocketAdapter.notifyCopyComplete ${status}`)
+      debug && console.log(`TCPSocketAdapter.notifyCopyComplete ${status}`)
       self.asyncCopierActive = false
       let bufferedAmount = 0
       for (const stream of self.pendingData) {
@@ -958,6 +964,7 @@ Cu.importGlobalProperties(["URL"])
           self.socketOutputStream = null
         }
         self.readyState = "closed"
+        delete self.copyObserver
         TCPSocketAdapter.fireEvent(self, "close")
       }
     }
@@ -988,7 +995,7 @@ Cu.importGlobalProperties(["URL"])
       TCPSocketAdapter.fireDataEvent(this, buffer)
     }
     onStopRequest(request, context, status) {
-      console.log(`TCPSocketAdapter.notifyReadComplete ${status}`)
+      debug && console.log(`TCPSocketAdapter.notifyReadComplete ${status}`)
       this.inputStreamPump = null
       if (this.asyncCopierActive && status === Cr.NS_OK) {
         // If we have some buffered output still, and status is not an
@@ -1057,17 +1064,16 @@ Cu.importGlobalProperties(["URL"])
 
   class CopierObserver {
     /*::
-  owner:TCPSocketAdapter
-  */
+    owner:TCPSocketAdapter
+    */
     constructor(socket) {
       this.owner = socket
     }
     onStartRequest(request, context) {}
     onStopRequest(request, context, status) {
       TCPSocketAdapter.notifyCopyComplete(this.owner, status)
-      delete this.owner
     }
   }
 
-  const debug = true
+  const debug = env.get("MOZ_ENV") === "DEBUG"
 }

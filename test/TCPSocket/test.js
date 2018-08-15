@@ -104,3 +104,89 @@ test("server / client exchange", async test => {
 
   test.pass("stopped receiving connections")
 })
+
+test("send multiple messages #66", async test => {
+  const encoder = new TextEncoder()
+  const decoder = new TextDecoder()
+  const server = await browser.TCPSocket.listen({ port: 8090 })
+
+  const serve = (async server => {
+    for await (const client of server.connections) {
+      test.equal(client.readyState, "open", "readyState")
+      test.equal(client.host, "127.0.0.1")
+      test.equal(typeof client.port, "number")
+      test.equal(client.ssl, false)
+      test.equal(client.bufferedAmount, 0)
+      test.ok(client.opened instanceof Promise)
+      test.ok(client.closed instanceof Promise)
+      test.ok(typeof client.write === "function", "socket.write is function")
+      test.ok(typeof client.read === "function", "socket.read is function")
+      test.ok(
+        typeof client.suspend === "function",
+        "socket.suspend is a function"
+      )
+      test.ok(
+        typeof client.resume === "function",
+        "socket.resume is a function"
+      )
+      test.ok(typeof client.close === "function", "socket.close is a function")
+      test.ok(
+        typeof client.closeImmediately === "function",
+        "socket.closeImmediately is a function"
+      )
+
+      while (true) {
+        const message = await client.read()
+        const payload = decoder.decode(message)
+        test.equal(
+          typeof payload,
+          "string",
+          `server received message: ${payload}`
+        )
+
+        await client.write(encoder.encode(`<echo>${payload}</echo>`).buffer)
+
+        if (payload === "bye") {
+          test.pass("close client")
+          return await client.close()
+        }
+      }
+    }
+  })(server)
+
+  const client = await browser.TCPSocket.connect({
+    host: "localhost",
+    port: 8090
+  })
+
+  test.equal(client.readyState, "connecting", "readyState")
+  await client.opened
+  test.equal(client.host, "localhost")
+  test.equal(client.port, 8090)
+  test.equal(client.ssl, false)
+  test.equal(client.bufferedAmount, 0)
+  test.ok(client.opened instanceof Promise)
+  test.ok(client.closed instanceof Promise)
+  test.ok(typeof client.write === "function", "socket.write is function")
+  test.ok(typeof client.read === "function", "socket.read is function")
+  test.ok(typeof client.suspend === "function", "socket.suspend is a function")
+  test.ok(typeof client.resume === "function", "socket.resume is a function")
+  test.ok(typeof client.close === "function", "socket.close is a function")
+  test.ok(
+    typeof client.closeImmediately === "function",
+    "socket.closeImmediately is a function"
+  )
+
+  client.write(encoder.encode("hi").buffer)
+  const hi = await client.read()
+  test.equal(decoder.decode(hi), "<echo>hi</echo>", "received")
+
+  client.write(encoder.encode("bye").buffer)
+  const bye = await client.read()
+  test.equal(decoder.decode(bye), "<echo>bye</echo>", "received")
+
+  await serve
+  server.close()
+
+  test.pass("server stopped")
+})
