@@ -26,6 +26,8 @@
     "test:flow": "flow check",
     "test:tcp": "tape-ext test/TCPSocket",
     "test:api": "tape-ext test/API",
+    "test:fs": "tape-ext test/FileSystem",
+    "test:protocol": "tape-ext test/protocol",
     "test:dns-sd": "tape-ext test/ServiceDiscovery",
     "test:udp": "tape-ext test/UDPSocket",
     "precommit": "lint-staged",

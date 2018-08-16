@@ -1,0 +1,28 @@
+{
+  "manifest_version": 2,
+  "version": "0.1",
+  "name": "fs-test@libdweb",
+  "description": "test libdweb APIs",
+
+  "experiment_apis": {
+    "test": {
+      "schema": "../../src/test/test.json",
+      "child": {
+        "scopes": ["addon_child"],
+        "paths": [["test"]],
+        "script": "../../src/test/test.js"
+      }
+    },
+    "FileSystem": {
+      "schema": "../../src/FileSystem/FileSystem.json",
+      "parent": {
+        "scopes": ["addon_parent"],
+        "paths": [["FileSystem"]],
+        "script": "../../src/FileSystem/host.js"
+      }
+    }
+  },
+  "background": {
+    "scripts": ["test.js"]
+  }
+}
