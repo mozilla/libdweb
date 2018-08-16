@@ -26,6 +26,8 @@
     "test:flow": "flow check",
     "test:tcp": "tape-ext test/TCPSocket",
     "test:api": "tape-ext test/API",
+    "test:fs": "tape-ext test/FileSystem",
+    "test:protocol": "tape-ext test/protocol",
     "test:dns-sd": "tape-ext test/ServiceDiscovery",
     "precommit": "lint-staged",
     "demo": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging",

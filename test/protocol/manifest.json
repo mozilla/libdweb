@@ -1,0 +1,34 @@
+{
+  "manifest_version": 2,
+  "version": "0.1",
+  "name": "libdweb API tests",
+  "description": "test libdweb APIs",
+
+  "experiment_apis": {
+    "test": {
+      "schema": "../../src/test/test.json",
+      "child": {
+        "scopes": ["addon_child"],
+        "paths": [["test"]],
+        "script": "../../src/test/test.js"
+      }
+    },
+    "protocol": {
+      "schema": "../../src/protocol/protocol.json",
+      "child": {
+        "scopes": ["addon_child"],
+        "paths": [["protocol"]],
+        "script": "../../src/protocol/client.js"
+      },
+      "parent": {
+        "events": ["startup"],
+        "scopes": ["addon_parent"],
+        "paths": [["protocol"]],
+        "script": "../../src/protocol/host.js"
+      }
+    }
+  },
+  "background": {
+    "scripts": ["test.js"]
+  }
+}
