@@ -501,6 +501,24 @@
             "optional": true
           }
         }
+      },
+      {
+        "id": "RemoveDirOptions",
+        "type": "object",
+        "properties": {
+          "ignoreAbsent": {
+            "type": "boolean",
+            "optional": true
+          },
+          "recursive": {
+            "type": "boolean",
+            "optional": true
+          },
+          "ignorePermissions": {
+            "type": "boolean",
+            "optional": true
+          }
+        }
       }
     ],
     "properties": {},
