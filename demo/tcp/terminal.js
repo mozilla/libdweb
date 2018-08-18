@@ -172,7 +172,6 @@ const execute = async state => {
         break
       }
       case "connect": {
-        debugger
         const socket = await browser.TCPSocket.connect(params)
         const ref = fromSocket(socket)
         out.textContent = `socket: ${ref} ${JSON.stringify(socket, null, 2)}`
