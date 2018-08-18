@@ -657,7 +657,7 @@ class HostFileSystem /*::implements FileSystemManager*/ {
   ) /*: Promise<void>*/ {
     try {
       const file = await this.resolve(url)
-      return await OS.File.makeDir(file, options)
+      return await OS.File.makeDir(file, options || undefined)
     } catch (error) {
       return IOError.throw(error)
     }

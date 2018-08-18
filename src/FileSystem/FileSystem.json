@@ -475,6 +475,50 @@
             "optional": true
           }
         }
+      },
+      {
+        "id": "CreateDirOptions",
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "optional": true
+          },
+          "ignoreExisting": {
+            "type": "boolean",
+            "optional": true
+          },
+          "unixMode": {
+            "description":
+              "(ignored under non-Unix platforms) If specified, file creation mode, as per libc function open. If unspecified, files are created with a default mode of 0600 (file is private to the user, the user can read and write).",
+            "type": "number",
+            "optional": true
+          },
+          "winSecurity": {
+            "description":
+              "(ignored under non-Windows platforms) If specified, a security policy, as per Windows function CreateFile. If unspecified, no security attributes",
+            "type": "number",
+            "optional": true
+          }
+        }
+      },
+      {
+        "id": "RemoveDirOptions",
+        "type": "object",
+        "properties": {
+          "ignoreAbsent": {
+            "type": "boolean",
+            "optional": true
+          },
+          "recursive": {
+            "type": "boolean",
+            "optional": true
+          },
+          "ignorePermissions": {
+            "type": "boolean",
+            "optional": true
+          }
+        }
       }
     ],
     "properties": {},
