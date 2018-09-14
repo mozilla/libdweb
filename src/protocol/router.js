@@ -53,10 +53,6 @@ const contentSecManager = Cc[
   "@mozilla.org/contentsecuritymanager;1"
 ].getService(Ci.nsIContentSecurityManager)
 
-const contentSniffer = Cc[
-  "@mozilla.org/network/content-sniffer;1"
-].createInstance(Ci.nsIContentSniffer)
-
 const isParent = appinfo.processType === appinfo.PROCESS_TYPE_DEFAULT
 const { ID } = Components
 
@@ -438,11 +434,16 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     // and start request. We know start was deffered so that we would could
     // detect contentType.
     if (this.mimeType == null) {
-      this.mimeType = contentSniffer.getMIMETypeFromContent(
-        this,
-        new Uint8Array(content),
-        byteLength
-      )
+      try {
+        const contentSniffer = Cc[
+          "@mozilla.org/network/content-sniffer;1"
+        ].createInstance(Ci.nsIContentSniffer)
+        this.mimeType = contentSniffer.getMIMETypeFromContent(
+          this,
+          new Uint8Array(content),
+          byteLength
+        )
+      } catch (_) {}
 
       listener && listener.onStartRequest(this, context)
     }
