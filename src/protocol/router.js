@@ -41,7 +41,6 @@ const { ppmm, cpmm, mm, appinfo } = Cu.import(
   {}
 ).Services
 
-const { XPCOMUtils } = Cu.import("resource://gre/modules/XPCOMUtils.jsm", {})
 const { setTimeout } = Cu.import("resource://gre/modules/Timer.jsm", {})
 const { console } = Cu.import("resource://gre/modules/Console.jsm", {})
 const PR_UINT32_MAX = 0xffffffff
@@ -53,10 +52,6 @@ const { generateUUID } = Cc["@mozilla.org/uuid-generator;1"].getService(
 const contentSecManager = Cc[
   "@mozilla.org/contentsecuritymanager;1"
 ].getService(Ci.nsIContentSecurityManager)
-
-const contentSniffer = Cc[
-  "@mozilla.org/network/content-sniffer;1"
-].createInstance(Ci.nsIContentSniffer)
 
 const isParent = appinfo.processType === appinfo.PROCESS_TYPE_DEFAULT
 const { ID } = Components
@@ -153,7 +148,6 @@ class TransportSecurityInfo /*::implements nsITransportSecurityInfo*/ {
   shortSecurityDescription:string
   errorCode:nsresult
   errorMessage:string
-  QueryInterface:*
   SSLStatus:*
   state:string
   */
@@ -162,10 +156,6 @@ class TransportSecurityInfo /*::implements nsITransportSecurityInfo*/ {
     this.securityState = Ci.nsIWebProgressListener.STATE_IS_SECURE
     this.errorCode = Cr.NS_OK
     this.shortSecurityDescription = "Content Addressed"
-    this.QueryInterface = XPCOMUtils.generateQI([
-      Ci.nsITransportSecurityInfo,
-      Ci.nsISSLStatusProvider
-    ])
     this.SSLStatus = {
       cipherSuite: "TLS_ECDH_ECDSA_WITH_AES_128_GCM_SHA256",
       // TLS_VERSION_1_2
@@ -179,6 +169,18 @@ class TransportSecurityInfo /*::implements nsITransportSecurityInfo*/ {
         isSelfSigned: true,
         validity: {}
       }
+    }
+  }
+  QueryInterface(iid) {
+    const isSupported =
+      false ||
+      iid.equals(Ci.nsISupports) ||
+      iid.equals(Ci.nsITransportSecurityInfo) ||
+      iid.equals(Ci.nsISSLStatusProvider)
+    if (isSupported) {
+      return this
+    } else {
+      throw Cr.NS_ERROR_NO_INTERFACE
     }
   }
 }
@@ -432,11 +434,16 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     // and start request. We know start was deffered so that we would could
     // detect contentType.
     if (this.mimeType == null) {
-      this.mimeType = contentSniffer.getMIMETypeFromContent(
-        this,
-        new Uint8Array(content),
-        byteLength
-      )
+      try {
+        const contentSniffer = Cc[
+          "@mozilla.org/network/content-sniffer;1"
+        ].createInstance(Ci.nsIContentSniffer)
+        this.mimeType = contentSniffer.getMIMETypeFromContent(
+          this,
+          new Uint8Array(content),
+          byteLength
+        )
+      } catch (_) {}
 
       listener && listener.onStartRequest(this, context)
     }
@@ -601,13 +608,17 @@ class RequestHandler {
   requestID: number
   +requests: { [string]: Channel }
   +pid: string
-  QueryInterface: *
   */
   constructor() {
     this.requestID = 0
     this.requests = createDict()
     this.pid = `Handler${pid}`
-    this.QueryInterface = XPCOMUtils.generateQI([Ci.nsIMessageListener])
+  }
+  QueryInterface(iid /*: nsIIDRef<nsIMessageListener<any>> */) {
+    if (iid.equals(Ci.nsISupports) || iid.equals(Ci.nsIMessageListener)) {
+      return this
+    }
+    throw Cr.NS_ERROR_NO_INTERFACE
   }
   channel(
     url /*: nsIURI */,
