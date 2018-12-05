@@ -1,0 +1,35 @@
+{
+  "manifest_version": 2,
+  "version": "0.1",
+  "name": "httpd@libdweb",
+  "description": "Extension containing libdweb httpd demo",
+  "permissions": [],
+  "experiment_apis": {
+    "TCPSocket": {
+      "schema": "../../src/TCPSocket/TCPSocket.json",
+      "child": {
+        "scopes": [
+          "addon_child"
+        ],
+        "paths": [
+          [
+            "TCPSocket"
+          ]
+        ],
+        "script": "../../src/TCPSocket/Socket.js"
+      }
+    }
+  },
+  "icons": {
+    "48": "../discovery/logo-flyweb-grey.svg",
+    "96": "../discovery/logo-flyweb-grey.svg"
+  },
+  "sidebar_action": {
+    "default_icon": {
+      "16": "../discovery/logo-flyweb-grey.svg",
+      "32": "../discovery/logo-flyweb-grey.svg"
+    },
+    "default_title": "Web Server",
+    "default_panel": "server.html"
+  }
+}
