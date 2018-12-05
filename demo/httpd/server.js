@@ -5,20 +5,15 @@
 var encoder = new TextEncoder()
 var decoder = new TextDecoder()
 
-var serve = async context => {
-  const server = await browser.TCPSocket.listen({ port: 3000 })
-  context.server = server
-  console.log("Server:", server)
+var createWebServer = async (port, requestHandler) => {
+  async function listen() {
+    const server = await browser.TCPSocket.listen({ port: port })
 
-  async function listen(server) {
     for await (const client of server.connections) {
-      console.log("Connection:", client)
-      context.connection = client
       const message = await client.read()
       const decodedMessage = decoder.decode(message)
-      console.log("Received request:", decodedMessage)
-
       const marker = decodedMessage.indexOf("\r\n\r\n")
+
       if (marker !== -1) {
         const reqHeader = decodedMessage.slice(0, marker).toString()
         const body = decodedMessage.slice(marker + 4).toString()
@@ -31,7 +26,7 @@ var serve = async context => {
             [key.trim().toLowerCase()]: value.trim()
           }
         }, {})
-        // This object will be sent to the handleRequest callback.
+
         const request = {
           method: reqLine[0],
           url: reqLine[1],
@@ -41,35 +36,60 @@ var serve = async context => {
         }
 
         console.dir("request", request)
+
+        let status = 200,
+          statusText = "OK",
+          headersSent = false
+        const responseHeaders = {
+          server: "Firefox, yeah, really"
+        }
+
+        function setHeader(key, value) {
+          responseHeaders[key.toLowerCase()] = value
+        }
+
+        async function write(chunk) {
+          await client.write(encoder.encode(chunk).buffer)
+        }
+
+        function sendHeaders() {
+          headersSent = true
+          setHeader("date", new Date().toGMTString())
+          write(`HTTP/1.1 ${status} ${statusText}\r\n`)
+          Object.keys(responseHeaders).forEach(headerKey => {
+            write(`${headerKey}: ${responseHeaders[headerKey]}\r\n`)
+          })
+          write("\r\n")
+        }
+
+        function send(body) {
+          if (!headersSent) {
+            if (!responseHeaders["content-length"]) {
+              setHeader("content-length", body ? body.length : 0)
+            }
+            sendHeaders()
+          }
+          write(body)
+        }
+
+        const response = {
+          setHeader,
+          end,
+          setStatus(newStatus, newStatusText) {
+            ;(status = newStatus), (statusText = newStatusText)
+          }
+        }
+
+        requestHandler(request, response)
       }
-
-      await client.write(
-        encoder.encode(
-          `HTTP/1.1 200 OK\r\nServer: Firefox, yeah, really\r\nContent-Length: 0\r\n\r\n`
-        ).buffer
-      )
     }
-    console.log("Server is stopped", server)
   }
-
-  await listen(server)
-  return server
+  await listen(port)
 }
 
-var consume = async context => {
-  const client = await browser.TCPSocket.connect({
-    host: "localhost",
-    port: 8090
-  })
-  context.client = client
-  await client.opened
-  console.log("Client connected:", client)
-
-  await client.write(encoder.encode("Hello TCP").buffer)
-  const response = await client.read()
-  console.log("Received response:", decoder.decode(response))
-  return client
-}
-
-serve(window)
-// consume(window)
+const webServer = createWebServer(3000, (req, res) => {
+  // This is the as our original code with the http module :)
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`)
+  res.setHeader("Content-Type", "text/plain")
+  res.send("Hello World!")
+})
