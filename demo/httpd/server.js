@@ -74,7 +74,7 @@ var createWebServer = async (port, requestHandler) => {
 
         const response = {
           setHeader,
-          end,
+          send,
           setStatus(newStatus, newStatusText) {
             ;(status = newStatus), (statusText = newStatusText)
           }
@@ -87,9 +87,27 @@ var createWebServer = async (port, requestHandler) => {
   await listen(port)
 }
 
-const webServer = createWebServer(3000, (req, res) => {
-  // This is the as our original code with the http module :)
+var mountFolder = async () => {
+  const url = localStorage.getItem("volumeURL")
+  const volume = await browser.FileSystem.mount({ url, read: true })
+
+  const fileURL = new URL("hello.md", volume.url).href
+  const file = await browser.FileSystem.open(fileURL, { read: true })
+  const chunk = await browser.File.read(file, { position: 2, size: 5 })
+  console.log(`Read file fragment from ${fileURL}`, chunk)
+  const decoder = new TextDecoder()
+  const content = decoder.decode(chunk)
+  console.log(`Decode read fragment`, content)
+  await browser.File.close(file)
+}
+
+createWebServer(3000, (req, res) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`)
   res.setHeader("Content-Type", "text/plain")
   res.send("Hello World!")
+})
+
+document.getElementById("select-folder").addEventListener("click", ev => {
+  console.log("trying to mount folder")
+  mountFolder()
 })
