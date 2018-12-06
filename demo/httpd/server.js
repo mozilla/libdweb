@@ -4,6 +4,12 @@
  */
 var encoder = new TextEncoder()
 var decoder = new TextDecoder()
+var mimes = {
+  html: "text/html",
+  json: "application/json",
+  png: "image/png",
+  jpg: "image/jpeg"
+}
 
 var createWebServer = async (port, requestHandler) => {
   async function listen() {
@@ -75,12 +81,13 @@ var createWebServer = async (port, requestHandler) => {
         const response = {
           setHeader,
           send,
+          close: async () => await client.close(),
           setStatus(newStatus, newStatusText) {
             ;(status = newStatus), (statusText = newStatusText)
           }
         }
 
-        requestHandler(request, response)
+        await requestHandler(request, response)
       }
     }
   }
@@ -90,24 +97,42 @@ var createWebServer = async (port, requestHandler) => {
 var mountFolder = async () => {
   const url = localStorage.getItem("volumeURL")
   const volume = await browser.FileSystem.mount({ url, read: true })
+  localStorage.setItem("volumeURL", volume.url)
 
-  const fileURL = new URL("hello.md", volume.url).href
-  const file = await browser.FileSystem.open(fileURL, { read: true })
-  const chunk = await browser.File.read(file, { position: 2, size: 5 })
-  console.log(`Read file fragment from ${fileURL}`, chunk)
-  const decoder = new TextDecoder()
-  const content = decoder.decode(chunk)
-  console.log(`Decode read fragment`, content)
-  await browser.File.close(file)
+  const dir = await browser.FileSystem.readDirectory(volume.url)
+  console.log("dir", dir)
 }
-
-createWebServer(3000, (req, res) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`)
-  res.setHeader("Content-Type", "text/plain")
-  res.send("Hello World!")
-})
 
 document.getElementById("select-folder").addEventListener("click", ev => {
   console.log("trying to mount folder")
   mountFolder()
+
+  createWebServer(3000, async (req, res) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`)
+    const url = localStorage.getItem("volumeURL")
+    const volume = await browser.FileSystem.mount({ url, read: true })
+    localStorage.setItem("volumeURL", volume.url)
+    const dir = await browser.FileSystem.readDirectory(volume.url)
+
+    if (req.url == "/" || req.url == "") {
+      req.url = "/index.html"
+    }
+    const fileURL = new URL(req.url.slice(1), volume.url).href
+    const exists = await browser.FileSystem.exists(fileURL)
+
+    if (exists) {
+      const file = await browser.FileSystem.open(fileURL, { read: true })
+      const chunk = await browser.File.read(file)
+      const content = decoder.decode(chunk)
+      const ext = req.url.split(".").pop()
+      res.setHeader(
+        "Content-Type",
+        mimes.hasOwnProperty(ext) ? mimes[ext] : "unknown"
+      )
+      res.send(content)
+    } else {
+      res.setStatus(404)
+      res.send("File not found")
+    }
+  })
 })
