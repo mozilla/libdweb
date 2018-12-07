@@ -54,18 +54,18 @@ var createWebServer = async (port, requestHandler) => {
         responseHeaders[key.toLowerCase()] = value
       }
 
-      async function write(chunk) {
+      async function writeText(chunk) {
         await client.write(encoder.encode(chunk).buffer)
       }
 
       function sendHeaders() {
         headersSent = true
         setHeader("date", new Date().toGMTString())
-        write(`HTTP/1.0 ${status} ${statusText}\r\n`)
+        writeText(`HTTP/1.0 ${status} ${statusText}\r\n`)
         Object.keys(responseHeaders).forEach(headerKey => {
-          write(`${headerKey}: ${responseHeaders[headerKey]}\r\n`)
+          writeText(`${headerKey}: ${responseHeaders[headerKey]}\r\n`)
         })
-        write("\r\n")
+        writeText("\r\n")
       }
 
       function send(body) {
@@ -75,12 +75,23 @@ var createWebServer = async (port, requestHandler) => {
           }
           sendHeaders()
         }
-        write(body)
+        writeText(body)
+      }
+
+      async function sendBinary(body) {
+        if (!headersSent) {
+          if (!responseHeaders["content-length"]) {
+            setHeader("content-length", body ? body.length : 0)
+          }
+          sendHeaders()
+        }
+        await client.write(body)
       }
 
       const response = {
         setHeader,
         send,
+        sendBinary,
         setStatus(newStatus, newStatusText) {
           status = newStatus
           statusText = newStatusText
@@ -113,6 +124,11 @@ function appendLog(msg) {
   list.appendChild(item)
 }
 
+function isTextExtension(ext) {
+  var knownTextFiles = ["txt", "css", "html", "js"]
+  return knownTextFiles.includes(ext)
+}
+
 const startServer = async () => {
   console.log("trying to mount folder")
   mountFolder()
@@ -136,13 +152,19 @@ const startServer = async () => {
       const file = await browser.FileSystem.open(fileURL, { read: true })
       const chunk = await browser.File.read(file)
       await browser.File.close(file)
-      const content = decoder.decode(chunk)
       const ext = req.url.split(".").pop()
+
       res.setHeader(
         "Content-Type",
         mimes.hasOwnProperty(ext) ? mimes[ext] : "unknown"
       )
-      res.send(content)
+
+      if (isTextExtension(ext)) {
+        var content = decoder.decode(chunk)
+        res.send(content)
+      } else {
+        res.sendBinary(chunk)
+      }
     } else {
       res.setStatus(404)
       res.send("File not found")
