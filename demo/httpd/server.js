@@ -14,6 +14,9 @@ var mimes = {
 var createWebServer = async (port, requestHandler) => {
   const server = await browser.TCPSocket.listen({ port: port })
   console.log("Started TCP Server", server)
+  document.getElementById(
+    "server-info"
+  ).innerHTML = `Web Server running at <a href="http://localhost:${port}">http://localhost:${port}</a>`
 
   const onconnect = async client => {
     const message = await client.read()
