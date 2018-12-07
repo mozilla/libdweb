@@ -12,7 +12,10 @@ var mimes = {
 }
 
 var createWebServer = async (port, requestHandler) => {
-  async function onconnect(client) {
+  const server = await browser.TCPSocket.listen({ port: port })
+  console.log("Started TCP Server", server)
+
+  const onconnect = async client => {
     const message = await client.read()
     const decodedMessage = decoder.decode(message)
     const marker = decodedMessage.indexOf("\r\n\r\n")
@@ -58,7 +61,7 @@ var createWebServer = async (port, requestHandler) => {
       function sendHeaders() {
         headersSent = true
         setHeader("date", new Date().toGMTString())
-        write(`HTTP/1.1 ${status} ${statusText}\r\n`)
+        write(`HTTP/1.0 ${status} ${statusText}\r\n`)
         Object.keys(responseHeaders).forEach(headerKey => {
           write(`${headerKey}: ${responseHeaders[headerKey]}\r\n`)
         })
@@ -78,9 +81,9 @@ var createWebServer = async (port, requestHandler) => {
       const response = {
         setHeader,
         send,
-        close: async () => await client.close(),
         setStatus(newStatus, newStatusText) {
-          ;(status = newStatus), (statusText = newStatusText)
+          status = newStatus
+          statusText = newStatusText
         }
       }
 
@@ -88,14 +91,9 @@ var createWebServer = async (port, requestHandler) => {
     }
   }
 
-  async function listen() {
-    const server = await browser.TCPSocket.listen({ port: port })
-
-    for await (const client of server.connections) {
-      onconnect(client)
-    }
+  for await (const client of server.connections) {
+    onconnect(client)
   }
-  await listen(port)
 }
 
 var mountFolder = async () => {
@@ -105,18 +103,28 @@ var mountFolder = async () => {
 
   const dir = await browser.FileSystem.readDirectory(volume.url)
   console.log("dir", dir)
+  document.getElementById("root").innerHTML = `root: ${volume.url}`
 }
 
-document.getElementById("select-folder").addEventListener("click", ev => {
+function appendLog(msg) {
+  var list = document.getElementById("requests")
+  var item = document.createElement("li")
+  item.innerHTML = msg
+  list.appendChild(item)
+}
+
+const startServer = async () => {
   console.log("trying to mount folder")
   mountFolder()
 
+  var volume = false
+
   createWebServer(3000, async (req, res) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`)
-    const url = localStorage.getItem("volumeURL")
-    const volume = await browser.FileSystem.mount({ url, read: true })
-    localStorage.setItem("volumeURL", volume.url)
-    const dir = await browser.FileSystem.readDirectory(volume.url)
+    if (!volume) {
+      const url = localStorage.getItem("volumeURL")
+      volume = await browser.FileSystem.mount({ url, read: true })
+    }
+    appendLog(`${req.method} ${req.url}`)
 
     if (req.url == "/" || req.url == "") {
       req.url = "/index.html"
@@ -127,6 +135,7 @@ document.getElementById("select-folder").addEventListener("click", ev => {
     if (exists) {
       const file = await browser.FileSystem.open(fileURL, { read: true })
       const chunk = await browser.File.read(file)
+      await browser.File.close(file)
       const content = decoder.decode(chunk)
       const ext = req.url.split(".").pop()
       res.setHeader(
@@ -139,4 +148,10 @@ document.getElementById("select-folder").addEventListener("click", ev => {
       res.send("File not found")
     }
   })
+}
+
+document.getElementById("select-folder").addEventListener("click", ev => {
+  void (async () => {
+    startServer()
+  })()
 })
