@@ -294,7 +294,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     // TODO: Make sure that we report status updates
     // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIProgressEventSink
 
-    debug && console.log(`asyncOpen${pid} ${JSON.stringify(this)}`)
+    debug && console.log(`Channel.asyncOpen${pid} ${JSON.stringify(this)}`)
     switch (this.readyState) {
       case IDLE: {
         this.listener = listener
@@ -322,7 +322,8 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
   }
 
   cancel(status = Cr.NS_BINDING_ABORTED) {
-    debug && console.log(`cancel(${status})${pid} ${JSON.stringify(this)}`)
+    debug &&
+      console.log(`Channel.cancel (${status})${pid} ${JSON.stringify(this)}`)
     const { handler, readyState } = this
     if (handler) {
       switch (readyState) {
@@ -338,7 +339,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     }
   }
   suspend() {
-    debug && console.log(`suspend${pid} ${JSON.stringify(this)}`)
+    debug && console.log(`Channel.suspend ${pid} ${JSON.stringify(this)}`)
     switch (this.readyState) {
       case ACTIVE: {
         this.readyState = PAUSED
@@ -353,7 +354,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     }
   }
   resume() {
-    debug && console.log(`resume${pid} ${JSON.stringify(this)}`)
+    debug && console.log(`Channel.resume ${pid} ${JSON.stringify(this)}`)
     switch (this.readyState) {
       case ACTIVE: {
         return void this
@@ -387,7 +388,7 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
   head({ contentType, contentLength, contentCharset }) {
     debug &&
       console.log(
-        `head${pid} ${JSON.stringify({
+        `Channel.head ${pid} ${JSON.stringify({
           contentType,
           contentLength,
           contentCharset
@@ -413,9 +414,10 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     // If contentType is known start request, otherwise defer until it
     // can be inferred on first data chunk.
     if (this.mimeType != null) {
-      const { listener, context } = this
+      const { listener } = this
       try {
-        listener && listener.onStartRequest(this, context)
+        console.log(`Channel.listener.onStartRequest ${this.mimeType}`)
+        listener && listener.onStartRequest(this)
       } catch (_) {
         console.error(_)
       }
@@ -445,41 +447,44 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
         )
       } catch (_) {}
 
-      listener && listener.onStartRequest(this, context)
+      console.log(`Channel.listener.onStartRequest ${this.mimeType}`)
+      listener && listener.onStartRequest(this)
     }
 
     debug &&
-      console.log(
-        `body${pid} ${JSON.stringify(
-          this
-        )} ${stream.available()} ${byteLength} ${content.toString()} `
-      )
+      console.log(`>>> Channel.body ${pid} ${stream.available()} ${byteLength}`)
 
-    listener && listener.onDataAvailable(this, context, stream, 0, byteLength)
-    this.byteOffset += byteLength
+    try {
+      listener && listener.onDataAvailable(this, stream, 0, byteLength)
+      this.byteOffset += byteLength
+
+      debug && console.log(`<<< Channel.body ${pid} `)
+    } catch (error) {
+      console.log(error + "")
+    }
   }
 
   end({ status }) {
     this.readyState = CLOSED
     this.status = status
     this.contentLength = this.byteOffset
-    debug && console.log(`end${pid} ${JSON.stringify(this)}`)
+    debug && console.log(`Channel.end ${pid} ${JSON.stringify(this)}`)
     this.close()
   }
   abort() {
-    debug && console.log(`abort${pid} ${JSON.stringify(this)}`)
+    debug && console.log(`Channel.abort ${pid} ${JSON.stringify(this)}`)
     this.readyState = CANCELED
     this.status = Cr.NS_BINDING_ABORTED
     this.close()
   }
   close() {
     const { listener, context, status } = this
-    debug && console.log(`close${pid} ${JSON.stringify(this)}`)
+    debug && console.log(`Channel.close ${pid} ${JSON.stringify(this)}`)
     delete this.listener
     delete this.context
     delete this.handler
     try {
-      listener && listener.onStopRequest(this, context, status)
+      listener && listener.onStopRequest(this, status)
 
       this.loadGroup.removeRequest(this, context, status)
     } catch (_) {
@@ -516,7 +521,11 @@ class ProtocolHandler /*::implements nsIProtocolHandler*/ {
   }
   newURI(spec, charset, baseURI) {
     debug &&
-      console.log(`newURI${pid} ${spec} ${String(baseURI && baseURI.spec)}`)
+      console.log(
+        `ProtocolHandler.newURI ${pid} ${spec} ${String(
+          baseURI && baseURI.spec
+        )}`
+      )
     try {
       const url = Cc["@mozilla.org/network/standard-url-mutator;1"]
         .createInstance(Ci.nsIStandardURLMutator)
@@ -539,14 +548,11 @@ class ProtocolHandler /*::implements nsIProtocolHandler*/ {
         .finalize()
     }
   }
-  newChannel(uri /*: nsIURI */) {
+  newChannel(uri /*: nsIURI */, loadInfo /*: nsILoadInfo */) {
     debug &&
-      console.log(`newChannel(${uri.spec})${pid} ${JSON.stringify(this)}`)
-    return this.newChannel2(uri, null)
-  }
-  newChannel2(uri /*: nsIURI */, loadInfo /*: nsILoadInfo | null */) {
-    debug &&
-      console.log(`newChannel2(${uri.spec})${pid} ${JSON.stringify(this)}`)
+      console.log(
+        `ProtocolHandler.newChannel (${uri.spec})${pid} ${JSON.stringify(this)}`
+      )
 
     return this.handler.channel(uri, loadInfo)
   }
@@ -584,7 +590,7 @@ class Factory /*::implements nsIFactory<nsIProtocolHandler>*/ {
     if (iid.equals(Ci.nsISupports) || iid.equals(Ci.nsIFactory)) {
       return this
     }
-    console.log(`!!! Factory.QueryInterface ${iid.name} ${iid.number}\n`)
+    console.log(`Factory.QueryInterface ${iid.name} ${iid.number}\n`)
     throw Cr.NS_ERROR_NO_INTERFACE
   }
 }
@@ -620,10 +626,7 @@ class RequestHandler {
     }
     throw Cr.NS_ERROR_NO_INTERFACE
   }
-  channel(
-    url /*: nsIURI */,
-    loadInfo /*: null | nsILoadInfo */
-  ) /*: Channel */ {
+  channel(url /*: nsIURI */, loadInfo /*: nsILoadInfo */) /*: Channel */ {
     const { scheme } = url
     const requestID = `${scheme}:${++this.requestID}:${this.pid}`
     const request = new Channel(url, loadInfo, requestID, this)
@@ -743,9 +746,9 @@ class Supervisor extends RequestHandler {
   receiveMessage(message /*: AgentOutbox | HandlerOutbox */) {
     debug &&
       console.log(
-        `Receive message:${message.name} at ${this.pid} ${JSON.stringify(
-          message.data
-        )}`,
+        `Supervisor.receiveMessage:${message.name} at ${
+          this.pid
+        } ${JSON.stringify(message.data)}`,
         message.target
       )
 
@@ -763,7 +766,7 @@ class Supervisor extends RequestHandler {
     if (handler) {
       debug &&
         console.log(
-          `-> request${this.pid} ${JSON.stringify(data)}`,
+          `Supervisor.receiveAgentMessage ${this.pid} ${JSON.stringify(data)}`,
           target,
           handler
         )
@@ -780,7 +783,10 @@ class Supervisor extends RequestHandler {
     }
   }
   forwardResponse(response /*:Response*/) {
-    debug && console.log(`-> response${this.pid} ${JSON.stringify(response)}`)
+    debug &&
+      console.log(
+        `Supervisor.forwardResponse ${this.pid} ${JSON.stringify(response)}`
+      )
     const { agents } = this
     const { requestID } = response
     const agent = agents[requestID]
@@ -816,7 +822,7 @@ class Supervisor extends RequestHandler {
     }
   }
   terminate() {
-    debug && console.log(`Terminate ${this.pid}`)
+    debug && console.log(`Supervisor.terminate ${this.pid}`)
     const { protocols, requests } = this
 
     this.agentsPort.broadcastAsyncMessage(AGENT_INBOX, { type: "terminate" })
@@ -835,7 +841,7 @@ class Supervisor extends RequestHandler {
   }
   static new() {
     const self = new this()
-    debug && console.log(`new ${self.pid}`)
+    debug && console.log(`Supervisor.new ${self.pid}`)
     ppmm.initialProcessData[PROTOCOLS] = self.protocols
 
     debug &&
@@ -881,7 +887,7 @@ class Agent extends RequestHandler {
   }
   request(channel /*: Channel */) {
     const { url, scheme, requestID } = channel
-    debug && console.log(`request${this.pid} ${JSON.stringify(channel)}`)
+    debug && console.log(`Agent.request ${this.pid} ${JSON.stringify(channel)}`)
     this.outbox.sendAsyncMessage(AGENT_OUTBOX, {
       type: "request",
       requestID,
@@ -891,7 +897,8 @@ class Agent extends RequestHandler {
   }
   updateRequest(channel /*: Channel */, status /*: RequestStatus */) {
     const { url, scheme, requestID } = channel
-    debug && console.log(`request${this.pid} ${JSON.stringify(channel)}`)
+    debug &&
+      console.log(`Agent.updateRequest ${this.pid} ${JSON.stringify(channel)}`)
     this.outbox.sendAsyncMessage(AGENT_OUTBOX, {
       type: "requestUpdate",
       requestID,
@@ -911,7 +918,7 @@ class Agent extends RequestHandler {
   }
   receiveMessage({ data } /*: AgentInbox */) {
     debug &&
-      console.log(`Receive message at ${this.pid} ${JSON.stringify(data)}`)
+      console.log(`Agent.receiveMessage at ${this.pid} ${JSON.stringify(data)}`)
 
     switch (data.type) {
       case "terminate":
@@ -930,7 +937,7 @@ class Agent extends RequestHandler {
   }
 
   terminate() {
-    debug && console.log(`Terminate ${this.pid}`)
+    debug && console.log(`Agent.terminate ${this.pid}`)
 
     const { protocols, requests } = this
     this.inbox.removeMessageListener(AGENT_INBOX, this)
@@ -951,7 +958,7 @@ class Agent extends RequestHandler {
 
   static new() {
     const self = new Agent()
-    debug && console.log(`new ${self.pid}`)
+    debug && console.log(`Agent.new ${self.pid}`)
 
     self.inbox.addMessageListener(AGENT_INBOX, self)
 

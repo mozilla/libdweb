@@ -983,18 +983,12 @@ Cu.importGlobalProperties(["URL"])
       TCPSocketAdapter.fireEvent(self, "open")
     }
     onStartRequest(request, context) {}
-    onDataAvailable(
-      request,
-      context,
-      stream /*:nsIInputStream*/,
-      offset,
-      size
-    ) {
+    onDataAvailable(request, stream /*:nsIInputStream*/, offset, size) {
       const buffer = new ArrayBuffer(size)
       this.binaryInputStream.readArrayBuffer(size, buffer)
       TCPSocketAdapter.fireDataEvent(this, buffer)
     }
-    onStopRequest(request, context, status) {
+    onStopRequest(request, status) {
       debug && console.log(`TCPSocketAdapter.notifyReadComplete ${status}`)
       this.inputStreamPump = null
       if (this.asyncCopierActive && status === Cr.NS_OK) {
@@ -1069,8 +1063,8 @@ Cu.importGlobalProperties(["URL"])
     constructor(socket) {
       this.owner = socket
     }
-    onStartRequest(request, context) {}
-    onStopRequest(request, context, status) {
+    onStartRequest(request) {}
+    onStopRequest(request, status) {
       TCPSocketAdapter.notifyCopyComplete(this.owner, status)
     }
   }

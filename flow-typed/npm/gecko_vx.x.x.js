@@ -182,10 +182,8 @@ declare module "gecko" {
     owner: nsISupports<*> | null;
     securityInfo: null | nsITransportSecurityInfo;
     URI: nsIURI;
-    asyncOpen(listener: nsIStreamListener, context: ?nsISupports<mixed>): void;
-    asyncOpen2(listener: nsIStreamListener): void;
+    asyncOpen(listener: nsIStreamListener): void;
     open(): nsIInputStream;
-    open2(): nsIInputStream;
   }
 
   declare export interface nsIInputStreamPump extends nsIRequest {
@@ -657,14 +655,12 @@ declare module "gecko" {
     // When a URI containing this port number is encountered, this method is
     // called to ask if the protocol handler wants to override the ban.
     allowPort(port: long, scheme: string): boolean;
-    // Constructs a new channel from the given URI for this protocol handler.
-    newChannel(uri: nsIURI): nsIChannel;
     newURI(
       spec: AUTF8String,
       originCharset: string,
       baseURI: null | nsIURI
     ): nsIURI;
-    newChannel2(uri: nsIURI, loadInfo: nsILoadInfo): nsIChannel;
+    newChannel(uri: nsIURI, loadInfo: nsILoadInfo): nsIChannel;
   }
 
   /* @flow */
@@ -726,15 +722,11 @@ declare module "gecko" {
   declare export interface nsIRequestObserver {
     // Called to signify the beginning of an asynchronous request.
     // Note: An exception thrown from onStartRequest has the side-effect of causing the request to be canceled.
-    onStartRequest(request: nsIRequest, context: ?nsISupports<mixed>): void;
+    onStartRequest(request: nsIRequest): void;
     // Called to signify the end of an asynchronous request. This call is always
     // preceded by a call to onStartRequest().
     // Note: An exception thrown from onStopRequest is generally ignored.
-    onStopRequest(
-      request: nsIRequest,
-      context: ?nsISupports<mixed>,
-      status: nsresult
-    ): void;
+    onStopRequest(request: nsIRequest, status: nsresult): void;
   }
 
   // See: https://github.com/mozilla/gecko-dev/blob/9769f2300a17d3dfbebcfb457b1244bd624275e3/netwerk/base/nsILoadGroup.idl
@@ -792,7 +784,6 @@ declare module "gecko" {
   declare export interface nsIStreamListener extends nsIRequestObserver {
     onDataAvailable(
       request: nsIRequest,
-      context: ?nsISupports<mixed>,
       inputStream: nsIInputStream,
       offset: number,
       count: number
