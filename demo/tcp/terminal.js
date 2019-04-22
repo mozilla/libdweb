@@ -149,8 +149,8 @@ const execute = async state => {
         output.innerHTML = ""
         break
       }
-      case "create": {
-        const socket = await browser.TCPSocket.create(params)
+      case "listen": {
+        const socket = await browser.TCPSocket.listen(params)
         const ref = fromSocket(socket)
         out.textContent = `socket: ${ref} ${JSON.stringify(socket, null, 2)}`
         break
