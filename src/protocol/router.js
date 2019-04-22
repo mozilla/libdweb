@@ -24,7 +24,8 @@ import type {
   nsIMessageSender,
   nsIMessageBroadcaster,
   nsIMessageListenerManager,
-  nsIProgressEventSink
+  nsIProgressEventSink,
+  nsIInputStream
 } from "gecko"
 */
 const EXPORTED_SYMBOLS = ["Supervisor", "Agent"]
@@ -44,7 +45,6 @@ const { ppmm, cpmm, mm, appinfo } = Cu.import(
 const { setTimeout } = Cu.import("resource://gre/modules/Timer.jsm", {})
 const { console } = Cu.import("resource://gre/modules/Console.jsm", {})
 const PR_UINT32_MAX = 0xffffffff
-
 const { generateUUID } = Cc["@mozilla.org/uuid-generator;1"].getService(
   Ci.nsIUUIDGenerator
 )
@@ -385,25 +385,36 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
     }
   }
 
-  head({ contentType, contentLength, contentCharset }) {
+  head({ ok, status, statusText, headers }) {
+    const contentType = headers["content-type"] || ""
+    const contentLength = headers["content-length"] || ""
+    const [mimeType] = contentType.split(";")
+    const [, contentCharset] = /charset=([^;]+)/.exec(contentType) || []
+
     debug &&
       console.log(
         `Channel.head ${pid} ${JSON.stringify({
+          ok,
+          status,
+          statusText,
+          headers,
+
           contentType,
           contentLength,
+          mimeType,
           contentCharset
         })}`
       )
 
-    if (contentType) {
-      this.mimeType = contentType
+    if (mimeType != "") {
+      this.mimeType = mimeType
     }
 
-    if (contentLength) {
-      this.contentLength = contentLength
+    if (contentLength != null && contentCharset !== "") {
+      this.contentLength = parseInt(contentLength)
     }
 
-    if (contentCharset) {
+    if (contentCharset != "") {
       this.contentCharset = contentCharset
     }
 
@@ -423,54 +434,58 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
       }
     }
   }
-  body({ content }) {
-    const stream = Cc[
-      "@mozilla.org/io/arraybuffer-input-stream;1"
-    ].createInstance(Ci.nsIArrayBufferInputStream)
-    const { byteLength } = content
-    stream.setData(content, 0, byteLength)
+  body({ body: { value, done } }) {
+    console.log(`Channel.body content:${String(value)} done:${String(done)}`)
+    if (value != null) {
+      const stream = streamFrom(value)
+      const { listener, context } = this
 
-    const { listener, context } = this
+      // If mimeType is not set then we need detect it from the arrived content
+      // and start request. We know start was deffered so that we would could
+      // detect contentType.
+      if (this.mimeType == null) {
+        try {
+          const contentSniffer = Cc[
+            "@mozilla.org/network/content-sniffer;1"
+          ].createInstance(Ci.nsIContentSniffer)
+          this.mimeType = contentSniffer.getMIMETypeFromContent(
+            this,
+            new Uint8Array(value),
+            stream.available()
+          )
+        } catch (_) {}
 
-    // If mimeType is not set then we need detect it from the arrived content
-    // and start request. We know start was deffered so that we would could
-    // detect contentType.
-    if (this.mimeType == null) {
-      try {
-        const contentSniffer = Cc[
-          "@mozilla.org/network/content-sniffer;1"
-        ].createInstance(Ci.nsIContentSniffer)
-        this.mimeType = contentSniffer.getMIMETypeFromContent(
-          this,
-          new Uint8Array(content),
-          byteLength
+        console.log(`Channel.listener.onStartRequest ${this.mimeType}`)
+        listener && listener.onStartRequest(this)
+      }
+
+      debug &&
+        console.log(
+          `>>> Channel.body ${pid} ${stream.available()} ${new TextDecoder().decode(
+            new Uint8Array(value)
+          )}`
         )
-      } catch (_) {}
 
-      console.log(`Channel.listener.onStartRequest ${this.mimeType}`)
-      listener && listener.onStartRequest(this)
+      const byteLength = stream.available()
+
+      try {
+        listener && listener.onDataAvailable(this, stream, 0, byteLength)
+        this.byteOffset += byteLength
+
+        debug && console.log(`<<< Channel.body ${pid} `)
+      } catch (error) {
+        console.log(error + "")
+      }
     }
 
-    debug &&
-      console.log(`>>> Channel.body ${pid} ${stream.available()} ${byteLength}`)
-
-    try {
-      listener && listener.onDataAvailable(this, stream, 0, byteLength)
-      this.byteOffset += byteLength
-
-      debug && console.log(`<<< Channel.body ${pid} `)
-    } catch (error) {
-      console.log(error + "")
+    if (done) {
+      this.readyState = CLOSED
+      this.contentLength = this.byteOffset
+      debug && console.log(`Channel.end ${pid} ${JSON.stringify(this)}`)
+      this.close()
     }
   }
 
-  end({ status }) {
-    this.readyState = CLOSED
-    this.status = status
-    this.contentLength = this.byteOffset
-    debug && console.log(`Channel.end ${pid} ${JSON.stringify(this)}`)
-    this.close()
-  }
   abort() {
     debug && console.log(`Channel.abort ${pid} ${JSON.stringify(this)}`)
     this.readyState = CANCELED
@@ -480,17 +495,39 @@ class Channel /*::implements nsIChannel, nsIRequest*/ {
   close() {
     const { listener, context, status } = this
     debug && console.log(`Channel.close ${pid} ${JSON.stringify(this)}`)
-    delete this.listener
-    delete this.context
-    delete this.handler
     try {
-      listener && listener.onStopRequest(this, status)
-
-      this.loadGroup.removeRequest(this, context, status)
+      if (this.readyState != Cr.NS_BINDING_ABORTED) {
+        listener && listener.onStopRequest(this, status)
+        this.loadGroup.removeRequest(this, context, status)
+      }
     } catch (_) {
       debug && console.error(`Failed onStopRequest${pid} ${_}`)
     }
+    delete this.context
+    delete this.listener
+    delete this.handler
   }
+}
+
+const streamFrom = (data /*:string|ArrayBuffer*/) /*:nsIInputStream*/ =>
+  typeof data === "string" ? streamFromString(data) : streamFromBuffer(data)
+
+const streamFromString = (data /*:string*/) => {
+  const stream = Cc["@mozilla.org/io/string-input-stream;1"].createInstance(
+    Ci.nsIStringInputStream
+  )
+  stream.setData(data, data.length)
+  return stream
+}
+
+const streamFromBuffer = (buffer /*:ArrayBuffer*/) => {
+  const stream = Cc[
+    "@mozilla.org/io/arraybuffer-input-stream;1"
+  ].createInstance(Ci.nsIArrayBufferInputStream)
+
+  const { byteLength } = buffer
+  stream.setData(buffer, 0, byteLength)
+  return stream
 }
 
 class ProtocolHandler /*::implements nsIProtocolHandler*/ {
@@ -662,26 +699,20 @@ export type Install = {
 export type Head = {
   type: "head",
   requestID: string,
-  contentType?: string,
-  contentLength?: number,
-  contentCharset?: string,
-  contentDispositionFilename?: string,
-  contentDispositionHeader?:string
+  status:number;
+  statusText:string;
+  ok:boolean;
+  headers:{[string]:string}
 }
 
 export type Body = {
   type: "body",
   requestID: string,
-  content: ArrayBuffer
+  body:{done:boolean, value:?ArrayBuffer}
 }
 
-export type End = {
-  type: "end",
-  status:nsresult,
-  requestID: string
-}
 
-export type Response = Head | Body | End
+export type Response = Head | Body
 
 export type HandlerOutbox = {
   name: "libdweb:protocol:handler:outbox",
@@ -791,7 +822,7 @@ class Supervisor extends RequestHandler {
     const { requestID } = response
     const agent = agents[requestID]
     if (agent) {
-      if (response.type === "end") {
+      if (response.type === "body" && response.body.done) {
         delete agents[requestID]
       }
       agent.sendAsyncMessage(AGENT_INBOX, response)
@@ -913,9 +944,6 @@ class Agent extends RequestHandler {
   body(body /*:Body*/) {
     this.requests[body.requestID].body(body)
   }
-  end(end /*:End*/) {
-    this.requests[end.requestID].end(end)
-  }
   receiveMessage({ data } /*: AgentInbox */) {
     debug &&
       console.log(`Agent.receiveMessage at ${this.pid} ${JSON.stringify(data)}`)
@@ -931,8 +959,6 @@ class Agent extends RequestHandler {
         return this.head(data)
       case "body":
         return this.body(data)
-      case "end":
-        return this.end(data)
     }
   }
 

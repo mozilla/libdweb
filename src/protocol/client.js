@@ -6,19 +6,6 @@ import type { nsIMessageSender } from "gecko"
 import { ExtensionAPI, BaseContext } from "gecko"
 import type { HandlerInbox, RequestStatus, HandlerOutbox, Inn, Out } from "./router"
 
-interface Head {
-  contentType?: string,
-  contentLength?: number,
-  contentCharset?: string
-}
-
-interface Body {
-  content: AsyncIterator<ArrayBuffer>
-}
-
-interface Response extends Head, Body {
-
-}
 
 interface Handler {
   ({ url: string }):Response|Promise<Response>
@@ -41,6 +28,7 @@ interface Client {
 
 {
   const { Services } = Cu.import("resource://gre/modules/Services.jsm", {})
+  Cu.importGlobalProperties(["TextEncoder"])
 
   const OUTBOX = "libdweb:protocol:handler:outbox"
   const INBOX = "libdweb:protocol:handler:inbox"
@@ -54,40 +42,56 @@ interface Client {
     /*::
     requestID:string
     port:Out<HandlerOutbox>
-    content:AsyncIterator<ArrayBuffer>
+    reader:ReadableStreamReader
     status:Status
     */
     constructor(
       requestID /*:string*/,
       port /*:Out<HandlerOutbox>*/,
-      content /*:AsyncIterator<ArrayBuffer>*/
+      reader /*:ReadableStreamReader*/,
+      status /*:Status*/
     ) {
       this.requestID = requestID
       this.port = port
-      this.content = content
+      this.reader = reader
       this.status = ACTIVE
     }
-    head({ contentType, contentCharset, contentLength } /*:Head*/) {
-      this.port.sendAsyncMessage(OUTBOX, {
+    static respond(
+      requestID /*:string*/,
+      port /*:Out<HandlerOutbox>*/,
+      response /*:Response*/
+    ) {
+      const { status, statusText, ok, headers, body } = response
+      const reader = body.getReader()
+      const self = new Connection(requestID, port, reader, ACTIVE)
+      port.sendAsyncMessage(OUTBOX, {
         type: "head",
-        requestID: this.requestID,
-        contentType,
-        contentCharset,
-        contentLength
+        requestID: requestID,
+        status,
+        statusText,
+        ok,
+        headers: Object.fromEntries(headers)
       })
+
+      return self
     }
-    body(content /*:ArrayBuffer*/) {
-      this.port.sendAsyncMessage(OUTBOX, {
+    static error(
+      requestID /*:string*/,
+      port /*:Out<HandlerOutbox>*/,
+      error /*:Error*/
+    ) {
+      port.sendAsyncMessage(OUTBOX, {
+        type: "head",
+        requestID,
+        status: 500,
+        statusText: "Handler errored",
+        ok: false,
+        headers: { "content-type": "text/plain;charset=utf=8" }
+      })
+      port.sendAsyncMessage(OUTBOX, {
         type: "body",
-        requestID: this.requestID,
-        content
-      })
-    }
-    end(status = 0) {
-      this.port.sendAsyncMessage(OUTBOX, {
-        type: "end",
-        requestID: this.requestID,
-        status
+        requestID,
+        body: { done: true, value: encoder.encode(error.message).buffer }
       })
     }
     suspend(manager /*:ConnectionManager*/) {
@@ -98,11 +102,20 @@ interface Client {
     }
     async resume(manager /*:ConnectionManager*/) {
       while (this.status === ACTIVE) {
-        const { done, value } = await this.content.next()
-        if (this.status === ACTIVE) {
-          if (value) {
-            this.body(value)
-          }
+        const { done, value } = await this.reader.read()
+        const content =
+          value == null
+            ? null
+            : typeof value === "string"
+              ? encoder.encode(value).buffer
+              : value.buffer
+
+        if (this.port) {
+          this.port.sendAsyncMessage(OUTBOX, {
+            type: "body",
+            requestID: this.requestID,
+            body: { done, value: content }
+          })
 
           if (done) {
             this.close(manager)
@@ -111,17 +124,30 @@ interface Client {
       }
     }
     close(manager) {
+      this.reader.cancel(/*::""*/)
+      this.reader.releaseLock()
+
       manager.disconnect(this.requestID)
       this.status = CLOSED
-      this.end(0)
       delete this.port
     }
     abort(manager /*:ConnectionManager*/) {
+      this.reader.cancel(/*::""*/)
+      this.reader.releaseLock()
+
+      this.port.sendAsyncMessage(OUTBOX, {
+        type: "body",
+        requestID: this.requestID,
+        body: { done: true, value: null }
+      })
+
       manager.disconnect(this.requestID)
       this.status = ABORTED
       delete this.port
     }
   }
+
+  const encoder = new TextEncoder()
 
   class Protocol /*::implements ConnectionManager*/ {
     /*::
@@ -160,22 +186,18 @@ interface Client {
     async request(request, target /*: Out<HandlerOutbox> */) {
       const { requestID, scheme, url } = request
       const handler = this.handlers[request.scheme]
+      let response = null
       try {
         delete request.requestID
         const promise = Reflect.apply(handler, null, [
           Cu.cloneInto(request, handler)
         ])
-        const response = Cu.waiveXrays(await promise)
-        const connection = new Connection(requestID, target, response.content)
+        response = Cu.waiveXrays(await promise)
+        const connection = Connection.respond(requestID, target, response)
         this.connect(connection)
-        connection.head(response)
         connection.resume(this)
       } catch (error) {
-        target.sendAsyncMessage(OUTBOX, {
-          type: "end",
-          requestID,
-          status: Cr.NS_ERROR_XPC_JAVASCRIPT_ERROR
-        })
+        Connection.error(requestID, target, error)
       }
     }
     connect(connection /*:Connection*/) {

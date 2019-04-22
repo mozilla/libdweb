@@ -2134,6 +2134,10 @@ declare module "gecko" {
     setData(buffer: ArrayBuffer, byteOffset: long, byteLength: long): void;
   }
 
+  declare export interface nsIStringInputStream extends nsIInputStream {
+    setData(data: string, length: long): void;
+  }
+
   declare export interface nsIMultiplexInputStream
     extends nsISupports<nsIInputStream> {
     +count: long;
@@ -3017,6 +3021,7 @@ declare module "gecko" {
       nsIContentSecurityManager: nsIJSID<nsIContentSecurityManager>,
 
       nsIArrayBufferInputStream: nsIJSID<nsIArrayBufferInputStream>,
+      nsIStringInputStream: nsIJSCID<nsIStringInputStream>,
       nsIStandardURLMutator: nsIJSID<nsIStandardURLMutator>,
       nsIURIMutator: nsIJSID<nsIURIMutator>,
       nsIWebProgressListener: nsIJSID<nsIWebProgressListener> &
@@ -3087,6 +3092,7 @@ declare module "gecko" {
       "@mozilla.org/systemprincipal;1": nsIJSCID<nsIPrincipal>,
       "@mozilla.org/nullprincipal;1": nsIJSCID<nsIPrincipal>,
       "@mozilla.org/binaryinputstream;1": nsIJSCID<nsIBinaryInputStream>,
+      "@mozilla.org/io/string-input-stream;1": nsIJSCID<nsIStringInputStream>,
       "@mozilla.org/io/arraybuffer-input-stream;1": nsIJSCID<
         nsIArrayBufferInputStream
       >,
