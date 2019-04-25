@@ -186,6 +186,16 @@ declare module "gecko" {
     open(): nsIInputStream;
   }
 
+  declare export interface nsIUploadChannel2 {
+    explicitSetUploadStream(
+      stream: nsIInputStream,
+      aContentType: ACString,
+      aContentLength: long,
+      aMethod: string,
+      aStreamHasHeaders: boolean
+    ): void;
+  }
+
   declare export interface nsIInputStreamPump extends nsIRequest {
     init(
       aStream: nsIInputStream,
@@ -2675,7 +2685,7 @@ declare module "gecko" {
   }
   declare export interface nsIPropertyBag {
     getProperty(AString): nsIVariant;
-    enumerator: nsISimpleEnumerator<nsIProperty>;
+    +enumerator: nsISimpleEnumerator<nsIProperty>;
   }
 
   declare export interface nsIPropertyBag2 extends nsIPropertyBag {
@@ -2968,6 +2978,7 @@ declare module "gecko" {
 
       nsIAsyncVerifyRedirectCallback: nsIJSID<nsIAsyncVerifyRedirectCallback>,
       nsIChannel: nsIJSID<nsIChannel> & nsIChannelConstants,
+      nsIUploadChannel2: nsIJSCID<nsIUploadChannel2>,
       nsIChannelEventSink: nsIJSID<nsIChannelEventSink> &
         nsIChannelEventSinkConstants,
       nsIInputStreamChannel: nsIJSID<nsIInputStreamChannel>,
@@ -3050,6 +3061,7 @@ declare module "gecko" {
       nsIDNSRegistrationListener: nsIJSCID<nsIDNSRegistrationListener> &
         nsIDNSRegistrationListenerConstants,
       nsIWritablePropertyBag2: nsIJSCID<nsIWritablePropertyBag2>,
+      nsIPropertyBag: nsIJSCID<nsIPropertyBag>,
       nsIPropertyBag2: nsIJSCID<nsIPropertyBag2>,
       nsIProperty: nsIJSCID<nsIProperty>,
       nsINetworkInfoService: nsIJSCID<nsINetworkInfoService>,

@@ -1,0 +1,226 @@
+// @flow strict
+
+import type {
+  nsresult,
+  nsIMessageListenerManager,
+  nsIMessageSender,
+  nsIURI,
+  nsILoadInfo,
+  nsIChannel
+} from "gecko"
+
+type IDLE = 0
+type ACTIVE = 1
+type PAUSED = 2
+type CANCELED = 3
+type CLOSED = 4
+type FAILED = 5
+
+export type ReadyState = IDLE | ACTIVE | PAUSED | CANCELED | CLOSED | FAILED
+
+export type RegisterProtocol = {
+  type: "register",
+  scheme: string,
+  id: string
+}
+
+export type UnregisterProtocol = {
+  type: "unregister",
+  scheme: string,
+  id: string
+}
+
+export type Register = {
+  type: "register",
+  scheme: string,
+  id: string,
+  uuid: string
+}
+
+export type Unregister = {
+  type: "unregister",
+  scheme: string,
+  id: string,
+  uuid: string
+}
+
+export type Terminate = {
+  type: "terminate"
+}
+
+export type StartResponse = {
+  type: "start-response",
+  id: string,
+  status: number,
+  statusText: string,
+  ok: boolean,
+  headers: { [string]: string }
+}
+
+export type WriteResponseStream = {
+  type: "write-response-stream",
+  id: string,
+  buffer: ArrayBuffer
+}
+
+export type CloseResponseStream = {
+  type: "close-response-stream",
+  id: string
+}
+
+export type ErrorResponseStream = {
+  type: "error-response-stream",
+  id: string,
+  message: string
+}
+
+export type SuspendRequestStream = {
+  type: "suspend-request-stream",
+  id: string
+}
+
+export type ResumeRequestStream = {
+  type: "resume-request-stream",
+  id: string
+}
+
+export type CancelRequestStream = {
+  type: "cancel-request-stream",
+  id: string,
+  reason: ?string
+}
+
+export type ResponseMessage =
+  | StartResponse
+  | WriteResponseStream
+  | CloseResponseStream
+  | ErrorResponseStream
+  | SuspendRequestStream
+  | ResumeRequestStream
+  | CancelRequestStream
+
+export type HandlerOutboxMessage =
+  | RegisterProtocol
+  | UnregisterProtocol
+  | ResponseMessage
+
+export type HandlerInboxMessage = RequestMessage
+
+export type HandlerOutbox = {
+  name: "libdweb:protocol:handler:outbox",
+  data: HandlerOutboxMessage,
+  target: { messageManager: Out<HandlerInbox> }
+}
+
+export type HandlerInbox = {
+  name: "libdweb:protocol:handler:inbox",
+  data: HandlerInboxMessage,
+  target: Out<HandlerOutbox>
+}
+
+export type ProtocolSpec = { scheme: string, uuid: string }
+
+type URLString = string
+
+export type StartRequest = {
+  type: "start-request",
+  id: string,
+  scheme: string,
+
+  url: string,
+  contentLength: number,
+  method: string,
+
+  headers?: { [string]: string },
+  mode?: "cors" | "no-cors" | "same-origin" | "navigate",
+  credentials?: "omit" | "same-origin" | "include",
+  cache?:
+    | "default"
+    | "no-store"
+    | "reload"
+    | "no-cache"
+    | "force-cache"
+    | "only-if-cached",
+  redirect?: "follow" | "error" | "manual",
+  referrer?: "no-referrer" | "client" | URLString,
+  integrity?: null | string
+}
+
+export type SuspendRequest = {
+  type: "suspend-request",
+  id: string,
+  scheme: string
+}
+
+export type ResumeRequest = {
+  type: "resume-request",
+  id: string,
+  scheme: string
+}
+
+export type CancelRequest = {
+  type: "cancel-request",
+  id: string,
+  scheme: string
+}
+
+export type WriteRequestStream = {
+  type: "write-request-stream",
+  id: string,
+  scheme: string,
+
+  buffer: ArrayBuffer
+}
+
+export type CloseRequestStream = {
+  type: "close-request-stream",
+  id: string,
+  scheme: string
+}
+
+export type ErrorRequestStream = {
+  type: "error-request-stream",
+  id: string,
+  scheme: string,
+
+  message: string
+}
+
+export type RequestMessage =
+  | StartRequest
+  | SuspendRequest
+  | ResumeRequest
+  | CancelRequest
+  | WriteRequestStream
+  | CloseRequestStream
+  | ErrorRequestStream
+
+export type AgentInboxMessage =
+  | Register
+  | Unregister
+  | Terminate
+  | ResponseMessage
+
+export type AgentOutboxMessage = RequestMessage
+
+export type AgentInbox = {
+  name: "libdweb:protocol:agent:inbox",
+  data: AgentInboxMessage
+}
+
+export type AgentOutbox = {
+  name: "libdweb:protocol:agent:outbox",
+  data: AgentOutboxMessage,
+  target: nsIMessageSender<AgentInbox>
+}
+
+export type Inn<a> = nsIMessageListenerManager<a>
+export type Out<a> = nsIMessageSender<a>
+
+export interface RequestHandler {
+  newChannel(nsIURI, nsILoadInfo): nsIChannel;
+}
+
+export interface Port<message> {
+  send(message): void;
+}

@@ -1,5 +1,5 @@
 browser.protocol.registerProtocol("dweb", request => {
-  examples = ["stream", "async", "crash", "text", "html"]
+  const examples = ["stream", "async", "crash", "text", "html"]
   switch (request.url) {
     case "dweb://stream/": {
       let cancelled = false
@@ -46,6 +46,12 @@ browser.protocol.registerProtocol("dweb", request => {
         "<p>ContentType was inferred as HTML"
       ])
       return new Response(blob)
+    }
+    case "dweb://echo/": {
+      return (async () => {
+        const data = await request.text()
+        return new Response(`echo: ${data}`)
+      })()
     }
     default: {
       const body = new ReadableStream({
