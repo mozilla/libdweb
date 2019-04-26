@@ -6,19 +6,24 @@
 
   "experiment_apis": {
     "test": {
-      "schema": "../../src/test/test.json",
+      "schema": "../../schemas/test.json",
       "child": {
         "scopes": ["addon_child"],
         "paths": [["test"]],
-        "script": "../../src/test/test.js"
+        "script": "../../child/ext-test.js"
       }
     },
     "FileSystem": {
-      "schema": "../../src/FileSystem/FileSystem.json",
+      "schema": "../../schemas/fs.json",
+      "child": {
+        "scopes": ["addon_child"],
+        "paths": [["FileSystem"]],
+        "script": "../../child/ext-fs.js"
+      },
       "parent": {
         "scopes": ["addon_parent"],
         "paths": [["FileSystem"]],
-        "script": "../../src/FileSystem/host.js"
+        "script": "../../parent/ext-fs.js"
       }
     }
   },

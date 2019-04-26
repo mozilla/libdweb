@@ -7,16 +7,16 @@
 
   "experiment_apis": {
     "ServiceDiscovery": {
-      "schema": "../../src/ServiceDiscovery/ServiceDiscovery.json",
+      "schema": "../../src/toolkit/components/extensions/schemas/dns-sd.json",
       "child": {
         "scopes": ["addon_child"],
         "paths": [["ServiceDiscovery"]],
-        "script": "../../src/ServiceDiscovery/client.js"
+        "script": "../../src/toolkit/components/extensions/child/ext-dns-sd.js"
       },
       "parent": {
         "scopes": ["addon_parent"],
         "paths": [["ServiceDiscovery"]],
-        "script": "../../src/ServiceDiscovery/host.js"
+        "script": "../../src/toolkit/components/extensions/parent/ext-dns-sd.js"
       }
     }
   },

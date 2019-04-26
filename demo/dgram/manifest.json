@@ -7,11 +7,11 @@
 
   "experiment_apis": {
     "UDPSocket": {
-      "schema": "../../src/UDPSocket/UDPSocket.json",
+      "schema": "../../src/toolkit/components/extensions/schemas/udp.json",
       "child": {
         "scopes": ["addon_child"],
         "paths": [["UDPSocket"]],
-        "script": "../../src/UDPSocket/Socket.js"
+        "script": "../../src/toolkit/components/extensions/child/ext-udp.js"
       }
     }
   },

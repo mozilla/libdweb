@@ -18,15 +18,12 @@ import type {
   ServiceOptions,
   ServiceDiscovery,
   ServiceInfo,
-  ServiceQuery
-} from "./ServiceDiscovery"
-
-import type {
+  ServiceQuery,
   RegisteredService,
   HostService,
   Inbox,
   DiscoveryMessage
-} from "./Format"
+} from "../interface/dns-sd.js"
 
 
 interface Host {

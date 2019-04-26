@@ -11,7 +11,7 @@ import type {
   SocketAddress,
   SocketOptions,
   Family
-} from "./UDPSocket"
+} from "../interface/udp"
 
 interface Host {
   +UDPSocket: UDPSocketManager;

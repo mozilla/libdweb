@@ -7,11 +7,11 @@
 
   "experiment_apis": {
     "TCPSocket": {
-      "schema": "../../src/TCPSocket/TCPSocket.json",
+      "schema": "../../src/toolkit/components/extensions/tcp.json",
       "child": {
         "scopes": ["addon_child"],
         "paths": [["TCPSocket"]],
-        "script": "../../src/TCPSocket/Socket.js"
+        "script": "../../src/toolkit/components/extensions/ext-tcp.js"
       }
     }
   },
