@@ -186,6 +186,16 @@ declare module "gecko" {
     open(): nsIInputStream;
   }
 
+  declare export interface nsIUploadChannel2 {
+    explicitSetUploadStream(
+      stream: nsIInputStream,
+      aContentType: ACString,
+      aContentLength: long,
+      aMethod: string,
+      aStreamHasHeaders: boolean
+    ): void;
+  }
+
   declare export interface nsIInputStreamPump extends nsIRequest {
     init(
       aStream: nsIInputStream,
@@ -2134,6 +2144,10 @@ declare module "gecko" {
     setData(buffer: ArrayBuffer, byteOffset: long, byteLength: long): void;
   }
 
+  declare export interface nsIStringInputStream extends nsIInputStream {
+    setData(data: string, length: long): void;
+  }
+
   declare export interface nsIMultiplexInputStream
     extends nsISupports<nsIInputStream> {
     +count: long;
@@ -2671,7 +2685,7 @@ declare module "gecko" {
   }
   declare export interface nsIPropertyBag {
     getProperty(AString): nsIVariant;
-    enumerator: nsISimpleEnumerator<nsIProperty>;
+    +enumerator: nsISimpleEnumerator<nsIProperty>;
   }
 
   declare export interface nsIPropertyBag2 extends nsIPropertyBag {
@@ -2964,6 +2978,7 @@ declare module "gecko" {
 
       nsIAsyncVerifyRedirectCallback: nsIJSID<nsIAsyncVerifyRedirectCallback>,
       nsIChannel: nsIJSID<nsIChannel> & nsIChannelConstants,
+      nsIUploadChannel2: nsIJSCID<nsIUploadChannel2>,
       nsIChannelEventSink: nsIJSID<nsIChannelEventSink> &
         nsIChannelEventSinkConstants,
       nsIInputStreamChannel: nsIJSID<nsIInputStreamChannel>,
@@ -3017,6 +3032,7 @@ declare module "gecko" {
       nsIContentSecurityManager: nsIJSID<nsIContentSecurityManager>,
 
       nsIArrayBufferInputStream: nsIJSID<nsIArrayBufferInputStream>,
+      nsIStringInputStream: nsIJSCID<nsIStringInputStream>,
       nsIStandardURLMutator: nsIJSID<nsIStandardURLMutator>,
       nsIURIMutator: nsIJSID<nsIURIMutator>,
       nsIWebProgressListener: nsIJSID<nsIWebProgressListener> &
@@ -3045,6 +3061,7 @@ declare module "gecko" {
       nsIDNSRegistrationListener: nsIJSCID<nsIDNSRegistrationListener> &
         nsIDNSRegistrationListenerConstants,
       nsIWritablePropertyBag2: nsIJSCID<nsIWritablePropertyBag2>,
+      nsIPropertyBag: nsIJSCID<nsIPropertyBag>,
       nsIPropertyBag2: nsIJSCID<nsIPropertyBag2>,
       nsIProperty: nsIJSCID<nsIProperty>,
       nsINetworkInfoService: nsIJSCID<nsINetworkInfoService>,
@@ -3087,6 +3104,7 @@ declare module "gecko" {
       "@mozilla.org/systemprincipal;1": nsIJSCID<nsIPrincipal>,
       "@mozilla.org/nullprincipal;1": nsIJSCID<nsIPrincipal>,
       "@mozilla.org/binaryinputstream;1": nsIJSCID<nsIBinaryInputStream>,
+      "@mozilla.org/io/string-input-stream;1": nsIJSCID<nsIStringInputStream>,
       "@mozilla.org/io/arraybuffer-input-stream;1": nsIJSCID<
         nsIArrayBufferInputStream
       >,
@@ -3420,6 +3438,7 @@ declare module "gecko" {
   }
 
   declare export class ExtensionAPI<api> extends EventEmitter {
+    +extension: Extension;
     constructor(Extension): void;
     destroy(): void;
     getAPI(BaseContext): api;
