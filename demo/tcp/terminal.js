@@ -1,5 +1,8 @@
 const input = document.querySelector("input")
 const output = document.querySelector("output")
+var encoder = new TextEncoder()
+var decoder = new TextDecoder()
+
 document.onload = () => input.focus()
 
 const keydown = async function*() {
@@ -150,7 +153,26 @@ const execute = async state => {
         break
       }
       case "listen": {
-        const socket = await browser.TCPSocket.listen(params)
+        const server = await browser.TCPSocket.listen(params)
+        console.log("Server:", server)
+
+        listen = async server => {
+          for await (const client of server.connections) {
+            console.log("Connection:", client)
+            const message = await client.read()
+            console.log("Received message:", decoder.decode(message))
+            await client.write(
+              encoder.encode(`<echo>${decoder.decode(message)}</echo>`).buffer
+            )
+          }
+          console.log("Server is stopped", server)
+        }
+
+        await listen(server)
+        break
+      }
+      case "connect": {
+        const socket = await browser.TCPSocket.connect(params)
         const ref = fromSocket(socket)
         out.textContent = `socket: ${ref} ${JSON.stringify(socket, null, 2)}`
         break
