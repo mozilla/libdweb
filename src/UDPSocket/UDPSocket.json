@@ -3,44 +3,7 @@
     "namespace": "UDPSocket",
     "description": "UDP Socket implementation",
     "//permissions": ["UDPSocket"],
-    "types": [
-      {
-        "id": "Socket",
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "address": {
-            "type": "object",
-            "optional": true,
-            "description": "socket address",
-            "$ref": "Address"
-          }
-        }
-      },
-      {
-        "id": "Address",
-        "type": "object",
-        "properties": {
-          "host": {
-            "type": "string",
-            "description":
-              "Either the IP address (FAMILY_INET, FAMILY_INET6) or the path (FAMILY_LOCAL) in string form."
-          },
-          "port": {
-            "type": "number",
-            "description":
-              "port number for a FAMILY_INET or FAMILY_INET6 address"
-          },
-          "family": {
-            "type": "number",
-            "description":
-              "The address family of the network address, which corresponds to one of the FAMILY_ constants."
-          }
-        }
-      }
-    ],
+    "types": [],
     "properties": {
       "FAMILY_INET": {
         "type": "number"
@@ -55,7 +18,7 @@
     "events": [],
     "functions": [
       {
-        "name": "open",
+        "name": "create",
         "description": "This method initializes a UDP socket.",
         "type": "function",
         "async": false,
@@ -63,6 +26,7 @@
           {
             "name": "options",
             "type": "object",
+            "optional": true,
             "properties": {
               "host": {
                 "name": "host",
@@ -80,221 +44,19 @@
                 "type": "boolean",
                 "optional": true,
                 "default": true,
-                "description":
-                  "If true, the UDP socket will only respond to connections on the local loopback interface. Otherwise, it will accept connections from any interface."
+                "description": "If true, the UDP socket will only respond to connections on the local loopback interface. Otherwise, it will accept connections from any interface."
               },
               "addressReuse": {
                 "type": "boolean",
                 "optional": true,
                 "default": true,
-                "description":
-                  "If true, the socket is allowed to be bound to an address that is already in use. Default is true."
+                "description": "If true, the socket is allowed to be bound to an address that is already in use. Default is true."
               }
             }
           }
         ],
         "returns": {
           "type": "any"
-        }
-      },
-      {
-        "name": "create",
-        "description": "This method initializes a UDP socket.",
-        "type": "function",
-        "async": true,
-        "parameters": [
-          {
-            "name": "options",
-            "type": "object",
-            "properties": {
-              "host": {
-                "name": "host",
-                "type": "string",
-                "optional": true,
-                "description": "Destination hostname or IP address"
-              },
-              "port": {
-                "type": "number",
-                "description": "Destination port.",
-                "optional": true,
-                "default": -1
-              },
-              "loopbackOnly": {
-                "type": "boolean",
-                "optional": true,
-                "default": true,
-                "description":
-                  "If true, the UDP socket will only respond to connections on the local loopback interface. Otherwise, it will accept connections from any interface."
-              },
-              "addressReuse": {
-                "type": "boolean",
-                "optional": true,
-                "default": true,
-                "description":
-                  "If true, the socket is allowed to be bound to an address that is already in use. Default is true."
-              }
-            }
-          }
-        ],
-        "returns": {
-          "type": "object",
-          "$ref": "Socket"
-        }
-      },
-      {
-        "name": "close",
-        "type": "function",
-        "description":
-          "This method closes a UDP socket. This does not affect already connected client sockets (i.e., the nsISocketTransport instances created from this UDP socket). This will cause the onStopListening event to asynchronously fire with a status of NS_BINDING_ABORTED.",
-        "async": true,
-        "parameters": [
-          {
-            "name": "socket",
-            "type": "object",
-            "$ref": "Socket"
-          }
-        ]
-      },
-      {
-        "name": "send",
-        "type": "function",
-        "description":
-          "Send out the datagram to specified remote host and port. DNS lookup will be triggered.",
-        "async": true,
-        "parameters": [
-          {
-            "name": "socket",
-            "type": "object",
-            "$ref": "Socket"
-          },
-          {
-            "name": "host",
-            "type": "string",
-            "description": "host The remote host name."
-          },
-          {
-            "name": "port",
-            "type": "number",
-            "description": "port The remote port"
-          },
-          {
-            "name": "data",
-            "type": "any",
-            "description": "The buffer containing the data to be written"
-          },
-          {
-            "name": "size",
-            "type": "number",
-            "optional": true,
-            "description": "The maximum number of bytes to be written"
-          }
-        ]
-      },
-      {
-        "name": "setMulticastLoopback",
-        "type": "function",
-        "description":
-          "Sets or clears the IP_MULTICAST_LOOP socket option. When set to true, multicast packets will also be received on the local interface.",
-        "async": true,
-        "parameters": [
-          {
-            "name": "socket",
-            "type": "object",
-            "$ref": "Socket"
-          },
-          {
-            "name": "flag",
-            "type": "boolean"
-          }
-        ]
-      },
-      {
-        "name": "setMulticastInterface",
-        "type": "function",
-        "description":
-          "Sets the default outgoing multicast interface of the socket to a chosen interface or back to system interface selection.",
-        "async": true,
-        "parameters": [
-          {
-            "name": "socket",
-            "type": "object",
-            "$ref": "Socket"
-          },
-          {
-            "name": "multicastInterface",
-            "type": "string",
-            "description":
-              "The interface that should be used for sending future multicast datagrams."
-          }
-        ]
-      },
-      {
-        "name": "addMembership",
-        "type": "function",
-        "description":
-          "Join the multicast group specified by an address. You are then able to receive future datagrams addressed to the group.",
-        "async": true,
-        "parameters": [
-          {
-            "name": "socket",
-            "type": "object",
-            "$ref": "Socket"
-          },
-          {
-            "name": "address",
-            "type": "string",
-            "description": "The multicast group address"
-          },
-          {
-            "name": "multicastInterface",
-            "type": "string",
-            "optional": "true",
-            "description":
-              "The local address of the interface on which to join the group.  If this is not specified, the OS may join the group on all interfaces  or only the primary interface."
-          }
-        ]
-      },
-      {
-        "name": "dropMembership",
-        "type": "function",
-        "description":
-          "Leave the multicast group specified by an address. You will no longer receive future datagrams addressed to the group.",
-        "async": true,
-        "parameters": [
-          {
-            "name": "socket",
-            "type": "object",
-            "$ref": "Socket"
-          },
-          {
-            "name": "address",
-            "type": "string",
-            "description": "The multicast group address"
-          },
-          {
-            "name": "multicastInterface",
-            "type": "string",
-            "optional": "true",
-            "description":
-              "The local address of the interface on which to join the group.  If this is not specified, the OS may join the group on all interfaces  or only the primary interface."
-          }
-        ]
-      },
-      {
-        "name": "messages",
-        "type": "function",
-        "description":
-          "Returns async iterable for messages received on the socket",
-        "async": false,
-        "parameters": [
-          {
-            "name": "socket",
-            "type": "object",
-            "$ref": "Socket"
-          }
-        ],
-        "returns": {
-          "type": "object"
         }
       }
     ]
