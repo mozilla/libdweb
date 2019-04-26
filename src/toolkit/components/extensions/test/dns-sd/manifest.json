@@ -6,24 +6,24 @@
 
   "experiment_apis": {
     "test": {
-      "schema": "../../src/test/test.json",
+      "schema": "../../schemas/test.json",
       "child": {
         "scopes": ["addon_child"],
         "paths": [["test"]],
-        "script": "../../src/test/test.js"
+        "script": "../../child/ext-test.js"
       }
     },
     "ServiceDiscovery": {
-      "schema": "../../src/ServiceDiscovery/ServiceDiscovery.json",
+      "schema": "../../schemas/dns-sd.json",
       "child": {
         "scopes": ["addon_child"],
         "paths": [["ServiceDiscovery"]],
-        "script": "../../src/ServiceDiscovery/client.js"
+        "script": "../../child/ext-dns-sd.js"
       },
       "parent": {
         "scopes": ["addon_parent"],
         "paths": [["ServiceDiscovery"]],
-        "script": "../../src/ServiceDiscovery/host.js"
+        "script": "../../parent/ext-dns-sd.js"
       }
     }
   },

@@ -34,7 +34,7 @@ import type {
   ClientSocket,
 
   Status,
-} from "./TCPSocket"
+} from "../interface/tcp"
 
 interface Host {
   +TCPSocket: API;

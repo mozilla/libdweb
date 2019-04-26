@@ -26,7 +26,7 @@ import type {
   Readable,
   Writable,
   File
-} from "./FileSystem"
+} from "../interface/fs"
 
 interface Host {
   +File: FileManager;

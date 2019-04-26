@@ -9,16 +9,14 @@ import type {
   ServiceInfo,
   ServiceQuery,
   Discovery,
-  DiscoveredService
-} from "./ServiceDiscovery"
-
-import type {
+  DiscoveredService,
   RegisteredService,
   HostService,
   Inbox,
   DiscoveryMessage,
   ServiceID
-} from "./Format"
+} from "../interface/dns-sd.js"
+
 
 interface Host {
   +ServiceDiscovery: ServiceDiscovery;
