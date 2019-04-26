@@ -51,7 +51,7 @@ import type {
   RegisterProtocol,
   UnregisterProtocol,
   Port
-} from "./protocol.js"
+} from "./interface/protocol.js"
 */
 const EXPORTED_SYMBOLS = ["Supervisor", "Agent"]
 const debug = true

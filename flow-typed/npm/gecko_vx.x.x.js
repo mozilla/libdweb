@@ -3438,6 +3438,7 @@ declare module "gecko" {
   }
 
   declare export class ExtensionAPI<api> extends EventEmitter {
+    +extension: Extension;
     constructor(Extension): void;
     destroy(): void;
     getAPI(BaseContext): api;

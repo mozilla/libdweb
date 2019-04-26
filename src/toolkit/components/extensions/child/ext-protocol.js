@@ -4,7 +4,7 @@
 import { Cu, Cr } from "gecko"
 import type { nsIMessageSender, nsresult } from "gecko"
 import { ExtensionAPI, BaseContext } from "gecko"
-import type { HandlerInbox, HandlerOutboxMessage, Port, ReadyState, HandlerOutbox, Inn, Out } from "./protocol.js"
+import type { HandlerInbox, HandlerOutboxMessage, Port, ReadyState, HandlerOutbox, Inn, Out } from "../interface/protocol.js"
 
 
 interface Handler {
