@@ -52,20 +52,20 @@ interface Client {
     headers:{[string]:string}
     reader:?ReadableStreamReader
     readyState:ReadyState
-    controller:?ReadableStreamController
+    body:?RequestBodySource
     */
     constructor(
       id /*:string*/,
       port /*:Port<HandlerOutboxMessage>*/,
       response /*:Promise<Response>*/,
-      controller /*:?ReadableStreamController*/
+      body /*:?RequestBodySource*/
     ) {
       this.id = id
       this.port = port
       this.response = response
       this.reader = null
       this.readyState = IDLE
-      this.controller = controller
+      this.body = body
     }
 
     // Following methods correspond to methods on nsIRequest and are
@@ -203,32 +203,24 @@ interface Client {
     }
 
     onWrite(buffer) {
-      const { controller, id } = this
-      console.log(`ProtocolRequest.onWrite ${id}`, controller, buffer)
-      if (controller) {
-        Reflect.apply(controller.enqueue, controller, [
-          Cu.cloneInto(new Uint8Array(buffer), controller)
-        ])
-        if (controller.desiredSize <= 0) {
-          this.port.send({
-            type: "suspend-request-stream",
-            id
-          })
-        }
+      const { body, id } = this
+      console.log(`ProtocolRequest.onWrite ${id}`, body, buffer)
+      if (body) {
+        body.onWrite(buffer)
       }
     }
     onClose() {
-      const { controller, id } = this
-      console.log(`ProtocolRequest.onClose ${id}`, controller)
-      if (controller) {
-        controller.close()
+      const { body, id } = this
+      console.log(`ProtocolRequest.onClose ${id}`, body)
+      if (body) {
+        body.onClose()
       }
     }
     onError(message) {
-      const { controller, id } = this
-      console.log(`ProtocolRequest.onError ${id}`, controller, message)
-      if (controller) {
-        controller.error(new Error(message))
+      const { body, id } = this
+      console.log(`ProtocolRequest.onError ${id}`, body, message)
+      if (body) {
+        body.onError(message)
       }
     }
   }
@@ -314,13 +306,13 @@ interface Client {
       } = data
       const handler = this.handlers[scheme]
 
-      console.log("Client.onStartRequest", data, typeof handler)
+      console.log("ProtocolClient.onStartRequest", data, typeof handler)
       try {
         const source =
           contentLength === 0 ? null : new RequestBodySource(id, outbox)
 
         console.log(
-          "Client.onStartRequest -> new Request",
+          "ProtocolClient.onStartRequest -> new Request",
           method,
           source,
           headers,
@@ -347,7 +339,7 @@ interface Client {
         )
 
         console.log(
-          `Client.onStartRequest ${id} <- new Request `,
+          `ProtocolClient.onStartRequest ${id} <- new Request `,
           request.body,
           request.gozlik
         )
@@ -356,15 +348,14 @@ interface Client {
           id,
           this,
           Reflect.apply(handler, null, [request]),
-          source ? source.controller : null
+          source
         )
 
         this.requests[id] = response
-        console.log(`!!!! Client.onStartRequest register ${id}`)
+        console.log(`ProtocolClient.onStartRequest register ${id}`)
         response.resume()
       } catch (error) {
         const message = error.toString()
-        console.log("!!!!!!!!!!!!!!!!!!", message)
 
         const response = new ProtocolRequest(
           id,
@@ -397,18 +388,18 @@ interface Client {
     }
     onWriteRequestStream(data) {
       const request = this.requests[data.id]
-      console.log("Client.onWriteRequestStream", request, data)
+      console.log("ProtocolClient.onWriteRequestStream", request, data)
       request.onWrite(data.buffer)
     }
     onCloseRequestStream(data) {
       const request = this.requests[data.id]
-      console.log("Client.onCloseRequestStream", request, data)
+      console.log("ProtocolClient.onCloseRequestStream", request, data)
       request.onClose()
     }
     onErrorRequestStream(data) {
       const request = this.requests[data.id]
       console.log(
-        "Client.onErrorRequestStream",
+        "ProtocolClient.onErrorRequestStream",
         request,
         data,
         Object.keys(this.requests)
@@ -440,11 +431,9 @@ interface Client {
       this.outbox = outbox
     }
     start(controller) {
-      console.log("!!!!!!!!!!!!!!!", "START REQUEST BODY")
       this.controller = controller
     }
     pull() {
-      console.log("!!!!!!!!!!!!!!!", "PULL REQUEST BODY")
       const { id, outbox } = this
       outbox.sendAsyncMessage(OUTBOX, {
         type: "resume-request-stream",
@@ -452,13 +441,46 @@ interface Client {
       })
     }
     cancel(reason) {
-      console.log("!!!!!!!!!!!!!!!", "CANCEL REQUEST BODY")
       const { id, outbox } = this
       outbox.sendAsyncMessage(OUTBOX, {
         type: "cancel-request-stream",
         id,
         reason: String(reason)
       })
+    }
+
+    suspend() {
+      const { id, outbox } = this
+      outbox.sendAsyncMessage(OUTBOX, {
+        type: "suspend-request-stream",
+        id
+      })
+    }
+    onWrite(buffer) {
+      const { controller, id, outbox } = this
+      console.log(`RequestBodySource.onWrite ${id}`, controller, buffer)
+      if (controller) {
+        Reflect.apply(controller.enqueue, controller, [
+          Cu.cloneInto(new Uint8Array(buffer), controller)
+        ])
+        if (controller.desiredSize <= 0) {
+          this.suspend()
+        }
+      }
+    }
+    onClose() {
+      const { controller, id } = this
+      console.log(`RequestBodySource.onClose ${id}`, controller)
+      if (controller) {
+        controller.close()
+      }
+    }
+    onError(message) {
+      const { controller, id } = this
+      console.log(`RequestBodySource.onError ${id}`, controller, message)
+      if (controller) {
+        controller.error(new Error(message))
+      }
     }
   }
 
