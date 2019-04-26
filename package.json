@@ -29,6 +29,7 @@
     "test:fs": "tape-ext test/FileSystem",
     "test:protocol": "tape-ext test/protocol",
     "test:dns-sd": "tape-ext test/ServiceDiscovery",
+    "test:udp": "tape-ext test/UDPSocket",
     "precommit": "lint-staged",
     "demo": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging",
     "demo:discovery": "cross-env MOZ_DISABLE_CONTENT_SANDBOX=1 web-ext run --firefox=nightly --browser-console --url about:debugging --source-dir demo/discovery",

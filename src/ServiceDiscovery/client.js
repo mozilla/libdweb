@@ -216,12 +216,12 @@ interface Host {
         })
       }
       found(serviceInfo) {
-        this.contiune(decodeDiscoveredService(serviceInfo, false))
+        this.continue(decodeDiscoveredService(serviceInfo, false))
       }
       lost(serviceInfo) {
-        this.contiune(decodeDiscoveredService(serviceInfo, true))
+        this.continue(decodeDiscoveredService(serviceInfo, true))
       }
-      contiune(service) {
+      continue(service) {
         const { requests, isDone, responses, scope } = this
         if (isDone) {
           throw Error("Received serviceInfo event after discovery was ended")
@@ -352,8 +352,8 @@ interface Host {
     DiscoveryClient.subscribe()
 
     return {
-      tcp: "tcp",
-      udp: "udp",
+      TCP: "tcp",
+      UDP: "udp",
       announce: ServiceClient.announce,
       discover: DiscoveryClient.discover
     }

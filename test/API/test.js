@@ -28,39 +28,6 @@ test("UDPSocket", test => {
     "function",
     "UDPSocket.create is a function"
   )
-  test.equal(
-    typeof UDPSocket.close,
-    "function",
-    "UDPSocket.close is a function"
-  )
-  test.equal(
-    typeof UDPSocket.messages,
-    "function",
-    "UDPSocket.messages is a function"
-  )
-  test.equal(
-    typeof UDPSocket.setMulticastInterface,
-    "function",
-    "UDPSocket.setMulticastLoopback is a function"
-  )
-
-  test.equal(
-    typeof UDPSocket.setMulticastInterface,
-    "function",
-    "UDPSocket.setMulticastInterface is a function"
-  )
-
-  test.equal(
-    typeof UDPSocket.addMembership,
-    "function",
-    "UDPSocket.addMembership is a function"
-  )
-
-  test.equal(
-    typeof UDPSocket.dropMembership,
-    "function",
-    "UDPSocket.dropMembership is a function"
-  )
 })
 
 test("FileSystem", test => {
@@ -75,6 +42,26 @@ test("ServiceDiscovery", test => {
     typeof ServiceDiscovery,
     "object",
     "ServiceDiscovery API available"
+  )
+  test.equal(
+    ServiceDiscovery.TCP,
+    "tcp",
+    "ServiceDiscovery.TCP is protocol type"
+  )
+  test.equal(
+    ServiceDiscovery.UDP,
+    "udp",
+    "ServiceDiscovery.UDP is protocol type"
+  )
+  test.equal(
+    typeof ServiceDiscovery.announce,
+    "function",
+    "ServiceDiscovery.announce is a function"
+  )
+  test.equal(
+    typeof ServiceDiscovery.discover,
+    "function",
+    "ServiceDiscovery.discover is a function"
   )
 })
 

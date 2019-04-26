@@ -378,12 +378,12 @@ void (async () => {
 [prettier.url]: https://github.com/prettier/prettier
 [webextension experiments]: https://webextensions-experiments.readthedocs.io/en/latest/index.html
 [new apis]: https://wiki.mozilla.org/WebExtensions/NewAPIs
-[protocol handler]: https://github.com/mozilla/libdweb/issues/2
-[udp socket]: https://github.com/mozilla/libdweb/issues/4
-[tcp socket]: https://github.com/mozilla/libdweb/issues/5
+[protocol handler]: https://github.com/mozilla/libdweb/blob/master/Readme.md#protocol-api
+[udp socket]: https://github.com/mozilla/libdweb/blob/master/Readme.md#udpsocket-api
+[tcp socket]: https://github.com/mozilla/libdweb/blob/master/Readme.md#tcpsocket-api
 [µtp socket]: https://github.com/mozilla/libdweb/issues/6
-[service discovery]: https://github.com/mozilla/libdweb/issues/7
-[file system]: https://github.com/mozilla/libdweb/issues/8
+[service discovery]: https://github.com/mozilla/libdweb/blob/master/Readme.md#service-discovery-api
+[file system]: https://github.com/mozilla/libdweb/blob/master/Readme.md#filesystem-api
 [web-ext]: https://www.npmjs.com/package/web-ext
 [firefox nightly]: https://blog.nightly.mozilla.org/
 [api adapters]: https://github.com/libdweb

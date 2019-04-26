@@ -17,8 +17,7 @@
             "properties": {
               "protocol": {
                 "type": "string",
-                "description":
-                  "The protocol used by the service. Must be either `tcp` or `udp`."
+                "description": "The protocol used by the service. Must be either `tcp` or `udp`."
               },
               "type": {
                 "type": "string",
@@ -48,20 +47,17 @@
               },
               "protocol": {
                 "type": "string",
-                "description":
-                  "The protocol used by the service. Must be either `tcp` or `udp`."
+                "description": "The protocol used by the service. Must be either `tcp` or `udp`."
               },
               "port": {
                 "type": "number",
                 "optional": true,
-                "description":
-                  "The port on which the service listens, e.g. 5000."
+                "description": "The port on which the service listens, e.g. 5000."
               },
               "host": {
                 "type": "string",
                 "optional": true,
-                "description":
-                  "The hostname or ip address where the service resides."
+                "description": "The hostname or ip address where the service resides."
               },
               "attributes": {
                 "type": "any",
@@ -73,7 +69,14 @@
         ]
       }
     ],
-    "properties": {},
+    "properties": {
+      "TCP": {
+        "type": "string"
+      },
+      "UDP": {
+        "type": "string"
+      }
+    },
     "events": []
   }
 ]

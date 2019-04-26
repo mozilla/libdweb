@@ -14,17 +14,17 @@
       }
     },
     "protocol": {
-      "schema": "../../src/protocol/protocol.json",
+      "schema": "../../src/toolkit/components/extensions/schemas/protocol.json",
       "child": {
         "scopes": ["addon_child"],
         "paths": [["protocol"]],
-        "script": "../../src/protocol/client.js"
+        "script": "../../src/toolkit/components/extensions/child/ext-protocol.js"
       },
       "parent": {
         "events": ["startup"],
         "scopes": ["addon_parent"],
         "paths": [["protocol"]],
-        "script": "../../src/protocol/host.js"
+        "script": "../../src/toolkit/components/extensions/parent/ext-protocol.js"
       }
     }
   },
