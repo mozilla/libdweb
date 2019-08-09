@@ -3,7 +3,19 @@
     "namespace": "TCPSocket",
     "description": "TCP Client Socket implementation",
     "//permissions": ["TCPClientSocket", "TCPServerSocket"],
-    "types": [],
+    "types": [
+      {
+        "id": "TCPClient",
+        "type": "object",
+        "description": "TCP Client",
+        "properties": {
+          "host": {
+            "type": "string",
+            "description": "host"
+          }
+        }
+      }
+    ],
     "properties": {},
     "events": [],
     "functions": [

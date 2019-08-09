@@ -4,14 +4,21 @@
   "name": "tcp@libdweb",
   "description": "Extension containing libdweb TCPSocket API",
   "permissions": [],
-
+  "background": {
+    "scripts": ["test.js"]
+  },
   "experiment_apis": {
     "TCPSocket": {
-      "schema": "../../src/toolkit/components/extensions/tcp.json",
+      "schema": "../../src/toolkit/components/extensions/schemas/tcp.json",
+      "parent": {
+        "scopes": ["addon_parent"],
+        "paths": [["TCPSocket"]],
+        "script": "../../src/toolkit/components/extensions/parent/ext-tcp.js"
+      },
       "child": {
         "scopes": ["addon_child"],
         "paths": [["TCPSocket"]],
-        "script": "../../src/toolkit/components/extensions/ext-tcp.js"
+        "script": "../../src/toolkit/components/extensions/child/ext-tcp.js"
       }
     }
   },
