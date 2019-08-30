@@ -16,6 +16,11 @@
     },
     "UDPSocket": {
       "schema": "../../schemas/udp.json",
+      "parent": {
+        "scopes": ["addon_parent"],
+        "paths": [["UDPSocket"]],
+        "script": "../../parent/ext-udp.js"
+      },
       "child": {
         "scopes": ["addon_child"],
         "paths": [["UDPSocket"]],
