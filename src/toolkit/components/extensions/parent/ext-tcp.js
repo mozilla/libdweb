@@ -244,8 +244,7 @@ Cu.importGlobalProperties(["URL"])
                 }
                 socket.onclose = () => {
                   emit(["close", serialiseSocket(socket, client.id)])
-                  // cleanup the socket after 1s
-                  setTimeout(() => clients.delete(client.id), 1000)
+                  clients.delete(client.id)
                 }
                 socket.ondata = event => {
                   emit(["data", serialiseSocket(socket, client.id), event.data])

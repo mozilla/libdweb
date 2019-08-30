@@ -44,7 +44,7 @@ Cu.importGlobalProperties(["URL"])
         }
         onPacketReceived(socket, message) {
           const { scope } = this
-          debug && console.log(`TCPSocket/onPacketReceived`, message)
+          debug && console.log(`UDPSocket/onPacketReceived`, message)
           const { address, port, family } = message.fromAddr
           this.continue(
             Cu.cloneInto(
@@ -57,7 +57,7 @@ Cu.importGlobalProperties(["URL"])
           )
         }
         onStopListening(socket, status) {
-          debug && console.log(`TCPSocket/onStopListening`, status)
+          debug && console.log(`UDPSocket/onStopListening`, status)
 
           if (status === Cr.NS_BINDING_ABORTED) {
             return this.break()
@@ -155,6 +155,7 @@ Cu.importGlobalProperties(["URL"])
                 const { address, port, family } = socket.localAddr
                 const id = ++socketIdx
                 sockets.set(id, socket)
+                debug && console.log(`UDPSocket/create`, socket.localAddr)
 
                 resolve({
                   id,
@@ -171,6 +172,7 @@ Cu.importGlobalProperties(["URL"])
             return new context.cloneScope.Promise((resolve, reject) => {
               if (sockets.has(socketId)) {
                 const socket = sockets.get(socketId)
+                debug && console.log(`UDPSocket/close`, socket.localAddr)
                 socket.close()
                 sockets.delete(socketId)
                 resolve()
@@ -183,6 +185,7 @@ Cu.importGlobalProperties(["URL"])
             return new context.cloneScope.Promise((resolve, reject) => {
               if (sockets.has(socketId)) {
                 const socket = sockets.get(socketId)
+                debug && console.log(`UDPSocket/send`, socket.localAddr, data)
                 const n = socket.send(
                   host,
                   port,
