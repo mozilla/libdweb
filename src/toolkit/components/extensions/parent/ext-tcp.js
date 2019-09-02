@@ -37,14 +37,14 @@ import type {
 } from "../interface/tcp"
 
 interface Host {
-  +TCPSocket: API;
+  +TCPSocket: {};
 }
 */
 Cu.importGlobalProperties(["URL"])
 
 {
   const { OS } = Cu.import("resource://gre/modules/osfile.jsm", {})
-  const { TCPSocket, TCPServerSocket } = Cu.getGlobalForObject(OS)
+  const { TCPSocket } = Cu.getGlobalForObject(OS)
   const { ExtensionUtils } = Cu.import(
     "resource://gre/modules/ExtensionUtils.jsm",
     {}
@@ -271,6 +271,9 @@ Cu.importGlobalProperties(["URL"])
           write: (socketId, buffer, byteOffset, byteLength) => {
             return new context.cloneScope.Promise((resolve, reject) => {
               const socket = clients.get(socketId)
+              if (!socket) {
+                return reject("socket not found")
+              }
               if (socket.send(buffer, byteOffset, byteLength)) {
                 resolve()
               } else {
@@ -282,35 +285,52 @@ Cu.importGlobalProperties(["URL"])
           },
           suspend: socketId => {
             const socket = clients.get(socketId)
-            socket.suspend()
+            if (socket) {
+              socket.suspend()
+            }
           },
           resume: socketId => {
             const socket = clients.get(socketId)
-            socket.resume()
+            if (socket) {
+              socket.resume()
+            }
           },
           close: socketId => {
-            return new context.cloneScope.Promise(resolve => {
+            return new context.cloneScope.Promise((resolve, reject) => {
               const socket = clients.get(socketId)
-              socket.close()
-              resolve()
+              if (socket) {
+                socket.close()
+                resolve()
+              } else {
+                reject("socket not found")
+              }
             })
           },
           closeImmediately: socketId => {
             const socket = clients.get(socketId)
-            socket.closeImmediately()
+            if (socket) {
+              socket.closeImmediately()
+            }
           },
           upgradeToSecure: socketId => {
             const socket = clients.get(socketId)
-            socket.upgradeToSecure()
+            if (socket) {
+              socket.upgradeToSecure()
+            }
           },
           closeServer: serverId => {
             const server = servers.get(serverId)
-            server.close()
-            servers.delete(serverId)
+            if (server) {
+              server.close()
+              servers.delete(serverId)
+            }
           },
           pollServer: serverId => {
             const server = servers.get(serverId)
             return new context.cloneScope.Promise((resolve, reject) => {
+              if (!server) {
+                return reject("not found")
+              }
               server.connections.request(socket => {
                 if (socket) {
                   const client = serialiseSocket(socket, ++connectionIdx)
