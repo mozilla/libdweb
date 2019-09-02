@@ -23,6 +23,7 @@ Cu.importGlobalProperties(["URL"])
   const getAPIClasses = context => {
     class UDPSocketClient /*::implements UDPSocket*/ {
       /*::
+      __id:Number
       address:SocketAddress
       */
       constructor() {
@@ -130,6 +131,7 @@ Cu.importGlobalProperties(["URL"])
     class MessagesClient {
       /*::
       @@asyncIterator: () => self
+      __socketId: Number
       */
       constructor() {
         throw TypeError("Illegal constructor")
@@ -156,8 +158,8 @@ Cu.importGlobalProperties(["URL"])
     }
   }
 
-  const getAPI = (context, refs, sockets) => {
-    const api = getAPIClasses(context, refs, sockets)
+  const getAPI = context => {
+    const api = getAPIClasses(context)
 
     return {
       FAMILY_INET: Ci.nsINetAddr.FAMILY_INET,
@@ -170,7 +172,7 @@ Cu.importGlobalProperties(["URL"])
 
           try {
             const socket = await context.childManager.callParentAsyncFunction(
-              "UDPSocket.create",
+              "UDPSocket.createSocket",
               [options]
             )
             const client = exportInstance(context.cloneScope, api.UDPSocket, {
@@ -191,13 +193,7 @@ Cu.importGlobalProperties(["URL"])
 
   global.UDPSocket = class extends ExtensionAPI /*::<Host>*/ {
     getAPI(context) {
-      const refs = {
-        sockets: new WeakMap(),
-        messages: new WeakMap()
-      }
-      const sockets = new Set()
-
-      return { UDPSocket: getAPI(context, refs, sockets) }
+      return { UDPSocket: getAPI(context) }
     }
   }
 

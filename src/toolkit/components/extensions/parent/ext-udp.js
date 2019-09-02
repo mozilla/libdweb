@@ -14,7 +14,7 @@ import type {
 } from "../interface/udp"
 
 interface Host {
-  +UDPSocket: UDPSocketManager;
+  +UDPSocket: {};
 }
 */
 Cu.importGlobalProperties(["URL"])
@@ -129,7 +129,7 @@ Cu.importGlobalProperties(["URL"])
 
       return {
         UDPSocket: {
-          create: options => {
+          createSocket: options => {
             return new Promise((resolve, reject) => {
               try {
                 const socket = Cc[
@@ -170,8 +170,8 @@ Cu.importGlobalProperties(["URL"])
           },
           close: socketId => {
             return new context.cloneScope.Promise((resolve, reject) => {
-              if (sockets.has(socketId)) {
-                const socket = sockets.get(socketId)
+              const socket = sockets.get(socketId)
+              if (socket) {
                 debug && console.log(`UDPSocket/close`, socket.localAddr)
                 socket.close()
                 sockets.delete(socketId)
@@ -183,8 +183,8 @@ Cu.importGlobalProperties(["URL"])
           },
           send: (socketId, host, port, data, size) => {
             return new context.cloneScope.Promise((resolve, reject) => {
-              if (sockets.has(socketId)) {
-                const socket = sockets.get(socketId)
+              const socket = sockets.get(socketId)
+              if (socket) {
                 debug && console.log(`UDPSocket/send`, socket.localAddr, data)
                 const n = socket.send(
                   host,
@@ -200,8 +200,8 @@ Cu.importGlobalProperties(["URL"])
           },
           setMulticastLoopback: (socketId, flag) => {
             return new context.cloneScope.Promise((resolve, reject) => {
-              if (sockets.has(socketId)) {
-                const socket = sockets.get(socketId)
+              const socket = sockets.get(socketId)
+              if (socket) {
                 socket.multicastLoopback = flag
                 resolve()
               } else {
@@ -211,8 +211,8 @@ Cu.importGlobalProperties(["URL"])
           },
           setMulticastInterface: (socketId, multicastInterface) => {
             return new context.cloneScope.Promise((resolve, reject) => {
-              if (sockets.has(socketId)) {
-                const socket = sockets.get(socketId)
+              const socket = sockets.get(socketId)
+              if (socket) {
                 socket.multicastInterface = multicastInterface
                 resolve()
               } else {
@@ -222,8 +222,8 @@ Cu.importGlobalProperties(["URL"])
           },
           joinMulticast: (socketId, address, multicastInterface) => {
             return new context.cloneScope.Promise((resolve, reject) => {
-              if (sockets.has(socketId)) {
-                const socket = sockets.get(socketId)
+              const socket = sockets.get(socketId)
+              if (socket) {
                 socket.joinMulticast(address, multicastInterface)
                 resolve()
               } else {
@@ -233,8 +233,8 @@ Cu.importGlobalProperties(["URL"])
           },
           leaveMulticast: (socketId, address, multicastInterface) => {
             return new context.cloneScope.Promise((resolve, reject) => {
-              if (sockets.has(socketId)) {
-                const socket = sockets.get(socketId)
+              const socket = sockets.get(socketId)
+              if (socket) {
                 socket.leaveMulticast(address, multicastInterface)
                 resolve()
               } else {
@@ -244,27 +244,26 @@ Cu.importGlobalProperties(["URL"])
           },
           pollMessages: socketId => {
             return new context.cloneScope.Promise((resolve, reject) => {
-              if (!sockets.has(socketId)) {
+              const socket = sockets.get(socketId)
+              if (!socket) {
                 return reject(notFoundPromise)
               }
-              let host
-              if (!messages.has(socketId)) {
-                const socket = sockets.get(socketId)
+              let host = messages.get(socketId)
+              if (!host) {
                 host = new MessagesHost(socket)
                 socket.asyncListen(host)
                 messages.set(socketId, host)
-              } else {
-                host = messages.get(socketId)
               }
               resolve(host.next())
             })
           },
           returnHost: socketId => {
             return new context.cloneScope.Promise((resolve, reject) => {
-              if (!sockets.has(socketId) || !messages.has(socketId)) {
+              const message = messages.get(socketId)
+              if (!sockets.has(socketId) || !message) {
                 return reject(notFoundPromise)
               }
-              const result = messages.get(socketId).return()
+              const result = message.return()
               resolve(result)
             })
           }
